@@ -8,7 +8,14 @@ const permissions = [
   ["users.read", "Read users"],
   ["users.manage", "Manage users and invitations"],
   ["roles.manage", "Manage roles and permissions"],
-  ["audit.read", "Read audit events"]
+  ["audit.read", "Read audit events"],
+  ["organization.read", "Read organization setup records"],
+  ["organization.manage", "Manage organization setup records"],
+  ["employees.read", "Read employee directory and profiles"],
+  ["employees.manage", "Manage employee profiles and job data"],
+  ["employees.compensation.read", "Read employee compensation records"],
+  ["employees.compensation.manage", "Manage employee compensation records"],
+  ["employees.custom-fields.manage", "Manage employee custom field definitions"]
 ] as const;
 
 const seed = async (): Promise<void> => {

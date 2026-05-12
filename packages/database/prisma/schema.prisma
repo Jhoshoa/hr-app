@@ -25,6 +25,44 @@ enum MembershipStatus {
   DISABLED
 }
 
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+}
+
+enum CompensationFrequency {
+  HOURLY
+  MONTHLY
+  YEARLY
+}
+
+enum CompensationVisibility {
+  HR_ONLY
+  HR_AND_FINANCE
+  HR_FINANCE_MANAGER
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+}
+
+enum CustomFieldVisibility {
+  HR_ONLY
+  MANAGER_VISIBLE
+  EMPLOYEE_VISIBLE
+}
+
 model Tenant {
   id              String             @id @default(uuid()) @db.Uuid
   name            String
@@ -38,6 +76,13 @@ model Tenant {
   memberships     TenantMembership[]
   roles           Role[]
   auditEvents     AuditEvent[]
+  departments     Department[]
+  locations       Location[]
+  jobTitles       JobTitle[]
+  employmentTypes EmploymentType[]
+  workModes       WorkMode[]
+  clientProjects  ClientProject[]
+  employees       Employee[]
 
   @@index([status])
 }
@@ -53,6 +98,7 @@ model User {
   updatedAt            DateTime           @updatedAt
   memberships          TenantMembership[]
   auditEvents          AuditEvent[]
+  employees            Employee[]
 
   @@index([email])
   @@index([externalAuthProvider, externalAuthUserId])
@@ -128,4 +174,248 @@ model AuditEvent {
   @@index([tenantId, createdAt])
   @@index([actorUserId, createdAt])
   @@index([resourceType, resourceId])
+}
+
+model Department {
+  id                 String       @id @default(uuid()) @db.Uuid
+  tenantId           String       @db.Uuid
+  name               String
+  parentDepartmentId String?      @db.Uuid
+  status             RecordStatus @default(ACTIVE)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentDepartment   Department?  @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
+  childDepartments   Department[] @relation("DepartmentHierarchy")
+  jobAssignments     EmployeeJobAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model Location {
+  id             String       @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
+  name           String
+  country        String       @default("BO")
+  city           String?
+  timezone       String       @default("America/La_Paz")
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobAssignments EmployeeJobAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model JobTitle {
+  id             String       @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
+  name           String
+  level          String?
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobAssignments EmployeeJobAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model EmploymentType {
+  id             String       @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
+  name           String
+  category       String?
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobAssignments EmployeeJobAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model WorkMode {
+  id             String       @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
+  name           String
+  type           String
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobAssignments EmployeeJobAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model ClientProject {
+  id                String       @id @default(uuid()) @db.Uuid
+  tenantId          String       @db.Uuid
+  name              String
+  code              String?
+  status            RecordStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientAssignments ClientAssignment[]
+
+  @@unique([tenantId, name])
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+}
+
+model Employee {
+  id                String                     @id @default(uuid()) @db.Uuid
+  tenantId          String                     @db.Uuid
+  userId            String?                    @db.Uuid
+  employeeNumber    String
+  status            EmployeeStatus             @default(ACTIVE)
+  firstName         String
+  lastName          String
+  workEmail         String
+  personalEmail     String?
+  startDate         DateTime
+  terminationDate   DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  tenant            Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User?                      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  profile           EmployeeProfile?
+  jobAssignments    EmployeeJobAssignment[]
+  managerRelations  ManagerRelationship[]      @relation("EmployeeManagerRelations")
+  directReports     ManagerRelationship[]      @relation("ManagerDirectReports")
+  compensation      CompensationRecord[]
+  customFieldValues EmployeeCustomFieldValue[]
+  clientAssignments ClientAssignment[]
+
+  @@unique([tenantId, employeeNumber])
+  @@unique([tenantId, workEmail])
+  @@index([tenantId, status])
+  @@index([tenantId, lastName, firstName])
+}
+
+model EmployeeProfile {
+  employeeId            String    @id @db.Uuid
+  birthDate             DateTime?
+  phone                 String?
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  employee              Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model EmployeeJobAssignment {
+  id               String          @id @default(uuid()) @db.Uuid
+  tenantId         String          @db.Uuid
+  employeeId       String          @db.Uuid
+  departmentId     String?         @db.Uuid
+  jobTitleId       String?         @db.Uuid
+  locationId       String?         @db.Uuid
+  employmentTypeId String?         @db.Uuid
+  workModeId       String?         @db.Uuid
+  effectiveFrom    DateTime
+  effectiveTo      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  employee         Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department       Department?     @relation(fields: [departmentId], references: [id])
+  jobTitle         JobTitle?       @relation(fields: [jobTitleId], references: [id])
+  location         Location?       @relation(fields: [locationId], references: [id])
+  employmentType   EmploymentType? @relation(fields: [employmentTypeId], references: [id])
+  workMode         WorkMode?       @relation(fields: [workModeId], references: [id])
+
+  @@index([tenantId, employeeId, effectiveFrom])
+  @@index([tenantId, departmentId])
+  @@index([tenantId, jobTitleId])
+}
+
+model ManagerRelationship {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @db.Uuid
+  employeeId        String    @db.Uuid
+  managerEmployeeId String    @db.Uuid
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  employee          Employee  @relation("EmployeeManagerRelations", fields: [employeeId], references: [id], onDelete: Cascade)
+  manager           Employee  @relation("ManagerDirectReports", fields: [managerEmployeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, employeeId, effectiveFrom])
+  @@index([tenantId, managerEmployeeId])
+}
+
+model CompensationRecord {
+  id            String                 @id @default(uuid()) @db.Uuid
+  tenantId      String                 @db.Uuid
+  employeeId    String                 @db.Uuid
+  amount        Decimal                @db.Decimal(12, 2)
+  currency      String                 @default("BOB")
+  frequency     CompensationFrequency  @default(MONTHLY)
+  visibility    CompensationVisibility @default(HR_ONLY)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  employee      Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, employeeId, effectiveFrom])
+}
+
+model EmployeeCustomFieldDefinition {
+  id          String                  @id @default(uuid()) @db.Uuid
+  tenantId    String                  @db.Uuid
+  key         String
+  label       String
+  type        CustomFieldType
+  isRequired  Boolean                 @default(false)
+  visibility  CustomFieldVisibility   @default(HR_ONLY)
+  options     Json?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  values      EmployeeCustomFieldValue[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+model EmployeeCustomFieldValue {
+  id                String                        @id @default(uuid()) @db.Uuid
+  tenantId          String                        @db.Uuid
+  employeeId        String                        @db.Uuid
+  fieldDefinitionId String                        @db.Uuid
+  value             Json
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+  employee          Employee                      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fieldDefinition   EmployeeCustomFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, fieldDefinitionId])
+  @@index([tenantId, employeeId])
+}
+
+model ClientAssignment {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  employeeId      String        @db.Uuid
+  clientProjectId String        @db.Uuid
+  role            String?
+  startDate       DateTime
+  endDate         DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  clientProject   ClientProject @relation(fields: [clientProjectId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, employeeId])
+  @@index([tenantId, clientProjectId])
 }

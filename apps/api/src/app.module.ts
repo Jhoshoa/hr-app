@@ -8,8 +8,10 @@ import { AuthGuard } from "./common/guards/auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
 import { TenantGuard } from "./common/guards/tenant.guard";
 import { AuditModule } from "./modules/audit/audit.module";
+import { EmployeesModule } from "./modules/employees/employees.module";
 import { HealthModule } from "./health/health.module";
 import { IdentityModule } from "./modules/identity/identity.module";
+import { OrganizationModule } from "./modules/organization/organization.module";
 import { TenantsModule } from "./modules/tenants/tenants.module";
 
 @Module({
@@ -19,6 +21,8 @@ import { TenantsModule } from "./modules/tenants/tenants.module";
     InMemoryEventBusModule,
     AuditModule,
     IdentityModule,
+    OrganizationModule,
+    EmployeesModule,
     TenantsModule,
     HealthModule
   ],
