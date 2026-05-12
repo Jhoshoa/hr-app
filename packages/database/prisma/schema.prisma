@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+model Tenant {
+  id              String             @id @default(uuid()) @db.Uuid
+  name            String
+  slug            String             @unique
+  status          TenantStatus       @default(ACTIVE)
+  defaultLanguage String             @default("es")
+  defaultCurrency String             @default("BOB")
+  timezone        String             @default("America/La_Paz")
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  memberships     TenantMembership[]
+  roles           Role[]
+  auditEvents     AuditEvent[]
+
+  @@index([status])
+}
+
+model User {
+  id                   String             @id @default(uuid()) @db.Uuid
+  email                String             @unique
+  name                 String?
+  status               UserStatus         @default(INVITED)
+  externalAuthProvider String             @default("supabase")
+  externalAuthUserId   String             @unique
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  memberships          TenantMembership[]
+  auditEvents          AuditEvent[]
+
+  @@index([email])
+  @@index([externalAuthProvider, externalAuthUserId])
+}
+
+model TenantMembership {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @db.Uuid
+  userId    String           @db.Uuid
+  roleId    String           @db.Uuid
+  status    MembershipStatus @default(INVITED)
+  invitedAt DateTime         @default(now())
+  joinedAt  DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role             @relation(fields: [roleId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, status])
+  @@index([userId, status])
+}
+
+model Role {
+  id          String             @id @default(uuid()) @db.Uuid
+  tenantId    String?            @db.Uuid
+  key         String
+  name        String
+  description String?
+  isSystemRole Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  tenant      Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships TenantMembership[]
+  permissions RolePermission[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         String           @unique
+  description String
+  createdAt   DateTime        @default(now())
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model AuditEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String?  @db.Uuid
+  actorUserId  String?  @db.Uuid
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  actor        User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([resourceType, resourceId])
+}
