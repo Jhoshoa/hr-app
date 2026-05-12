@@ -5,14 +5,37 @@ import {
   type AddCompensationRecordInput,
   type EmployeesRepository
 } from "../../domain/ports/employees.repository.port";
+import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
+
+export interface AddCompensationRecordCommand extends AddCompensationRecordInput {
+  readonly actorUserId: string;
+}
 
 @Injectable()
 export class AddCompensationRecordUseCase {
   constructor(
     @Inject(EMPLOYEES_REPOSITORY)
-    private readonly employeesRepository: EmployeesRepository
+    private readonly employeesRepository: EmployeesRepository,
+    private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
-  execute = async (input: AddCompensationRecordInput): Promise<CompensationRecordEntity> =>
-    this.employeesRepository.addCompensationRecord(input);
+  execute = async (input: AddCompensationRecordCommand): Promise<CompensationRecordEntity> => {
+    const compensation = await this.employeesRepository.addCompensationRecord(input);
+
+    await this.createAuditEventUseCase.execute({
+      tenantId: input.tenantId,
+      actorUserId: input.actorUserId,
+      action: "employee.compensation.created",
+      resourceType: "employee",
+      resourceId: input.employeeId,
+      metadata: {
+        compensationRecordId: compensation.id,
+        currency: compensation.currency,
+        frequency: compensation.frequency,
+        visibility: compensation.visibility
+      }
+    });
+
+    return compensation;
+  };
 }

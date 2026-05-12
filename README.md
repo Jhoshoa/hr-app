@@ -12,11 +12,11 @@ Current implemented backend scope:
 - Phase 1 modules: `identity`, `tenants`, `audit`.
 - Phase 2 schema and modules for organization setup and employee core records.
 - Organization records: departments, locations, job titles, employment types, work modes, client projects.
-- Employee records: profile, job assignments, manager relationships, compensation records, custom fields.
+- Employee records: profile, job assignments, manager relationships, compensation records, custom fields, CSV import/export foundation, and role-aware response filtering.
 - Supabase Auth provider abstraction.
 - Global auth, tenant, and permission guards.
 - Health endpoint.
-- Unit tests for core Phase 1 and initial Phase 2 use cases.
+- Unit tests for core Phase 1 and Phase 2 use cases and visibility rules.
 
 ## What Is Still Missing
 
@@ -24,7 +24,7 @@ From `docs/backend/backend-planning-and-project-structure.md`, this has been imp
 
 - Phase 0: repository/tooling foundation, mostly complete.
 - Phase 1: platform foundation, partially complete and buildable.
-- Phase 2: organization and employee core, partially complete and buildable.
+- Phase 2: organization and employee core, mostly complete and buildable.
 
 Still pending from Phase 1:
 
@@ -39,12 +39,9 @@ Still pending from Phase 1:
 
 Still pending after Phase 1:
 
-- CSV employee import/export foundation.
-- Manager/team visibility rules beyond the current permission guard.
-- Employee self-profile visibility rules.
-- Field-level response filtering for compensation and other sensitive fields.
 - Phase 2 repository integration tests against a real test database.
 - Phase 2 E2E tests for employee create/list/update flows.
+- Rich CSV validation, duplicate handling, and async import jobs for larger files.
 - Documents module.
 - Leave and approval workflows.
 - Onboarding module.
@@ -312,6 +309,7 @@ corepack pnpm db:migrate
 corepack pnpm db:seed
 corepack pnpm --filter @hr-app/api typecheck
 corepack pnpm --filter @hr-app/api exec jest --config jest.config.ts --runInBand
+corepack pnpm --filter @hr-app/api test:e2e
 corepack pnpm --filter @hr-app/api build
 ```
 
@@ -320,14 +318,14 @@ Results:
 - TypeScript typecheck passed.
 - Local Prisma migration passed against PostgreSQL on `localhost:5434`.
 - Local seed script passed.
-- Unit tests passed: 5 test suites, 7 tests.
+- Unit tests passed: 6 test suites, 11 tests.
+- E2E tests passed: 1 test suite, 1 test.
 - NestJS production build passed.
 
 Not yet verified:
 
 - API startup with a real `.env`.
 - Auth flow with real Supabase tokens.
-- Phase 2 E2E API requests with authenticated tenant context.
 
 On Windows, `nest build` may fail in the sandbox with an `EPERM` error while deleting old files in `apps/api/dist`. Delete the generated `apps/api/dist` folder and rerun the build from a normal terminal if that happens.
 
@@ -367,9 +365,14 @@ POST /api/v1/work-modes
 GET /api/v1/client-projects
 POST /api/v1/client-projects
 GET /api/v1/employees
+GET /api/v1/employees/export.csv
+POST /api/v1/employees/import.csv
 POST /api/v1/employees
 GET /api/v1/employees/:employeeId
 PATCH /api/v1/employees/:employeeId
+GET /api/v1/employees/:employeeId/profile
+PATCH /api/v1/employees/:employeeId/profile
+DELETE /api/v1/employees/:employeeId/profile
 POST /api/v1/employees/:employeeId/job-assignments
 POST /api/v1/employees/:employeeId/manager-relationships
 POST /api/v1/employees/:employeeId/compensation-records

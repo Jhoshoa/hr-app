@@ -3,32 +3,31 @@ import type { EmployeeEntity } from "../../domain/entities/employee.entity";
 import {
   EMPLOYEES_REPOSITORY,
   type EmployeesRepository,
-  type UpdateEmployeeInput
+  type UpdateEmployeeProfileInput
 } from "../../domain/ports/employees.repository.port";
 import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
 
-export interface UpdateEmployeeCommand extends UpdateEmployeeInput {
+export interface UpsertEmployeeProfileCommand extends UpdateEmployeeProfileInput {
   readonly actorUserId: string;
 }
 
 @Injectable()
-export class UpdateEmployeeUseCase {
+export class UpsertEmployeeProfileUseCase {
   constructor(
     @Inject(EMPLOYEES_REPOSITORY)
     private readonly employeesRepository: EmployeesRepository,
     private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
-  execute = async (input: UpdateEmployeeCommand): Promise<EmployeeEntity> => {
-    const employee = await this.employeesRepository.update(input);
+  execute = async (input: UpsertEmployeeProfileCommand): Promise<EmployeeEntity> => {
+    const employee = await this.employeesRepository.upsertProfile(input);
 
     await this.createAuditEventUseCase.execute({
       tenantId: input.tenantId,
       actorUserId: input.actorUserId,
-      action: "employee.updated",
+      action: "employee.profile.updated",
       resourceType: "employee",
-      resourceId: employee.id,
-      metadata: { updatedFields: Object.keys(input).filter((key) => !["tenantId", "employeeId", "actorUserId"].includes(key)) }
+      resourceId: input.employeeId
     });
 
     return employee;

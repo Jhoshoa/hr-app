@@ -48,6 +48,12 @@ export interface UpdateEmployeeInput {
   readonly profile?: EmployeeProfileInput;
 }
 
+export interface UpdateEmployeeProfileInput {
+  readonly tenantId: string;
+  readonly employeeId: string;
+  readonly profile: EmployeeProfileInput;
+}
+
 export interface EmployeeListFilters {
   readonly status?: EmployeeStatus;
   readonly search?: string;
@@ -106,8 +112,16 @@ export interface SetEmployeeCustomFieldValueInput {
 export interface EmployeesRepository {
   create(input: CreateEmployeeInput): Promise<EmployeeEntity>;
   update(input: UpdateEmployeeInput): Promise<EmployeeEntity>;
+  upsertProfile(input: UpdateEmployeeProfileInput): Promise<EmployeeEntity>;
+  deleteProfile(tenantId: string, employeeId: string): Promise<void>;
   list(tenantId: string, filters: EmployeeListFilters): Promise<EmployeeEntity[]>;
+  listDirectReportsByManagerUserId(
+    tenantId: string,
+    managerUserId: string,
+    filters: EmployeeListFilters
+  ): Promise<EmployeeEntity[]>;
   findById(tenantId: string, employeeId: string): Promise<EmployeeEntity | null>;
+  findByUserId(tenantId: string, userId: string): Promise<EmployeeEntity | null>;
   addJobAssignment(input: AddEmployeeJobAssignmentInput): Promise<EmployeeJobAssignmentEntity>;
   addManagerRelationship(input: AddManagerRelationshipInput): Promise<ManagerRelationshipEntity>;
   addCompensationRecord(input: AddCompensationRecordInput): Promise<CompensationRecordEntity>;

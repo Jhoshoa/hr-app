@@ -5,8 +5,12 @@ import type { EmployeesRepository } from "../../domain/ports/employees.repositor
 const createRepository = (): jest.Mocked<EmployeesRepository> => ({
   create: jest.fn(),
   update: jest.fn(),
+  upsertProfile: jest.fn(),
+  deleteProfile: jest.fn(),
   list: jest.fn(),
+  listDirectReportsByManagerUserId: jest.fn(),
   findById: jest.fn(),
+  findByUserId: jest.fn(),
   addJobAssignment: jest.fn(),
   addManagerRelationship: jest.fn(),
   addCompensationRecord: jest.fn(),
@@ -17,11 +21,13 @@ const createRepository = (): jest.Mocked<EmployeesRepository> => ({
 describe("AddManagerRelationshipUseCase", () => {
   it("rejects self-manager relationships", async () => {
     const repository = createRepository();
-    const useCase = new AddManagerRelationshipUseCase(repository);
+    const createAuditEventUseCase = { execute: jest.fn() };
+    const useCase = new AddManagerRelationshipUseCase(repository, createAuditEventUseCase as never);
 
     await expect(
       useCase.execute({
         tenantId: "tenant-1",
+        actorUserId: "user-1",
         employeeId: "employee-1",
         managerEmployeeId: "employee-1",
         effectiveFrom: new Date("2026-05-12T00:00:00.000Z")

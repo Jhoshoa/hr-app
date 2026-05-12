@@ -18,6 +18,7 @@ import type {
   EmployeeListFilters,
   EmployeesRepository,
   SetEmployeeCustomFieldValueInput,
+  UpdateEmployeeProfileInput,
   UpdateEmployeeInput
 } from "../../domain/ports/employees.repository.port";
 
@@ -97,6 +98,35 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
     return this.toEmployeeEntity(employee);
   };
 
+  upsertProfile = async (input: UpdateEmployeeProfileInput): Promise<EmployeeEntity> => {
+    const employee = await this.prisma.employee.update({
+      where: {
+        id: input.employeeId,
+        tenantId: input.tenantId
+      },
+      data: {
+        profile: {
+          upsert: {
+            create: input.profile,
+            update: input.profile
+          }
+        }
+      },
+      include: this.employeeDetailsInclude
+    });
+
+    return this.toEmployeeEntity(employee);
+  };
+
+  deleteProfile = async (tenantId: string, employeeId: string): Promise<void> => {
+    await this.prisma.employeeProfile.deleteMany({
+      where: {
+        employeeId,
+        employee: { tenantId }
+      }
+    });
+  };
+
   list = async (tenantId: string, filters: EmployeeListFilters): Promise<EmployeeEntity[]> => {
     const where: Prisma.EmployeeWhereInput = {
       tenantId,
@@ -143,9 +173,79 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
     return employees.map(this.toEmployeeEntity);
   };
 
+  listDirectReportsByManagerUserId = async (
+    tenantId: string,
+    managerUserId: string,
+    filters: EmployeeListFilters
+  ): Promise<EmployeeEntity[]> => {
+    const manager = await this.findByUserId(tenantId, managerUserId);
+
+    if (!manager) {
+      return [];
+    }
+
+    const where: Prisma.EmployeeWhereInput = {
+      tenantId,
+      status: filters.status,
+      managerRelations: {
+        some: {
+          managerEmployeeId: manager.id,
+          effectiveTo: null
+        }
+      }
+    };
+
+    if (filters.departmentId || filters.locationId) {
+      where.jobAssignments = {
+        some: {
+          departmentId: filters.departmentId,
+          locationId: filters.locationId,
+          effectiveTo: null
+        }
+      };
+    }
+
+    if (filters.search) {
+      where.OR = [
+        { firstName: { contains: filters.search, mode: "insensitive" } },
+        { lastName: { contains: filters.search, mode: "insensitive" } },
+        { workEmail: { contains: filters.search, mode: "insensitive" } },
+        { employeeNumber: { contains: filters.search, mode: "insensitive" } }
+      ];
+    }
+
+    const employees = await this.prisma.employee.findMany({
+      where,
+      include: {
+        profile: true,
+        jobAssignments: {
+          where: { effectiveTo: null },
+          orderBy: { effectiveFrom: "desc" }
+        },
+        managerRelations: {
+          where: { effectiveTo: null },
+          orderBy: { effectiveFrom: "desc" }
+        },
+        customFieldValues: true
+      },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }]
+    });
+
+    return employees.map(this.toEmployeeEntity);
+  };
+
   findById = async (tenantId: string, employeeId: string): Promise<EmployeeEntity | null> => {
     const employee = await this.prisma.employee.findFirst({
       where: { id: employeeId, tenantId },
+      include: this.employeeDetailsInclude
+    });
+
+    return employee ? this.toEmployeeEntity(employee) : null;
+  };
+
+  findByUserId = async (tenantId: string, userId: string): Promise<EmployeeEntity | null> => {
+    const employee = await this.prisma.employee.findFirst({
+      where: { tenantId, userId },
       include: this.employeeDetailsInclude
     });
 

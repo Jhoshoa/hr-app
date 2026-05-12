@@ -5,15 +5,34 @@ import {
   type EmployeesRepository,
   type SetEmployeeCustomFieldValueInput
 } from "../../domain/ports/employees.repository.port";
+import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
+
+export interface SetEmployeeCustomFieldValueCommand extends SetEmployeeCustomFieldValueInput {
+  readonly actorUserId: string;
+}
 
 @Injectable()
 export class SetEmployeeCustomFieldValueUseCase {
   constructor(
     @Inject(EMPLOYEES_REPOSITORY)
-    private readonly employeesRepository: EmployeesRepository
+    private readonly employeesRepository: EmployeesRepository,
+    private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
   execute = async (
-    input: SetEmployeeCustomFieldValueInput
-  ): Promise<EmployeeCustomFieldValueEntity> => this.employeesRepository.setCustomFieldValue(input);
+    input: SetEmployeeCustomFieldValueCommand
+  ): Promise<EmployeeCustomFieldValueEntity> => {
+    const value = await this.employeesRepository.setCustomFieldValue(input);
+
+    await this.createAuditEventUseCase.execute({
+      tenantId: input.tenantId,
+      actorUserId: input.actorUserId,
+      action: "employee.custom_field_value.updated",
+      resourceType: "employee",
+      resourceId: input.employeeId,
+      metadata: { fieldDefinitionId: input.fieldDefinitionId }
+    });
+
+    return value;
+  };
 }

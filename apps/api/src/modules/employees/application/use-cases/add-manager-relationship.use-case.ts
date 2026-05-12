@@ -5,19 +5,39 @@ import {
   type AddManagerRelationshipInput,
   type EmployeesRepository
 } from "../../domain/ports/employees.repository.port";
+import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
+
+export interface AddManagerRelationshipCommand extends AddManagerRelationshipInput {
+  readonly actorUserId: string;
+}
 
 @Injectable()
 export class AddManagerRelationshipUseCase {
   constructor(
     @Inject(EMPLOYEES_REPOSITORY)
-    private readonly employeesRepository: EmployeesRepository
+    private readonly employeesRepository: EmployeesRepository,
+    private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
-  execute = async (input: AddManagerRelationshipInput): Promise<ManagerRelationshipEntity> => {
+  execute = async (input: AddManagerRelationshipCommand): Promise<ManagerRelationshipEntity> => {
     if (input.employeeId === input.managerEmployeeId) {
       throw new BadRequestException("Employee cannot be their own manager.");
     }
 
-    return this.employeesRepository.addManagerRelationship(input);
+    const relationship = await this.employeesRepository.addManagerRelationship(input);
+
+    await this.createAuditEventUseCase.execute({
+      tenantId: input.tenantId,
+      actorUserId: input.actorUserId,
+      action: "employee.manager_relationship.created",
+      resourceType: "employee",
+      resourceId: input.employeeId,
+      metadata: {
+        relationshipId: relationship.id,
+        managerEmployeeId: input.managerEmployeeId
+      }
+    });
+
+    return relationship;
   };
 }

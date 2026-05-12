@@ -12,6 +12,8 @@ const permissions = [
   ["organization.read", "Read organization setup records"],
   ["organization.manage", "Manage organization setup records"],
   ["employees.read", "Read employee directory and profiles"],
+  ["employees.self.read", "Read own employee profile"],
+  ["employees.team.read", "Read direct report employee profiles"],
   ["employees.manage", "Manage employee profiles and job data"],
   ["employees.compensation.read", "Read employee compensation records"],
   ["employees.compensation.manage", "Manage employee compensation records"],

@@ -257,3 +257,12 @@ export class SetEmployeeCustomFieldValueDto {
   @ApiProperty()
   value!: unknown;
 }
+
+export class ImportEmployeesCsvDto {
+  @ApiProperty({
+    description:
+      "CSV content with headers: employeeNumber,firstName,lastName,workEmail,startDate,personalEmail"
+  })
+  @IsString()
+  content!: string;
+}
