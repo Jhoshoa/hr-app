@@ -1,12 +1,15 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { WebSocketLikeConstructor } from "@supabase/realtime-js";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import WebSocket from "ws";
 import type { ExternalAuthUser } from "../../domain/entities/external-auth-user.entity";
 import type { AuthProvider } from "../../domain/ports/auth-provider.port";
 
 @Injectable()
 export class SupabaseAuthProvider implements AuthProvider {
   private readonly client: SupabaseClient;
+  private readonly realtimeTransport = WebSocket as unknown as WebSocketLikeConstructor;
 
   constructor(config: ConfigService) {
     this.client = createClient(
@@ -16,6 +19,9 @@ export class SupabaseAuthProvider implements AuthProvider {
         auth: {
           autoRefreshToken: false,
           persistSession: false
+        },
+        realtime: {
+          transport: this.realtimeTransport
         }
       }
     );

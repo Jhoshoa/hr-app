@@ -110,7 +110,7 @@ Copy-Item .env.example .env
 Default local database URL:
 
 ```env
-DATABASE_URL=postgresql://hr_app:hr_app_password@localhost:5432/hr_app?schema=public
+DATABASE_URL=postgresql://hr_app:hr_app_password@localhost:5434/hr_app?schema=public
 ```
 
 For local backend startup, the Supabase values must exist because config validation requires them. During early local work, placeholder values are acceptable unless you are testing real Supabase Auth:
@@ -121,6 +121,16 @@ SUPABASE_ANON_KEY=replace-me
 SUPABASE_SERVICE_ROLE_KEY=replace-me
 SUPABASE_JWT_SECRET=replace-me-for-local-dev
 ```
+
+The API loads environment variables from the repo root `.env` first, then `.env.example` as a fallback. That means the backend can start with `.env.example` values during early local development, but real authenticated Supabase requests require real Supabase credentials.
+
+If you see this Supabase warning on Node 18:
+
+```text
+Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js.
+```
+
+It is a warning, not the current startup failure. The backend can run on Node 18 for now, but Node 20+ should be used soon because Supabase will drop Node 18 support in future versions.
 
 ## Start Local PostgreSQL
 
@@ -155,6 +165,8 @@ Generate Prisma client:
 ```bash
 corepack pnpm db:generate
 ```
+
+The Prisma scripts load environment variables from the repo root `.env` first, then `.env.example` as a fallback.
 
 Run local migrations:
 
