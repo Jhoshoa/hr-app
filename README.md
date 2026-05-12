@@ -67,6 +67,24 @@ corepack prepare pnpm@9.15.4 --activate
 
 If `pnpm` is not available directly in your shell, use `corepack pnpm` for all commands.
 
+## Working Directory
+
+Run setup commands from the repository root unless a section explicitly says otherwise.
+
+Repository root:
+
+```text
+D:\assuresoft-repos\hr-app
+```
+
+Do **not** run the setup from `apps/api`. The project is a monorepo, so dependency installation, database scripts, Docker commands, and filtered workspace commands should be executed from the root.
+
+If you are not already in the repo root:
+
+```powershell
+cd D:\assuresoft-repos\hr-app
+```
+
 ## Install Dependencies
 
 From the repo root:
@@ -247,6 +265,7 @@ corepack pnpm --filter @hr-app/api build
 Use this sequence for a fresh local setup:
 
 ```bash
+cd D:\assuresoft-repos\hr-app
 corepack prepare pnpm@9.15.4 --activate
 corepack pnpm install
 docker compose -f docker/docker-compose.yml up -d
