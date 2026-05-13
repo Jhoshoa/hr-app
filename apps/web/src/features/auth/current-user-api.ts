@@ -4,6 +4,7 @@ import type { CurrentUser, TenantSummary } from "@/types/identity";
 interface BackendTenantMembership {
   readonly tenantId: string;
   readonly tenantSlug: string;
+  readonly tenantName: string;
   readonly roleKey: string;
   readonly permissions: string[];
 }
@@ -25,10 +26,7 @@ export const currentUserApi = baseApi.injectEndpoints({
       query: () => "/me",
       transformResponse: (response: BackendMeResponse): MeResponse => ({
         user: response.user,
-        tenants: response.tenants.map((tenant) => ({
-          ...tenant,
-          tenantName: tenant.tenantSlug
-        }))
+        tenants: response.tenants.map((tenant) => ({ ...tenant }))
       })
     })
   })

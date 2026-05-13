@@ -17,12 +17,15 @@ export class ResolveAuthenticatedUserUseCase {
       externalUser.providerUserId
     );
 
-    const user = existingUser ?? await this.usersRepository.createFromExternalUser(externalUser);
+    const user = existingUser
+      ? await this.usersRepository.syncExternalUserProfile(existingUser.id, externalUser)
+      : await this.usersRepository.createFromExternalUser(externalUser);
     await this.ensureDevelopmentTenantMembership(user.id);
 
     return {
       id: user.id,
       email: user.email,
+      name: user.name,
       externalAuthProvider: user.externalAuthProvider,
       externalAuthUserId: user.externalAuthUserId
     };

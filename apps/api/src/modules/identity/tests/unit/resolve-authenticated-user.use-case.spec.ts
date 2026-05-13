@@ -5,6 +5,7 @@ import type { UsersRepository } from "../../domain/ports/users.repository.port";
 const createRepository = (): jest.Mocked<UsersRepository> => ({
   findByExternalAuthId: jest.fn(),
   createFromExternalUser: jest.fn(),
+  syncExternalUserProfile: jest.fn(),
   ensureDevelopmentTenantMembership: jest.fn(),
   findTenantMembershipsByUserId: jest.fn(),
   findTenantMembershipContext: jest.fn()
@@ -31,6 +32,14 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     repository.findByExternalAuthId.mockResolvedValue({
       id: "user-1",
       email: "hr@example.com",
+      name: "HR User",
+      externalAuthProvider: "supabase",
+      externalAuthUserId: "external-1"
+    });
+    repository.syncExternalUserProfile.mockResolvedValue({
+      id: "user-1",
+      email: "hr@example.com",
+      name: "HR User Updated",
       externalAuthProvider: "supabase",
       externalAuthUserId: "external-1"
     });
@@ -42,11 +51,19 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     const result = await useCase.execute({
       provider: "supabase",
       providerUserId: "external-1",
-      email: "hr@example.com"
+      email: "hr@example.com",
+      name: "HR User Updated"
     });
 
     expect(result.id).toBe("user-1");
+    expect(result.name).toBe("HR User Updated");
     expect(repository.createFromExternalUser).not.toHaveBeenCalled();
+    expect(repository.syncExternalUserProfile).toHaveBeenCalledWith("user-1", {
+      provider: "supabase",
+      providerUserId: "external-1",
+      email: "hr@example.com",
+      name: "HR User Updated"
+    });
     expect(repository.ensureDevelopmentTenantMembership).not.toHaveBeenCalled();
   });
 
@@ -56,6 +73,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     repository.createFromExternalUser.mockResolvedValue({
       id: "user-2",
       email: "new@example.com",
+      name: "New User",
       externalAuthProvider: "supabase",
       externalAuthUserId: "external-2"
     });
@@ -67,15 +85,19 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     const result = await useCase.execute({
       provider: "supabase",
       providerUserId: "external-2",
-      email: "new@example.com"
+      email: "new@example.com",
+      name: "New User"
     });
 
     expect(result.id).toBe("user-2");
+    expect(result.name).toBe("New User");
     expect(repository.createFromExternalUser).toHaveBeenCalledWith({
       provider: "supabase",
       providerUserId: "external-2",
-      email: "new@example.com"
+      email: "new@example.com",
+      name: "New User"
     });
+    expect(repository.syncExternalUserProfile).not.toHaveBeenCalled();
     expect(repository.ensureDevelopmentTenantMembership).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import { ErrorState } from "@/components/data-display/error-state";
+import { setCurrentUser } from "@/features/auth/auth-slice";
 import { useGetMeQuery } from "@/features/auth/current-user-api";
 import { setTenants } from "@/features/tenants/tenant-slice";
 import { useAppDispatch } from "@/store/hooks";
@@ -22,10 +23,12 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
     }
 
     if (data.tenants.length === 0) {
+      dispatch(setCurrentUser(data.user));
       router.replace("/no-access");
       return;
     }
 
+    dispatch(setCurrentUser(data.user));
     dispatch(setTenants(data.tenants));
   }, [data, dispatch, router]);
 

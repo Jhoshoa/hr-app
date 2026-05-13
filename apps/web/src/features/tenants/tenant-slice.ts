@@ -16,6 +16,17 @@ export const tenantSlice = createSlice({
   initialState,
   name: "tenant",
   reducers: {
+    clearTenants: (state) => {
+      state.availableTenants = [];
+      state.currentTenant = currentTenantFixture;
+    },
+    selectTenant: (state, action: { payload: string }) => {
+      const tenant = state.availableTenants.find((item) => item.tenantSlug === action.payload);
+
+      if (tenant) {
+        state.currentTenant = tenant;
+      }
+    },
     setTenants: (state, action: { payload: TenantSummary[] }) => {
       state.availableTenants = action.payload;
       state.currentTenant = action.payload[0] ?? currentTenantFixture;
@@ -23,4 +34,4 @@ export const tenantSlice = createSlice({
   }
 });
 
-export const { setTenants } = tenantSlice.actions;
+export const { clearTenants, selectTenant, setTenants } = tenantSlice.actions;

@@ -10,6 +10,10 @@ export interface UsersRepository {
     providerUserId: string
   ) => Promise<AuthenticatedUser | null>;
   createFromExternalUser: (externalUser: ExternalAuthUser) => Promise<AuthenticatedUser>;
+  syncExternalUserProfile: (
+    userId: string,
+    externalUser: ExternalAuthUser
+  ) => Promise<AuthenticatedUser>;
   ensureDevelopmentTenantMembership: (
     userId: string,
     tenantSlug: string,

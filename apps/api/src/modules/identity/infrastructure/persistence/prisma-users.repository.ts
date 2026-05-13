@@ -40,6 +40,7 @@ export class PrismaUsersRepository implements UsersRepository {
     return {
       id: user.id,
       email: user.email,
+      name: user.name ?? undefined,
       externalAuthProvider: user.externalAuthProvider,
       externalAuthUserId: user.externalAuthUserId
     };
@@ -59,6 +60,28 @@ export class PrismaUsersRepository implements UsersRepository {
     return {
       id: user.id,
       email: user.email,
+      name: user.name ?? undefined,
+      externalAuthProvider: user.externalAuthProvider,
+      externalAuthUserId: user.externalAuthUserId
+    };
+  };
+
+  syncExternalUserProfile = async (
+    userId: string,
+    externalUser: ExternalAuthUser
+  ): Promise<AuthenticatedUser> => {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: externalUser.email,
+        name: externalUser.name
+      }
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name ?? undefined,
       externalAuthProvider: user.externalAuthProvider,
       externalAuthUserId: user.externalAuthUserId
     };
@@ -180,6 +203,7 @@ export class PrismaUsersRepository implements UsersRepository {
   ): TenantMembershipContext => ({
     tenantId: membership.tenantId,
     tenantSlug: membership.tenant.slug,
+    tenantName: membership.tenant.name,
     roleKey: membership.role.key,
     permissions: membership.role.permissions.map((rolePermission) => rolePermission.permission.key)
   });

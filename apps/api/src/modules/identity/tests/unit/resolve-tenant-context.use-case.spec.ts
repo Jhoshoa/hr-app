@@ -5,6 +5,7 @@ import type { UsersRepository } from "../../domain/ports/users.repository.port";
 const createRepository = (): jest.Mocked<UsersRepository> => ({
   findByExternalAuthId: jest.fn(),
   createFromExternalUser: jest.fn(),
+  syncExternalUserProfile: jest.fn(),
   ensureDevelopmentTenantMembership: jest.fn(),
   findTenantMembershipsByUserId: jest.fn(),
   findTenantMembershipContext: jest.fn()
@@ -16,6 +17,7 @@ describe("ResolveTenantContextUseCase", () => {
     repository.findTenantMembershipContext.mockResolvedValue({
       tenantId: "tenant-1",
       tenantSlug: "assuresoft-demo",
+      tenantName: "AssureSoft Demo",
       roleKey: "owner",
       permissions: ["tenant.read"]
     });
@@ -27,6 +29,7 @@ describe("ResolveTenantContextUseCase", () => {
     });
 
     expect(result.permissions).toEqual(["tenant.read"]);
+    expect(result.name).toBe("AssureSoft Demo");
   });
 
   it("throws forbidden when user has no membership", async () => {
