@@ -30,8 +30,14 @@ export const tenantSlice = createSlice({
     setTenants: (state, action: { payload: TenantSummary[] }) => {
       state.availableTenants = action.payload;
       state.currentTenant = action.payload[0] ?? currentTenantFixture;
+    },
+    updateCurrentTenantName: (state, action: { payload: string }) => {
+      state.currentTenant.tenantName = action.payload;
+      state.availableTenants = state.availableTenants.map((tenant) =>
+        tenant.tenantId === state.currentTenant.tenantId ? { ...tenant, tenantName: action.payload } : tenant
+      );
     }
   }
 });
 
-export const { clearTenants, selectTenant, setTenants } = tenantSlice.actions;
+export const { clearTenants, selectTenant, setTenants, updateCurrentTenantName } = tenantSlice.actions;
