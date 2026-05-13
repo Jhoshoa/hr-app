@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Concept 04 - Andes Studio Desktop</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #f4f1ea;
+        color: #1d302d;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .board {
+        width: 1800px;
+        min-height: 2850px;
+        padding: 42px;
+        background:
+          linear-gradient(135deg, rgba(40, 86, 79, 0.08), transparent 34%),
+          radial-gradient(circle at 92% 4%, rgba(196, 118, 54, 0.18), transparent 24%),
+          #f4f1ea;
+      }
+      .intro {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+        gap: 32px;
+        margin-bottom: 34px;
+      }
+      .eyebrow {
+        margin: 0 0 10px;
+        color: #9a5428;
+        font-size: 14px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        font-size: 48px;
+        letter-spacing: 0;
+        line-height: 1;
+      }
+      .intro p {
+        max-width: 820px;
+        margin: 14px 0 0;
+        color: #68746f;
+        font-size: 18px;
+        line-height: 1.5;
+      }
+      .palette {
+        display: flex;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid #ded5c6;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+      .swatch {
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+      }
+      .monitor {
+        overflow: hidden;
+        height: 820px;
+        margin-bottom: 34px;
+        border: 1px solid #ded5c6;
+        border-radius: 8px;
+        background: #fffdf8;
+        box-shadow: 0 24px 70px rgba(42, 39, 33, 0.12);
+      }
+      .workspace {
+        display: grid;
+        grid-template-columns: 188px 260px 1fr;
+        height: 100%;
+      }
+      .rail {
+        padding: 22px 14px;
+        background: #1d302d;
+        color: #fffaf2;
+      }
+      .logo {
+        display: grid;
+        width: 60px;
+        height: 60px;
+        place-items: center;
+        border-radius: 8px;
+        background: #c47636;
+        font-weight: 900;
+      }
+      .rail nav {
+        display: grid;
+        gap: 10px;
+        margin-top: 38px;
+      }
+      .rail nav > span {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        align-items: center;
+        gap: 10px;
+        width: 160px;
+        min-height: 46px;
+        padding: 0 10px;
+        border-radius: 8px;
+        color: rgba(255, 250, 242, 0.72);
+        font-size: 13px;
+        font-weight: 850;
+      }
+      .rail-icon {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        color: inherit;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .rail-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .rail nav > span.active {
+        background: #fffaf2;
+        color: #1d302d;
+      }
+      .section-nav {
+        padding: 24px 20px;
+        border-right: 1px solid #e6dccd;
+        background: #f8f3ea;
+      }
+      .section-nav h2 {
+        margin: 0 0 6px;
+        font-size: 21px;
+      }
+      .section-nav p {
+        margin: 0 0 24px;
+        color: #68746f;
+        line-height: 1.45;
+      }
+      .nav-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 12px;
+        border-radius: 8px;
+        color: #596964;
+        font-weight: 750;
+      }
+      .nav-item.active {
+        background: #efe3d2;
+        color: #8b4c24;
+      }
+      .main {
+        display: grid;
+        grid-template-rows: 86px 1fr;
+        min-width: 0;
+      }
+      .top {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 28px;
+        border-bottom: 1px solid #e6dccd;
+        background: #fffdf8;
+      }
+      .top h2 {
+        margin: 0;
+        font-size: 25px;
+      }
+      .top p {
+        margin: 4px 0 0;
+        color: #68746f;
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        width: 260px;
+        min-height: 42px;
+        padding: 0 14px;
+        border: 1px solid #e1d8ca;
+        border-radius: 8px;
+        color: #7d837d;
+        background: #f8f5ef;
+      }
+      button {
+        min-height: 42px;
+        padding: 0 15px;
+        border: 1px solid #ded5c6;
+        border-radius: 8px;
+        background: #fffdf8;
+        color: #1d302d;
+        font-weight: 850;
+      }
+      .primary {
+        border-color: #c47636;
+        background: #c47636;
+        color: #fffaf2;
+      }
+      .content {
+        padding: 26px 28px;
+        background: #fbf7f0;
+      }
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 18px;
+      }
+      .hero-panel,
+      .panel,
+      .metric,
+      .profile-card,
+      .field {
+        border: 1px solid #ded5c6;
+        border-radius: 8px;
+        background: #fffdf8;
+      }
+      .hero-panel {
+        padding: 24px;
+        background: linear-gradient(135deg, #28564f, #51736a);
+        color: #fffaf2;
+      }
+      .hero-panel h3,
+      .panel h3 {
+        margin: 0;
+        font-size: 23px;
+      }
+      .hero-panel p {
+        margin: 8px 0 0;
+        max-width: 640px;
+        color: rgba(255, 250, 242, 0.78);
+        line-height: 1.45;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .metric {
+        padding: 16px;
+      }
+      .metric span,
+      .field label,
+      th {
+        color: #68746f;
+        font-size: 12px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+      .metric strong {
+        display: block;
+        margin-top: 7px;
+        font-size: 31px;
+      }
+      .panel {
+        padding: 18px;
+      }
+      .panel p {
+        margin: 7px 0 0;
+        color: #68746f;
+      }
+      .timeline {
+        display: grid;
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .timeline-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid #ece3d5;
+        border-radius: 8px;
+        background: #fcfaf5;
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: #c47636;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 8px;
+        background: #efe3d2;
+        color: #8b4c24;
+        font-size: 12px;
+        font-weight: 850;
+      }
+      .profile-layout {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 18px;
+      }
+      .profile-card {
+        padding: 20px;
+      }
+      .avatar {
+        display: grid;
+        width: 96px;
+        height: 96px;
+        place-items: center;
+        margin-bottom: 18px;
+        border-radius: 8px;
+        background: #28564f;
+        color: #fffaf2;
+        font-size: 30px;
+        font-weight: 900;
+      }
+      .profile-card h3 {
+        margin: 0;
+        font-size: 28px;
+      }
+      .profile-card p {
+        margin: 7px 0 0;
+        color: #68746f;
+      }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .field {
+        padding: 14px;
+      }
+      .field label {
+        display: block;
+        margin-bottom: 8px;
+      }
+      .field div {
+        font-weight: 800;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+      }
+      th {
+        padding: 12px;
+        background: #f6f1e9;
+        text-align: left;
+      }
+      td {
+        padding: 13px 12px;
+        border-bottom: 1px solid #eadfce;
+      }
+      .leave-grid {
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        gap: 18px;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .callout {
+        margin-top: 14px;
+        padding: 16px;
+        border-radius: 8px;
+        background: #efe3d2;
+        color: #6d3d20;
+        font-weight: 850;
+      }
+      .calendar {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .day {
+        min-height: 64px;
+        padding: 8px;
+        border: 1px solid #eadfce;
+        border-radius: 8px;
+        background: #fffdf8;
+        color: #68746f;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .day.active {
+        background: #efe3d2;
+        color: #8b4c24;
+      }
+
+      /* Revised palette and interaction pass: cooler, cleaner, less brown. */
+      body {
+        background: #f6f8fb;
+        color: #172033;
+      }
+      .board {
+        background:
+          linear-gradient(135deg, rgba(24, 95, 89, 0.09), transparent 34%),
+          radial-gradient(circle at 92% 4%, rgba(47, 125, 72, 0.15), transparent 24%),
+          #f6f8fb;
+      }
+      .eyebrow {
+        color: #2f7d48;
+      }
+      .intro p,
+      .section-nav p,
+      .top p,
+      .panel p,
+      .profile-card p,
+      .metric span,
+      .field label,
+      th,
+      .day {
+        color: #627086;
+      }
+      .palette,
+      .monitor,
+      .search,
+      button,
+      .hero-panel,
+      .panel,
+      .metric,
+      .profile-card,
+      .field,
+      .timeline-row,
+      .day {
+        border-color: #d8e0ea;
+      }
+      .monitor,
+      .top,
+      button,
+      .hero-panel,
+      .panel,
+      .metric,
+      .profile-card,
+      .field,
+      .day {
+        background-color: #ffffff;
+      }
+      .monitor {
+        box-shadow: 0 24px 70px rgba(23, 32, 51, 0.12);
+      }
+      .rail {
+        background: #172033;
+        color: #f8fbff;
+      }
+      .logo {
+        background: linear-gradient(135deg, #2f7d48, #185f59);
+      }
+      .rail nav > span {
+        color: rgba(248, 251, 255, 0.72);
+        transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+      }
+      .rail nav > span:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+        transform: translateX(4px);
+      }
+      .rail nav > span.active {
+        background: #ffffff;
+        color: #172033;
+      }
+      .section-nav {
+        border-right-color: #d8e0ea;
+        background: #f3f7f6;
+      }
+      .client {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 22px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid #d8e0ea;
+      }
+      .client-mark {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #2f7d48;
+        font-weight: 900;
+      }
+      .client strong {
+        display: block;
+        font-size: 14px;
+      }
+      .client span {
+        color: #627086;
+        font-size: 12px;
+      }
+      .nav-item {
+        color: #5d6a7d;
+      }
+      .nav-item.active,
+      .tag,
+      .callout,
+      .day.active {
+        background: #dff1e4;
+        color: #22613a;
+      }
+      .top {
+        border-bottom-color: #d8e0ea;
+      }
+      .search {
+        background: #f6f8fb;
+        color: #68748a;
+      }
+      .primary {
+        border-color: #2f7d48;
+        background: #2f7d48;
+        color: #ffffff;
+      }
+      .content {
+        background: #f6f8fb;
+      }
+      .hero-panel {
+        background: linear-gradient(135deg, #185f59, #2f7d48);
+        color: #ffffff;
+      }
+      .hero-panel p {
+        color: rgba(255, 255, 255, 0.78);
+      }
+      .timeline-row {
+        background: #fbfdff;
+      }
+      .dot {
+        background: #2f7d48;
+      }
+      .avatar {
+        background: #185f59;
+        color: #ffffff;
+      }
+      th {
+        background: #f1f5f9;
+      }
+      td {
+        border-bottom-color: #dde5ee;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <section class="intro">
+        <div>
+          <p class="eyebrow">Concept 04 Desktop</p>
+          <h1>Andes Studio - Monitor Screens</h1>
+          <p>Three wide desktop pages using the same original direction: command rail, section navigation, contextual header, and spacious work areas for real monitor layouts.</p>
+        </div>
+        <div class="palette">
+          <span class="swatch" style="background:#185f59"></span>
+          <span class="swatch" style="background:#2f7d48"></span>
+          <span class="swatch" style="background:#172033"></span>
+          <span class="swatch" style="background:#f6f8fb"></span>
+          <span class="swatch" style="background:#ffffff"></span>
+        </div>
+      </section>
+
+      <section class="monitor">
+        <div class="workspace">
+          <aside class="rail"><div class="logo">AH</div><nav><span class="active"><span class="rail-icon">DB</span><span class="rail-label">Dashboard</span></span><span><span class="rail-icon">PE</span><span class="rail-label">People</span></span><span><span class="rail-icon">LV</span><span class="rail-label">Leave</span></span><span><span class="rail-icon">DC</span><span class="rail-label">Documents</span></span><span><span class="rail-icon">RP</span><span class="rail-label">Reports</span></span><span><span class="rail-icon">ST</span><span class="rail-label">Settings</span></span></nav></aside>
+          <aside class="section-nav">
+            <div class="client"><div class="client-mark">GC</div><div><strong>Globex Co.</strong><span>Bolivia Operations</span></div></div>
+            <h2>Dashboard</h2><p>People Ops command center.</p>
+            <div class="nav-item active">Today <span>18</span></div><div class="nav-item">Approvals <span>8</span></div><div class="nav-item">Documents <span>31</span></div><div class="nav-item">Onboarding <span>9</span></div>
+          </aside>
+          <div class="main">
+            <header class="top"><div><h2>Today in People Ops</h2><p>Globex Bolivia · 284 employees · HR Admin</p></div><div class="search">Search employees, files...</div><button class="primary">Add employee</button></header>
+            <div class="content">
+              <section class="hero-panel"><h3>Work that needs attention</h3><p>Prioritized work queue for approvals, document gaps, onboarding blockers, and recruiting movement.</p></section>
+              <div class="metrics"><div class="metric"><span>Employees</span><strong>284</strong></div><div class="metric"><span>Approvals</span><strong>18</strong></div><div class="metric"><span>Missing Docs</span><strong>31</strong></div><div class="metric"><span>Open Roles</span><strong>7</strong></div></div>
+              <div class="dashboard-grid" style="margin-top:18px">
+                <section class="panel"><h3>Priority queue</h3><div class="timeline"><div class="timeline-row"><span class="dot"></span><strong>Approve Lucia's PTO request</strong><span class="tag">Leave</span></div><div class="timeline-row"><span class="dot"></span><strong>Collect Natalia's contract addendum</strong><span class="tag">Docs</span></div><div class="timeline-row"><span class="dot"></span><strong>Assign IT setup for two new hires</strong><span class="tag">Onboarding</span></div></div></section>
+                <section class="panel"><h3>Headcount by department</h3><table><tr><td>Engineering</td><td>128</td></tr><tr><td>Operations</td><td>74</td></tr><tr><td>People Ops</td><td>18</td></tr></table></section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="monitor">
+        <div class="workspace">
+          <aside class="rail"><div class="logo">AH</div><nav><span><span class="rail-icon">DB</span><span class="rail-label">Dashboard</span></span><span class="active"><span class="rail-icon">PE</span><span class="rail-label">People</span></span><span><span class="rail-icon">LV</span><span class="rail-label">Leave</span></span><span><span class="rail-icon">DC</span><span class="rail-label">Documents</span></span><span><span class="rail-icon">RP</span><span class="rail-label">Reports</span></span><span><span class="rail-icon">ST</span><span class="rail-label">Settings</span></span></nav></aside>
+          <aside class="section-nav">
+            <div class="client"><div class="client-mark">GC</div><div><strong>Globex Co.</strong><span>Bolivia Operations</span></div></div>
+            <h2>People</h2><p>Employee records and directory.</p>
+            <div class="nav-item">Employees</div><div class="nav-item active">Profile</div><div class="nav-item">Documents</div><div class="nav-item">History</div>
+          </aside>
+          <div class="main">
+            <header class="top"><div><h2>Employee Profile</h2><p>Permission-aware HR record</p></div><div class="search">Find in profile...</div><button class="primary">Request change</button></header>
+            <div class="content">
+              <div class="profile-layout">
+                <section class="profile-card"><div class="avatar">MR</div><h3>Mariela Rojas</h3><p>HR Manager · Cochabamba · Full-time</p><div class="callout">Reports to Carlos Vega · People Ops</div></section>
+                <section>
+                  <div class="info-grid"><div class="field"><label>Work email</label><div>mariela@globex.bo</div></div><div class="field"><label>Phone</label><div>+591 7123 4567</div></div><div class="field"><label>Start date</label><div>Aug 8, 2021</div></div><div class="field"><label>Department</label><div>People Ops</div></div><div class="field"><label>Location</label><div>Cochabamba</div></div><div class="field"><label>Client project</label><div>Internal Operations</div></div></div>
+                  <section class="panel"><h3>Employment timeline</h3><table><thead><tr><th>Effective date</th><th>Change</th><th>Changed by</th></tr></thead><tbody><tr><td>May 1, 2024</td><td>Promoted to HR Manager</td><td>Ana Salinas</td></tr><tr><td>Mar 15, 2022</td><td>Moved to People Ops</td><td>Carlos Vega</td></tr><tr><td>Aug 8, 2021</td><td>Joined as HR Generalist</td><td>System</td></tr></tbody></table></section>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="monitor">
+        <div class="workspace">
+          <aside class="rail"><div class="logo">AH</div><nav><span><span class="rail-icon">DB</span><span class="rail-label">Dashboard</span></span><span><span class="rail-icon">PE</span><span class="rail-label">People</span></span><span class="active"><span class="rail-icon">LV</span><span class="rail-label">Leave</span></span><span><span class="rail-icon">DC</span><span class="rail-label">Documents</span></span><span><span class="rail-icon">RP</span><span class="rail-label">Reports</span></span><span><span class="rail-icon">ST</span><span class="rail-label">Settings</span></span></nav></aside>
+          <aside class="section-nav">
+            <div class="client"><div class="client-mark">GC</div><div><strong>Globex Co.</strong><span>Bolivia Operations</span></div></div>
+            <h2>Leave</h2><p>Balances and approvals.</p>
+            <div class="nav-item active">Request</div><div class="nav-item">Calendar</div><div class="nav-item">Balances</div><div class="nav-item">Policies</div>
+          </aside>
+          <div class="main">
+            <header class="top"><div><h2>Leave Request</h2><p>Employee self-service with manager approval</p></div><div class="search">Policy lookup...</div><button>Balance details</button></header>
+            <div class="content">
+              <div class="leave-grid">
+                <section>
+                  <section class="hero-panel"><h3>Vacation balance: 12.5 days</h3><p>This request will go to Carlos Vega. HR can override after manager review.</p></section>
+                  <div class="form-grid" style="margin-top:16px"><div class="field"><label>Leave type</label><div>Vacation</div></div><div class="field"><label>Duration</label><div>5 working days</div></div><div class="field"><label>Start date</label><div>June 10, 2026</div></div><div class="field"><label>End date</label><div>June 14, 2026</div></div><div class="field" style="grid-column:span 2"><label>Reason</label><div>Family trip. Coverage assigned to Lucia Choque.</div></div></div>
+                  <div class="callout">Projected balance after approval: 7.5 vacation days.</div>
+                  <div style="display:flex; gap:10px; margin-top:14px"><button>Save draft</button><button class="primary">Submit request</button></div>
+                </section>
+                <section class="panel"><h3>June calendar</h3><div class="calendar"><div class="day">1</div><div class="day">2</div><div class="day">3</div><div class="day">4</div><div class="day">5</div><div class="day">6</div><div class="day">7</div><div class="day">8</div><div class="day">9</div><div class="day active">10</div><div class="day active">11</div><div class="day active">12</div><div class="day active">13</div><div class="day active">14</div></div><div class="timeline"><div class="timeline-row"><span class="dot"></span><strong>Carlos Vega</strong><span class="tag">Approver</span></div><div class="timeline-row"><span class="dot"></span><strong>Policy: Vacation Bolivia</strong><span class="tag">Active</span></div></div></section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
