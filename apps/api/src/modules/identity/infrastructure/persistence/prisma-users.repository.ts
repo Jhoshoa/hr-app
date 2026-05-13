@@ -64,6 +64,54 @@ export class PrismaUsersRepository implements UsersRepository {
     };
   };
 
+  ensureDevelopmentTenantMembership = async (
+    userId: string,
+    tenantSlug: string,
+    roleKey: string
+  ): Promise<void> => {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: tenantSlug }
+    });
+
+    if (!tenant) {
+      throw new Error(`Development auto-join tenant was not found: ${tenantSlug}`);
+    }
+
+    const role = await this.prisma.role.findUnique({
+      where: {
+        tenantId_key: {
+          key: roleKey,
+          tenantId: tenant.id
+        }
+      }
+    });
+
+    if (!role) {
+      throw new Error(`Development auto-join role was not found: ${roleKey}`);
+    }
+
+    await this.prisma.tenantMembership.upsert({
+      where: {
+        tenantId_userId: {
+          tenantId: tenant.id,
+          userId
+        }
+      },
+      update: {
+        roleId: role.id,
+        status: "ACTIVE",
+        joinedAt: new Date()
+      },
+      create: {
+        roleId: role.id,
+        status: "ACTIVE",
+        tenantId: tenant.id,
+        userId,
+        joinedAt: new Date()
+      }
+    });
+  };
+
   findTenantMembershipsByUserId = async (userId: string): Promise<TenantMembershipContext[]> => {
     const memberships = await this.prisma.tenantMembership.findMany({
       where: {

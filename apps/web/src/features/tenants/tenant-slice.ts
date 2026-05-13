@@ -4,7 +4,7 @@ import type { TenantSummary } from "@/types/identity";
 
 interface TenantState {
   readonly currentTenant: TenantSummary;
-  readonly availableTenants: readonly TenantSummary[];
+  readonly availableTenants: TenantSummary[];
 }
 
 const initialState: TenantState = {
@@ -15,5 +15,12 @@ const initialState: TenantState = {
 export const tenantSlice = createSlice({
   initialState,
   name: "tenant",
-  reducers: {}
+  reducers: {
+    setTenants: (state, action: { payload: TenantSummary[] }) => {
+      state.availableTenants = action.payload;
+      state.currentTenant = action.payload[0] ?? currentTenantFixture;
+    }
+  }
 });
+
+export const { setTenants } = tenantSlice.actions;

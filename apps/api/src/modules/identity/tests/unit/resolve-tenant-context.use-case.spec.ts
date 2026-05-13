@@ -5,6 +5,7 @@ import type { UsersRepository } from "../../domain/ports/users.repository.port";
 const createRepository = (): jest.Mocked<UsersRepository> => ({
   findByExternalAuthId: jest.fn(),
   createFromExternalUser: jest.fn(),
+  ensureDevelopmentTenantMembership: jest.fn(),
   findTenantMembershipsByUserId: jest.fn(),
   findTenantMembershipContext: jest.fn()
 });

@@ -3,11 +3,13 @@ export interface TenantSummary {
   readonly tenantSlug: string;
   readonly tenantName: string;
   readonly roleKey: string;
-  readonly permissions: readonly string[];
+  readonly permissions: string[];
 }
 
 export interface CurrentUser {
   readonly id: string;
   readonly email: string;
-  readonly name: string;
+  readonly name?: string;
+  readonly externalAuthProvider?: string;
+  readonly externalAuthUserId?: string;
 }

@@ -3,7 +3,9 @@ export const configuration = () => ({
     nodeEnv: process.env.NODE_ENV ?? "development",
     port: Number(process.env.PORT ?? 3001),
     apiPrefix: process.env.API_PREFIX ?? "api",
-    defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG ?? "assuresoft-demo"
+    defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG ?? "assuresoft-demo",
+    defaultTenantRole: process.env.DEFAULT_TENANT_ROLE ?? "owner",
+    autoJoinDefaultTenant: process.env.AUTO_JOIN_DEFAULT_TENANT === "true"
   },
   database: {
     url: process.env.DATABASE_URL

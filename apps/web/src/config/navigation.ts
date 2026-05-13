@@ -15,48 +15,48 @@ export const navigationItems: NavigationItem[] = [
     href: "/dashboard",
     icon: Gauge,
     label: "Dashboard",
-    permissions: ["dashboard.read"]
+    permissions: ["tenant.read"]
   },
   {
     href: "/employees",
     icon: UsersRound,
     label: "Employees",
-    permissions: ["employee.read"]
+    permissions: ["employees.read"]
   },
   {
     href: "/directory",
     icon: UserRoundCheck,
     label: "Directory",
-    permissions: ["directory.read"]
+    permissions: ["employees.read"]
   },
   {
     href: "/leave",
     icon: ClipboardCheck,
     label: "Leave",
-    permissions: ["leave.read"]
+    permissions: ["employees.read"]
   },
   {
     href: "/documents",
     icon: FileText,
     label: "Documents",
-    permissions: ["document.read"]
+    permissions: ["employees.read"]
   },
   {
     href: "/recruiting",
     icon: BriefcaseBusiness,
     label: "Recruiting",
-    permissions: ["recruiting.read"]
+    permissions: ["users.manage"]
   },
   {
     href: "/reports",
     icon: BarChart3,
     label: "Reports",
-    permissions: ["report.read"]
+    permissions: ["audit.read"]
   },
   {
     href: "/settings",
     icon: Settings,
     label: "Settings",
-    permissions: ["role.manage"]
+    permissions: ["roles.manage"]
   }
 ];
