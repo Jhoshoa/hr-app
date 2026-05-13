@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import { appHomePath, loginPath } from "@/lib/auth/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/auth/supabase-client";
+import { clearWorkspaceContextCache } from "@/lib/auth/workspace-cache";
 
 interface AuthGuardProps {
   readonly children: ReactNode;
@@ -35,6 +36,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       setIsChecking(false);
 
       if (!data.session) {
+        clearWorkspaceContextCache();
         router.replace(`${loginPath}?redirectTo=${encodeURIComponent(pathname || appHomePath)}`);
       }
     });
@@ -45,6 +47,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       setSession(nextSession);
 
       if (!nextSession) {
+        clearWorkspaceContextCache();
         router.replace(loginPath);
       }
     });

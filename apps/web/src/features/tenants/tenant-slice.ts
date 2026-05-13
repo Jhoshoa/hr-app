@@ -5,11 +5,13 @@ import type { TenantSummary } from "@/types/identity";
 interface TenantState {
   readonly currentTenant: TenantSummary;
   readonly availableTenants: TenantSummary[];
+  readonly isHydrated: boolean;
 }
 
 const initialState: TenantState = {
   availableTenants: [currentTenantFixture],
-  currentTenant: currentTenantFixture
+  currentTenant: currentTenantFixture,
+  isHydrated: false
 };
 
 export const tenantSlice = createSlice({
@@ -19,6 +21,7 @@ export const tenantSlice = createSlice({
     clearTenants: (state) => {
       state.availableTenants = [];
       state.currentTenant = currentTenantFixture;
+      state.isHydrated = false;
     },
     selectTenant: (state, action: { payload: string }) => {
       const tenant = state.availableTenants.find((item) => item.tenantSlug === action.payload);
@@ -30,6 +33,7 @@ export const tenantSlice = createSlice({
     setTenants: (state, action: { payload: TenantSummary[] }) => {
       state.availableTenants = action.payload;
       state.currentTenant = action.payload[0] ?? currentTenantFixture;
+      state.isHydrated = action.payload.length > 0;
     },
     updateCurrentTenantName: (state, action: { payload: string }) => {
       state.currentTenant.tenantName = action.payload;

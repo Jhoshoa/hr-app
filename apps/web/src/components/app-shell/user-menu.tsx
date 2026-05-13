@@ -12,6 +12,7 @@ import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { loginPath } from "@/lib/auth/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/auth/supabase-client";
+import { clearWorkspaceContextCache } from "@/lib/auth/workspace-cache";
 import { cn } from "@/lib/utils";
 import { useAppDispatch } from "@/store/hooks";
 
@@ -37,6 +38,7 @@ export function UserMenu() {
     const supabase = createSupabaseBrowserClient();
 
     await supabase?.auth.signOut();
+    clearWorkspaceContextCache();
     dispatch(baseApi.util.resetApiState());
     dispatch(clearCurrentUser());
     dispatch(clearTenants());

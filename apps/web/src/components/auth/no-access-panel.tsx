@@ -9,6 +9,7 @@ import { clearTenants } from "@/features/tenants/tenant-slice";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { loginPath } from "@/lib/auth/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/auth/supabase-client";
+import { clearWorkspaceContextCache } from "@/lib/auth/workspace-cache";
 import { useAppDispatch } from "@/store/hooks";
 
 export function NoAccessPanel() {
@@ -19,6 +20,7 @@ export function NoAccessPanel() {
   const logout = async () => {
     const supabase = createSupabaseBrowserClient();
     await supabase?.auth.signOut();
+    clearWorkspaceContextCache();
     dispatch(baseApi.util.resetApiState());
     dispatch(clearCurrentUser());
     dispatch(clearTenants());
