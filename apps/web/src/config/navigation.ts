@@ -57,6 +57,6 @@ export const navigationItems: NavigationItem[] = [
     href: "/settings",
     icon: Settings,
     label: "Settings",
-    permissions: ["roles.manage"]
+    permissions: ["roles.manage", "organization.read", "organization.manage", "users.manage", "audit.read"]
   }
 ];

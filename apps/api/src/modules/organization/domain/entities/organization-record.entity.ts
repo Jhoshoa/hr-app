@@ -36,3 +36,18 @@ export interface CreateOrganizationRecordInput {
   readonly type?: string;
   readonly code?: string;
 }
+
+export interface UpdateOrganizationRecordInput {
+  readonly tenantId: string;
+  readonly kind: OrganizationRecordKind;
+  readonly id: string;
+  readonly name?: string;
+  readonly parentDepartmentId?: string | null;
+  readonly country?: string;
+  readonly city?: string | null;
+  readonly timezone?: string;
+  readonly level?: string | null;
+  readonly category?: string | null;
+  readonly type?: string;
+  readonly code?: string | null;
+}

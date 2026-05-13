@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
 import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from "class-validator";
 
 export class CreateDepartmentDto {
@@ -95,3 +95,15 @@ export class CreateClientProjectDto {
   @MaxLength(40)
   code?: string;
 }
+
+export class UpdateDepartmentDto extends PartialType(CreateDepartmentDto) {}
+
+export class UpdateLocationDto extends PartialType(CreateLocationDto) {}
+
+export class UpdateJobTitleDto extends PartialType(CreateJobTitleDto) {}
+
+export class UpdateEmploymentTypeDto extends PartialType(CreateEmploymentTypeDto) {}
+
+export class UpdateWorkModeDto extends PartialType(CreateWorkModeDto) {}
+
+export class UpdateClientProjectDto extends PartialType(CreateClientProjectDto) {}

@@ -2,8 +2,12 @@ import { CreateOrganizationRecordUseCase } from "../../application/use-cases/cre
 import type { OrganizationRepository } from "../../domain/ports/organization.repository.port";
 
 const createRepository = (): jest.Mocked<OrganizationRepository> => ({
+  archive: jest.fn(),
   create: jest.fn(),
-  list: jest.fn()
+  findById: jest.fn(),
+  list: jest.fn(),
+  reactivate: jest.fn(),
+  update: jest.fn()
 });
 
 describe("CreateOrganizationRecordUseCase", () => {
