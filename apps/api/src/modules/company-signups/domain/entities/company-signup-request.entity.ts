@@ -54,3 +54,17 @@ export interface CompanyWebsiteAvailabilityResult {
   readonly duplicateWarning: boolean;
   readonly matchingPendingRequestCount: number;
 }
+
+export interface ListCompanySignupRequestsInput {
+  readonly status?: CompanySignupStatus;
+  readonly search?: string;
+  readonly page: number;
+  readonly pageSize: number;
+}
+
+export interface ListCompanySignupRequestsResult {
+  readonly items: CompanySignupRequestEntity[];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly total: number;
+}

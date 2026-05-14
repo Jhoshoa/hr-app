@@ -3,6 +3,8 @@ import type { CompanySignupRequestsRepository } from "../../domain/ports/company
 
 const createRepository = (): jest.Mocked<CompanySignupRequestsRepository> => ({
   create: jest.fn(),
+  list: jest.fn(),
+  findById: jest.fn(),
   tenantSlugExists: jest.fn(),
   pendingRequestExistsForSlug: jest.fn(),
   pendingRequestExistsForAdminEmail: jest.fn(),

@@ -1,9 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import type { CompanySignupRequest } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../../../database/prisma/prisma.service";
 import type {
   CompanySignupRequestEntity,
-  CreateCompanySignupRequestInput
+  CreateCompanySignupRequestInput,
+  ListCompanySignupRequestsInput,
+  ListCompanySignupRequestsResult
 } from "../../domain/entities/company-signup-request.entity";
 import type { CompanySignupRequestsRepository } from "../../domain/ports/company-signup-requests.repository.port";
 
@@ -32,6 +35,36 @@ export class PrismaCompanySignupRequestsRepository implements CompanySignupReque
     });
 
     return this.toEntity(request);
+  };
+
+  list = async (
+    input: ListCompanySignupRequestsInput
+  ): Promise<ListCompanySignupRequestsResult> => {
+    const where = this.buildListWhere(input);
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.companySignupRequest.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (input.page - 1) * input.pageSize,
+        take: input.pageSize
+      }),
+      this.prisma.companySignupRequest.count({ where })
+    ]);
+
+    return {
+      items: items.map(this.toEntity),
+      page: input.page,
+      pageSize: input.pageSize,
+      total
+    };
+  };
+
+  findById = async (id: string): Promise<CompanySignupRequestEntity | null> => {
+    const request = await this.prisma.companySignupRequest.findUnique({
+      where: { id }
+    });
+
+    return request ? this.toEntity(request) : null;
   };
 
   tenantSlugExists = async (slug: string): Promise<boolean> => {
@@ -79,6 +112,21 @@ export class PrismaCompanySignupRequestsRepository implements CompanySignupReque
         status: "PENDING"
       }
     });
+
+  private buildListWhere = (
+    input: ListCompanySignupRequestsInput
+  ): Prisma.CompanySignupRequestWhereInput => ({
+    ...(input.status ? { status: input.status } : {}),
+    ...(input.search
+      ? {
+          OR: [
+            { companyName: { contains: input.search, mode: "insensitive" } },
+            { desiredTenantSlug: { contains: input.search, mode: "insensitive" } },
+            { adminEmail: { contains: input.search, mode: "insensitive" } }
+          ]
+        }
+      : {})
+  });
 
   private toEntity = (request: CompanySignupRequest): CompanySignupRequestEntity => ({
     id: request.id,
