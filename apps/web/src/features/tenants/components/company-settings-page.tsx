@@ -99,6 +99,10 @@ export function CompanySettingsPage() {
   return (
     <>
       <PageHeader
+        breadcrumbs={[
+          { label: "Settings", href: "/settings" },
+          { label: "Company settings" }
+        ]}
         title="Company settings"
         description="Manage tenant identity, localization, currency, and timezone defaults."
       />

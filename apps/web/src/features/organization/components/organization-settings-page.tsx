@@ -46,6 +46,10 @@ export function OrganizationSettingsPage() {
   return (
     <>
       <PageHeader
+        breadcrumbs={[
+          { label: "Settings", href: "/settings" },
+          { label: "Organization settings" }
+        ]}
         title="Organization settings"
         description="Configure tenant-level catalogs used by employee profiles, assignments, and reporting."
       />
