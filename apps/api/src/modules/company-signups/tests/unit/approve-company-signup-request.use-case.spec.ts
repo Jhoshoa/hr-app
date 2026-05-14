@@ -19,6 +19,7 @@ const pendingRequest = {
   message: null,
   status: "PENDING" as const,
   approvedTenantId: null,
+  approvedTenant: null,
   reviewedByUserId: null,
   reviewedAt: null,
   rejectionReason: null,
@@ -41,6 +42,12 @@ describe("ApproveCompanySignupRequestUseCase", () => {
           ...pendingRequest,
           status: "APPROVED",
           approvedTenantId: "tenant-1",
+          approvedTenant: {
+            id: "tenant-1",
+            name: "Acme Corp",
+            slug: "acme-demo",
+            status: "ACTIVE"
+          },
           reviewedByUserId: "reviewer-1",
           reviewedAt: new Date("2026-05-14T00:00:00.000Z")
         })
@@ -117,6 +124,7 @@ describe("ApproveCompanySignupRequestUseCase", () => {
       })
     );
     expect(result.status).toBe("APPROVED");
+    expect(result.approvedTenant?.status).toBe("ACTIVE");
     expect(eventBus.publishMany).toHaveBeenCalled();
   });
 

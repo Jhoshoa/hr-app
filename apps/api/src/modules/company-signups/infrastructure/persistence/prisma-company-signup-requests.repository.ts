@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import type { CompanySignupRequest } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../../../database/prisma/prisma.service";
 import type {
@@ -31,7 +30,8 @@ export class PrismaCompanySignupRequestsRepository implements CompanySignupReque
         preferredLanguage: input.preferredLanguage,
         phone: input.phone,
         message: input.message
-      }
+      },
+      include: { approvedTenant: true }
     });
 
     return this.toEntity(request);
@@ -43,6 +43,7 @@ export class PrismaCompanySignupRequestsRepository implements CompanySignupReque
     const where = this.buildListWhere(input);
     const [items, total] = await this.prisma.$transaction([
       this.prisma.companySignupRequest.findMany({
+        include: { approvedTenant: true },
         where,
         orderBy: { createdAt: "desc" },
         skip: (input.page - 1) * input.pageSize,
@@ -61,6 +62,7 @@ export class PrismaCompanySignupRequestsRepository implements CompanySignupReque
 
   findById = async (id: string): Promise<CompanySignupRequestEntity | null> => {
     const request = await this.prisma.companySignupRequest.findUnique({
+      include: { approvedTenant: true },
       where: { id }
     });
 
@@ -128,7 +130,9 @@ export class PrismaCompanySignupRequestsRepository implements CompanySignupReque
       : {})
   });
 
-  private toEntity = (request: CompanySignupRequest): CompanySignupRequestEntity => ({
+  private toEntity = (
+    request: Prisma.CompanySignupRequestGetPayload<{ include: { approvedTenant: true } }>
+  ): CompanySignupRequestEntity => ({
     id: request.id,
     companyName: request.companyName,
     desiredTenantSlug: request.desiredTenantSlug,
@@ -144,6 +148,14 @@ export class PrismaCompanySignupRequestsRepository implements CompanySignupReque
     message: request.message,
     status: request.status,
     approvedTenantId: request.approvedTenantId,
+    approvedTenant: request.approvedTenant
+      ? {
+          id: request.approvedTenant.id,
+          name: request.approvedTenant.name,
+          slug: request.approvedTenant.slug,
+          status: request.approvedTenant.status
+        }
+      : null,
     reviewedByUserId: request.reviewedByUserId,
     reviewedAt: request.reviewedAt,
     rejectionReason: request.rejectionReason,

@@ -29,6 +29,7 @@ export const baseApi = createApi({
     "AuditEvent",
     "OrganizationRecord",
     "CompanySignupRequest",
-    "CompanySignupAvailability"
+    "CompanySignupAvailability",
+    "PlatformTenant"
   ]
 });

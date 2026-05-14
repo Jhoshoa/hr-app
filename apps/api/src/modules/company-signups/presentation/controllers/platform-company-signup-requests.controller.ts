@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../../../common/decorators/current-user.decorator";
 import { PlatformRoles } from "../../../../common/decorators/platform-roles.decorator";
@@ -34,7 +34,7 @@ export class PlatformCompanySignupRequestsController {
 
   @Get(":id")
   @PlatformRoles("PLATFORM_OWNER", "PLATFORM_ADMIN", "PLATFORM_SUPPORT")
-  async get(@Param("id") id: string) {
+  async get(@Param("id", new ParseUUIDPipe()) id: string) {
     return this.getCompanySignupRequestUseCase.execute(id);
   }
 
@@ -42,7 +42,7 @@ export class PlatformCompanySignupRequestsController {
   @PlatformRoles("PLATFORM_OWNER", "PLATFORM_ADMIN")
   async approve(
     @CurrentUser() user: AuthenticatedUserContext,
-    @Param("id") id: string,
+    @Param("id", new ParseUUIDPipe()) id: string,
     @Body() body: ApproveCompanySignupRequestDto
   ) {
     return this.approveCompanySignupRequestUseCase.execute({
@@ -57,7 +57,7 @@ export class PlatformCompanySignupRequestsController {
   @PlatformRoles("PLATFORM_OWNER", "PLATFORM_ADMIN")
   async reject(
     @CurrentUser() user: AuthenticatedUserContext,
-    @Param("id") id: string,
+    @Param("id", new ParseUUIDPipe()) id: string,
     @Body() body: RejectCompanySignupRequestDto
   ) {
     return this.rejectCompanySignupRequestUseCase.execute({

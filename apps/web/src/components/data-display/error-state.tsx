@@ -1,3 +1,5 @@
+import React from "react";
+
 interface ErrorStateProps {
   readonly title?: string;
   readonly description?: string;

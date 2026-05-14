@@ -85,6 +85,7 @@ export class RejectCompanySignupRequestUseCase {
     message: request.message,
     status: request.status,
     approvedTenantId: request.approvedTenantId,
+    approvedTenant: null,
     reviewedByUserId: request.reviewedByUserId,
     reviewedAt: request.reviewedAt,
     rejectionReason: request.rejectionReason,

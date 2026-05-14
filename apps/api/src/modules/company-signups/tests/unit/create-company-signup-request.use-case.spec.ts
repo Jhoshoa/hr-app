@@ -52,6 +52,7 @@ describe("CreateCompanySignupRequestUseCase", () => {
       message: input.message ?? null,
       status: "PENDING",
       approvedTenantId: null,
+      approvedTenant: null,
       reviewedByUserId: null,
       reviewedAt: null,
       rejectionReason: null,

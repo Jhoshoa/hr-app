@@ -26,6 +26,7 @@ describe("RejectCompanySignupRequestUseCase", () => {
       message: null,
       status: "REJECTED" as const,
       approvedTenantId: null,
+      approvedTenant: null,
       reviewedByUserId: "reviewer-1",
       reviewedAt: new Date("2026-05-14T00:00:00.000Z"),
       rejectionReason: "Not a fit right now",

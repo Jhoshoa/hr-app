@@ -16,11 +16,19 @@ export interface CompanySignupRequestEntity {
   readonly message: string | null;
   readonly status: CompanySignupStatus;
   readonly approvedTenantId: string | null;
+  readonly approvedTenant: CompanySignupApprovedTenantEntity | null;
   readonly reviewedByUserId: string | null;
   readonly reviewedAt: Date | null;
   readonly rejectionReason: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+}
+
+export interface CompanySignupApprovedTenantEntity {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly status: string;
 }
 
 export interface CreateCompanySignupRequestInput {

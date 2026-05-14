@@ -130,6 +130,7 @@ export class ApproveCompanySignupRequestUseCase {
         });
 
         const approved = await tx.companySignupRequest.findUniqueOrThrow({
+          include: { approvedTenant: true },
           where: { id: request.id }
         });
 
@@ -216,7 +217,16 @@ export class ApproveCompanySignupRequestUseCase {
   private isUniqueConstraintError = (error: unknown): boolean =>
     error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
-  private toEntity = (request: CompanySignupRequest): CompanySignupRequestEntity => ({
+  private toEntity = (
+    request: CompanySignupRequest & {
+      approvedTenant?: {
+        id: string;
+        name: string;
+        slug: string;
+        status: string;
+      } | null;
+    }
+  ): CompanySignupRequestEntity => ({
     id: request.id,
     companyName: request.companyName,
     desiredTenantSlug: request.desiredTenantSlug,
@@ -232,6 +242,14 @@ export class ApproveCompanySignupRequestUseCase {
     message: request.message,
     status: request.status,
     approvedTenantId: request.approvedTenantId,
+    approvedTenant: request.approvedTenant
+      ? {
+          id: request.approvedTenant.id,
+          name: request.approvedTenant.name,
+          slug: request.approvedTenant.slug,
+          status: request.approvedTenant.status
+        }
+      : null,
     reviewedByUserId: request.reviewedByUserId,
     reviewedAt: request.reviewedAt,
     rejectionReason: request.rejectionReason,
