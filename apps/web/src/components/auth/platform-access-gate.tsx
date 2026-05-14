@@ -1,54 +1,51 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { setCurrentUser, setPlatformRoles } from "@/features/auth/auth-slice";
 import { useGetMeQuery } from "@/features/auth/current-user-api";
 import { setTenants } from "@/features/tenants/tenant-slice";
+import { platformHomePath } from "@/lib/auth/auth-redirects";
 import {
   clearWorkspaceContextCache,
   loadWorkspaceContextCache,
   saveWorkspaceContextCache
 } from "@/lib/auth/workspace-cache";
-import { platformHomePath } from "@/lib/auth/auth-redirects";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch } from "@/store/hooks";
 
-interface AppAccessGateProps {
+interface PlatformAccessGateProps {
   readonly children: ReactNode;
 }
 
-export function AppAccessGate({ children }: AppAccessGateProps) {
+export function PlatformAccessGate({ children }: PlatformAccessGateProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const isTenantHydrated = useAppSelector((state) => state.tenant.isHydrated);
   const [cachedWorkspace] = useState(() => loadWorkspaceContextCache());
   const { data, isError, isLoading } = useGetMeQuery(undefined, { refetchOnMountOrArgChange: true });
-  const hasTenantContext = useMemo(
-    () => isTenantHydrated || Boolean(cachedWorkspace?.tenants.length),
-    [cachedWorkspace, isTenantHydrated]
-  );
+  const hasPlatformContext = Boolean(cachedWorkspace?.platformRoles.length);
 
   useEffect(() => {
-    if (!cachedWorkspace || isTenantHydrated) {
+    if (!cachedWorkspace || cachedWorkspace.platformRoles.length === 0) {
       return;
     }
 
     dispatch(setCurrentUser(cachedWorkspace.user));
     dispatch(setPlatformRoles(cachedWorkspace.platformRoles));
     dispatch(setTenants(cachedWorkspace.tenants));
-  }, [cachedWorkspace, dispatch, isTenantHydrated]);
+  }, [cachedWorkspace, dispatch]);
 
   useEffect(() => {
     if (!data) {
       return;
     }
 
-    if (data.tenants.length === 0 && data.platformRoles.length === 0) {
+    if (data.platformRoles.length === 0) {
       clearWorkspaceContextCache();
       dispatch(setCurrentUser(data.user));
       dispatch(setPlatformRoles([]));
+      dispatch(setTenants(data.tenants));
       router.replace("/no-access");
       return;
     }
@@ -62,27 +59,31 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
       platformRoles: data.platformRoles
     });
 
-    if (data.tenants.length === 0 && data.platformRoles.length > 0) {
+    if (data.platformRoles.length > 0 && !window.location.pathname.startsWith("/platform")) {
       router.replace(platformHomePath);
     }
   }, [data, dispatch, router]);
 
-  if (isLoading && !hasTenantContext) {
-    return <WorkspaceLoadingState />;
+  if (isLoading && !hasPlatformContext) {
+    return <PlatformAccessLoadingState />;
   }
 
-  if (isError && !hasTenantContext) {
+  if (isError && !hasPlatformContext) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-4">
         <ErrorState
-          title="Could not load your workspace"
-          description="The session is active, but the backend could not return your user and tenant access."
+          title="Could not load platform access"
+          description="The session is active, but the backend could not return your platform permissions."
         />
       </main>
     );
   }
 
-  if (data?.tenants.length === 0) {
+  if (!data && hasPlatformContext) {
+    return children;
+  }
+
+  if (!data || data.platformRoles.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4 text-sm text-muted-foreground">
         Redirecting...
@@ -93,14 +94,14 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
   return children;
 }
 
-function WorkspaceLoadingState() {
+function PlatformAccessLoadingState() {
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="hidden w-64 border-r border-border bg-surface p-5 lg:block">
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="mt-2 h-4 w-28" />
+        <Skeleton className="h-5 w-36" />
+        <Skeleton className="mt-2 h-4 w-24" />
         <div className="mt-8 space-y-3">
-          {Array.from({ length: 7 }, (_, index) => (
+          {Array.from({ length: 3 }, (_, index) => (
             <Skeleton className="h-9 w-full" key={index} />
           ))}
         </div>
@@ -110,13 +111,9 @@ function WorkspaceLoadingState() {
           <Skeleton className="h-9 w-36" />
         </div>
         <div className="mt-8 space-y-4">
-          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-8 w-72" />
           <Skeleton className="h-4 w-96 max-w-full" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }, (_, index) => (
-              <Skeleton className="h-28 w-full" key={index} />
-            ))}
-          </div>
+          <Skeleton className="h-80 w-full" />
         </div>
       </main>
     </div>
