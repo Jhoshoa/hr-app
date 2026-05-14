@@ -42,6 +42,61 @@ crear usuarios y memberships de prueba
 preparar fixtures para tests
 ```
 
+## Siguiente Prioridad: Limpieza De Variables De Entorno
+
+Cuando terminen las fases principales del plan de company signup y platform approval,
+conviene hacer un clean de variables de entorno para separar claramente:
+
+```text
+shortcuts de desarrollo
+bootstrap administrativo
+configuracion productiva
+```
+
+Esto no tiene que bloquear la implementacion actual. Es mejor hacerlo al final, cuando ya
+este claro que variables quedaron realmente necesarias.
+
+Clasificacion recomendada:
+
+```text
+Development-only shortcuts:
+AUTO_JOIN_DEFAULT_TENANT
+DEFAULT_TENANT_SLUG
+DEFAULT_TENANT_ROLE
+SEED_PLATFORM_OWNER_TENANT_MEMBERSHIP
+SEED_SAMPLE_COMPANY_SIGNUPS
+SEED_SAMPLE_EMPLOYEES
+```
+
+```text
+Bootstrap/admin:
+PLATFORM_OWNER_EMAIL
+```
+
+```text
+Production recommendation:
+AUTO_JOIN_DEFAULT_TENANT=false
+SEED_PLATFORM_OWNER_TENANT_MEMBERSHIP=false
+PLATFORM_OWNER_EMAIL=
+```
+
+En produccion, el objetivo final deberia ser no depender de `PLATFORM_OWNER_EMAIL` en
+seeders automaticos. En su lugar, usar un comando one-time:
+
+```text
+pnpm platform:grant-owner --email admin@empresa.com
+```
+
+Tareas sugeridas para esta limpieza:
+
+```text
+1. Documentar cada variable con scope: development, staging, production, bootstrap.
+2. Mover shortcuts de seed a una seccion "Development only" en .env.example.
+3. Asegurar que produccion no corre seeders que concedan PLATFORM_OWNER automaticamente.
+4. Crear o planificar platform:grant-owner como reemplazo de bootstrap por env.
+5. Revisar si AUTO_JOIN_DEFAULT_TENANT sigue siendo necesario o puede eliminarse.
+```
+
 ## Enhancement 1: Seeder De Desarrollo Mas Completo
 
 Extender:
