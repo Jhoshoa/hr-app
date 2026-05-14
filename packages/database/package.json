@@ -8,9 +8,12 @@
     "build": "tsc -p tsconfig.json",
     "db:generate": "dotenv -e ../../.env -e ../../.env.example -- prisma generate --schema prisma/schema.prisma",
     "db:migrate": "dotenv -e ../../.env -e ../../.env.example -- prisma migrate dev --schema prisma/schema.prisma",
+    "db:reset:local": "dotenv -e ../../.env -e ../../.env.example -- prisma migrate reset --force --schema prisma/schema.prisma",
+    "db:rebuild:local": "corepack pnpm db:generate && corepack pnpm db:reset:local",
     "db:deploy": "dotenv -e ../../.env -e ../../.env.example -- prisma migrate deploy --schema prisma/schema.prisma",
     "db:studio": "dotenv -e ../../.env -e ../../.env.example -- prisma studio --schema prisma/schema.prisma",
     "db:seed": "dotenv -e ../../.env -e ../../.env.example -- tsx prisma/seed.ts",
+    "auth:seed:dev": "dotenv -e ../../.env -e ../../.env.example -- tsx scripts/seed-supabase-auth-users.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "echo \"No database package tests yet\""

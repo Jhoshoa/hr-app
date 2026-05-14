@@ -185,6 +185,44 @@ Run seed data:
 corepack pnpm db:seed
 ```
 
+Seed development Supabase Auth users:
+
+```bash
+corepack pnpm auth:seed:dev
+```
+
+This creates or updates these development login accounts in Supabase Auth:
+
+```text
+platform.owner@example.test / Password123!
+demo.owner@example.test / Password123!
+secondary.owner@example.test / y
+```
+
+The command requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the root
+`.env`. The service role key must never be exposed through `NEXT_PUBLIC_*`
+variables.
+
+Reset local database data, reapply migrations, and run seed:
+
+```bash
+corepack pnpm db:reset:local
+```
+
+Rebuild local Prisma state from scratch:
+
+```bash
+corepack pnpm db:rebuild:local
+```
+
+`db:rebuild:local` runs Prisma generate first, then resets the local database.
+Both reset commands are destructive for local data. Use them only when you want
+to start from a clean local database.
+
+On Windows, stop the API dev server before running these commands. If the
+backend is running, Prisma can hit file locks while replacing generated client
+files.
+
 Open Prisma Studio:
 
 ```bash
@@ -286,9 +324,8 @@ cd D:\assuresoft-repos\hr-app
 corepack prepare pnpm@9.15.4 --activate
 corepack pnpm install
 docker compose -f docker/docker-compose.yml up -d
-corepack pnpm db:generate
-corepack pnpm db:migrate
-corepack pnpm db:seed
+corepack pnpm db:rebuild:local
+corepack pnpm auth:seed:dev
 corepack pnpm --filter @hr-app/api dev
 ```
 

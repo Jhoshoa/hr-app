@@ -1,5 +1,4 @@
 import { ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import type { AuthenticatedUserContext } from "../../../../common/types/request-context";
 import type { ExternalAuthUser } from "../../domain/entities/external-auth-user.entity";
 import { USERS_REPOSITORY } from "../../domain/ports/users.repository.port";
@@ -8,7 +7,6 @@ import type { UsersRepository } from "../../domain/ports/users.repository.port";
 @Injectable()
 export class ResolveAuthenticatedUserUseCase {
   constructor(
-    private readonly configService: ConfigService,
     @Inject(USERS_REPOSITORY) private readonly usersRepository: UsersRepository
   ) {}
 
@@ -21,7 +19,6 @@ export class ResolveAuthenticatedUserUseCase {
     const user = existingUser
       ? await this.usersRepository.syncExternalUserProfile(existingUser.id, externalUser)
       : await this.resolveByEmailOrCreate(externalUser);
-    await this.ensureDevelopmentTenantMembership(user.id);
     const platformRoles = await this.usersRepository.findPlatformRolesByUserId(user.id);
 
     return {
@@ -52,20 +49,5 @@ export class ResolveAuthenticatedUserUseCase {
     }
 
     throw new ConflictException("A user with this email is linked to another identity.");
-  };
-
-  private ensureDevelopmentTenantMembership = async (userId: string): Promise<void> => {
-    const nodeEnv = this.configService.get<string>("app.nodeEnv");
-    const autoJoinDefaultTenant = this.configService.get<boolean>("app.autoJoinDefaultTenant");
-
-    if (nodeEnv !== "development" || !autoJoinDefaultTenant) {
-      return;
-    }
-
-    await this.usersRepository.ensureDevelopmentTenantMembership(
-      userId,
-      this.configService.getOrThrow<string>("app.defaultTenantSlug"),
-      this.configService.getOrThrow<string>("app.defaultTenantRole")
-    );
   };
 }

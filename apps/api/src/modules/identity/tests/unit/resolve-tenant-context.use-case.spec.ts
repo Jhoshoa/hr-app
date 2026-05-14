@@ -8,7 +8,6 @@ const createRepository = (): jest.Mocked<UsersRepository> => ({
   linkExternalAuthUser: jest.fn(),
   createFromExternalUser: jest.fn(),
   syncExternalUserProfile: jest.fn(),
-  ensureDevelopmentTenantMembership: jest.fn(),
   findTenantMembershipsByUserId: jest.fn(),
   findTenantMembershipContext: jest.fn(),
   findPlatformRolesByUserId: jest.fn()

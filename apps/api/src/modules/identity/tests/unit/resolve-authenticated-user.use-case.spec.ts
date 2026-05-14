@@ -1,4 +1,3 @@
-import type { ConfigService } from "@nestjs/config";
 import { ConflictException, UnauthorizedException } from "@nestjs/common";
 import { ResolveAuthenticatedUserUseCase } from "../../application/use-cases/resolve-authenticated-user.use-case";
 import type { UsersRepository } from "../../domain/ports/users.repository.port";
@@ -9,25 +8,9 @@ const createRepository = (): jest.Mocked<UsersRepository> => ({
   linkExternalAuthUser: jest.fn(),
   createFromExternalUser: jest.fn(),
   syncExternalUserProfile: jest.fn(),
-  ensureDevelopmentTenantMembership: jest.fn(),
   findTenantMembershipsByUserId: jest.fn(),
   findTenantMembershipContext: jest.fn(),
   findPlatformRolesByUserId: jest.fn()
-});
-
-const createConfigService = (): Pick<ConfigService, "get" | "getOrThrow"> => ({
-  get: jest.fn((key: string) => {
-    if (key === "app.nodeEnv") {
-      return "test";
-    }
-
-    if (key === "app.autoJoinDefaultTenant") {
-      return false;
-    }
-
-    return undefined;
-  }),
-  getOrThrow: jest.fn()
 });
 
 describe("ResolveAuthenticatedUserUseCase", () => {
@@ -49,10 +32,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     });
     repository.findPlatformRolesByUserId.mockResolvedValue(["PLATFORM_OWNER"]);
 
-    const useCase = new ResolveAuthenticatedUserUseCase(
-      createConfigService() as ConfigService,
-      repository
-    );
+    const useCase = new ResolveAuthenticatedUserUseCase(repository);
     const result = await useCase.execute({
       provider: "supabase",
       providerUserId: "external-1",
@@ -73,7 +53,6 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       emailVerified: true,
       name: "HR User Updated"
     });
-    expect(repository.ensureDevelopmentTenantMembership).not.toHaveBeenCalled();
   });
 
   it("creates an internal user when the external auth user is new", async () => {
@@ -89,10 +68,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     });
     repository.findPlatformRolesByUserId.mockResolvedValue([]);
 
-    const useCase = new ResolveAuthenticatedUserUseCase(
-      createConfigService() as ConfigService,
-      repository
-    );
+    const useCase = new ResolveAuthenticatedUserUseCase(repository);
     const result = await useCase.execute({
       provider: "supabase",
       providerUserId: "external-2",
@@ -113,7 +89,6 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       name: "New User"
     });
     expect(repository.syncExternalUserProfile).not.toHaveBeenCalled();
-    expect(repository.ensureDevelopmentTenantMembership).not.toHaveBeenCalled();
   });
 
   it("links a pending user by email when the external auth user signs in", async () => {
@@ -133,10 +108,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     });
     repository.findPlatformRolesByUserId.mockResolvedValue([]);
 
-    const useCase = new ResolveAuthenticatedUserUseCase(
-      createConfigService() as ConfigService,
-      repository
-    );
+    const useCase = new ResolveAuthenticatedUserUseCase(repository);
     const externalUser = {
       provider: "supabase",
       providerUserId: "external-3",
@@ -163,10 +135,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       name: "Pending User"
     });
 
-    const useCase = new ResolveAuthenticatedUserUseCase(
-      createConfigService() as ConfigService,
-      repository
-    );
+    const useCase = new ResolveAuthenticatedUserUseCase(repository);
 
     await expect(
       useCase.execute({
@@ -194,10 +163,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       externalAuthUserId: "different-external-id"
     });
 
-    const useCase = new ResolveAuthenticatedUserUseCase(
-      createConfigService() as ConfigService,
-      repository
-    );
+    const useCase = new ResolveAuthenticatedUserUseCase(repository);
 
     await expect(
       useCase.execute({

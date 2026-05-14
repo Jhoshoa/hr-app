@@ -20,11 +20,6 @@ export interface UsersRepository {
     userId: string,
     externalUser: ExternalAuthUser
   ) => Promise<AuthenticatedUser>;
-  ensureDevelopmentTenantMembership: (
-    userId: string,
-    tenantSlug: string,
-    roleKey: string
-  ) => Promise<void>;
   findTenantMembershipsByUserId: (userId: string) => Promise<TenantMembershipContext[]>;
   findTenantMembershipContext: (
     userId: string,

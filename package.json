@@ -9,8 +9,11 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
+    "auth:seed:dev": "corepack pnpm --filter @hr-app/database auth:seed:dev",
     "db:generate": "corepack pnpm --filter @hr-app/database db:generate",
     "db:migrate": "corepack pnpm --filter @hr-app/database db:migrate",
+    "db:reset:local": "corepack pnpm --filter @hr-app/database db:reset:local",
+    "db:rebuild:local": "corepack pnpm --filter @hr-app/database db:rebuild:local",
     "db:seed": "corepack pnpm --filter @hr-app/database db:seed"
   },
   "devDependencies": {

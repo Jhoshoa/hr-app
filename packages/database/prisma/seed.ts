@@ -1,6 +1,7 @@
 /// <reference types="node" />
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type Role, type Tenant, type User } from "@prisma/client";
+import { devSeedUsers } from "./dev-seed-data";
 
 const prisma = new PrismaClient();
 
@@ -24,21 +25,48 @@ const permissions = [
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
-const getBooleanEnv = (key: string): boolean => process.env[key] === "true";
-
 const seed = async (): Promise<void> => {
-  const tenant = await prisma.tenant.upsert({
-    where: { slug: "assuresoft-demo" },
-    update: {},
-    create: {
-      name: "AssureSoft Demo",
-      slug: "assuresoft-demo",
-      defaultLanguage: "es",
-      defaultCurrency: "BOB",
-      timezone: "America/La_Paz"
-    }
+  await seedPermissions();
+
+  const primaryTenant = await upsertTenant({
+    name: "AssureSoft Demo",
+    slug: "assuresoft-demo",
+    defaultLanguage: "es",
+    defaultCurrency: "BOB",
+    timezone: "America/La_Paz"
+  });
+  const primaryOwnerRole = await upsertOwnerRole(primaryTenant.id);
+  await assignAllPermissions(primaryOwnerRole.id);
+
+  await seedPlatformOwner(devSeedUsers.platformOwner.email, devSeedUsers.platformOwner.name);
+  await seedTenantAdmin({
+    tenantId: primaryTenant.id,
+    ownerRoleId: primaryOwnerRole.id,
+    email: devSeedUsers.demoTenantAdmin.email,
+    name: devSeedUsers.demoTenantAdmin.name
   });
 
+  const secondaryTenant = await upsertTenant({
+    name: "Secondary Demo",
+    slug: "secondary-demo",
+    defaultLanguage: "en",
+    defaultCurrency: "USD",
+    timezone: "America/New_York"
+  });
+  const secondaryOwnerRole = await upsertOwnerRole(secondaryTenant.id);
+  await assignAllPermissions(secondaryOwnerRole.id);
+
+  await seedTenantAdmin({
+    tenantId: secondaryTenant.id,
+    ownerRoleId: secondaryOwnerRole.id,
+    email: devSeedUsers.secondaryTenantAdmin.email,
+    name: devSeedUsers.secondaryTenantAdmin.name
+  });
+
+  await seedPendingCompanySignupRequest();
+};
+
+const seedPermissions = async (): Promise<void> => {
   for (const [key, description] of permissions) {
     await prisma.permission.upsert({
       where: { key },
@@ -46,12 +74,38 @@ const seed = async (): Promise<void> => {
       create: { key, description }
     });
   }
+};
 
-  const ownerRole = await prisma.role.upsert({
-    where: { tenantId_key: { tenantId: tenant.id, key: "owner" } },
-    update: {},
+interface TenantSeedInput {
+  readonly name: string;
+  readonly slug: string;
+  readonly defaultLanguage: string;
+  readonly defaultCurrency: string;
+  readonly timezone: string;
+}
+
+const upsertTenant = async (input: TenantSeedInput): Promise<Tenant> =>
+  prisma.tenant.upsert({
+    where: { slug: input.slug },
+    update: {
+      name: input.name,
+      defaultLanguage: input.defaultLanguage,
+      defaultCurrency: input.defaultCurrency,
+      timezone: input.timezone
+    },
+    create: input
+  });
+
+const upsertOwnerRole = async (tenantId: string): Promise<Role> =>
+  prisma.role.upsert({
+    where: { tenantId_key: { tenantId, key: "owner" } },
+    update: {
+      name: "Owner",
+      description: "Full tenant access",
+      isSystemRole: true
+    },
     create: {
-      tenantId: tenant.id,
+      tenantId,
       key: "owner",
       name: "Owner",
       description: "Full tenant access",
@@ -59,42 +113,50 @@ const seed = async (): Promise<void> => {
     }
   });
 
+const assignAllPermissions = async (roleId: string): Promise<void> => {
   const allPermissions = await prisma.permission.findMany();
 
   for (const permission of allPermissions) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
-          roleId: ownerRole.id,
+          roleId,
           permissionId: permission.id
         }
       },
       update: {},
       create: {
-        roleId: ownerRole.id,
+        roleId,
         permissionId: permission.id
       }
     });
   }
-
-  await seedPlatformOwner(tenant.id, ownerRole.id);
 };
 
-const seedPlatformOwner = async (tenantId: string, ownerRoleId: string): Promise<void> => {
-  const platformOwnerEmail = process.env.PLATFORM_OWNER_EMAIL?.trim();
-
-  if (!platformOwnerEmail) {
-    return;
+const upsertPendingUser = async (email: string, name?: string): Promise<User | null> => {
+  if (!email) {
+    return null;
   }
 
-  const user = await prisma.user.upsert({
-    where: { email: normalizeEmail(platformOwnerEmail) },
-    update: {},
+  return prisma.user.upsert({
+    where: { email: normalizeEmail(email) },
+    update: {
+      name: name ?? undefined
+    },
     create: {
-      email: normalizeEmail(platformOwnerEmail),
+      email: normalizeEmail(email),
+      name,
       status: "INVITED"
     }
   });
+};
+
+const seedPlatformOwner = async (email: string, name: string): Promise<void> => {
+  const user = await upsertPendingUser(email, name);
+
+  if (!user) {
+    return;
+  }
 
   await prisma.platformUserRole.upsert({
     where: {
@@ -109,31 +171,78 @@ const seedPlatformOwner = async (tenantId: string, ownerRoleId: string): Promise
       roleKey: "PLATFORM_OWNER"
     }
   });
+};
 
-  if (!getBooleanEnv("SEED_PLATFORM_OWNER_TENANT_MEMBERSHIP")) {
+interface TenantAdminSeedInput {
+  readonly tenantId: string;
+  readonly ownerRoleId: string;
+  readonly email: string;
+  readonly name: string;
+}
+
+const seedTenantAdmin = async (input: TenantAdminSeedInput): Promise<void> => {
+  const user = await upsertPendingUser(input.email, input.name);
+
+  if (!user) {
     return;
   }
 
   await prisma.tenantMembership.upsert({
     where: {
       tenantId_userId: {
-        tenantId,
+        tenantId: input.tenantId,
         userId: user.id
       }
     },
     update: {
-      roleId: ownerRoleId,
+      roleId: input.ownerRoleId,
       status: "ACTIVE",
       joinedAt: new Date()
     },
     create: {
-      tenantId,
+      tenantId: input.tenantId,
       userId: user.id,
-      roleId: ownerRoleId,
+      roleId: input.ownerRoleId,
       status: "ACTIVE",
       joinedAt: new Date()
     }
   });
+};
+
+const seedPendingCompanySignupRequest = async (): Promise<void> => {
+  const adminEmail = normalizeEmail(devSeedUsers.pendingSignupAdmin.email);
+  const desiredTenantSlug = "pending-demo";
+  const existingRequest = await prisma.companySignupRequest.findFirst({
+    where: {
+      desiredTenantSlug,
+      adminEmail
+    }
+  });
+  const data = {
+    companyName: "Pending Demo Company",
+    desiredTenantSlug,
+    adminFirstName: devSeedUsers.pendingSignupAdmin.firstName,
+    adminLastName: devSeedUsers.pendingSignupAdmin.lastName,
+    adminEmail,
+    companyWebsite: "https://pending-demo.example.test",
+    companySize: "11-50",
+    country: "BO",
+    timezone: "America/La_Paz",
+    preferredLanguage: "es",
+    phone: null,
+    message: "Seeded local signup request for approval workflow testing.",
+    status: "PENDING" as const
+  };
+
+  if (existingRequest) {
+    await prisma.companySignupRequest.update({
+      where: { id: existingRequest.id },
+      data
+    });
+    return;
+  }
+
+  await prisma.companySignupRequest.create({ data });
 };
 
 seed()
