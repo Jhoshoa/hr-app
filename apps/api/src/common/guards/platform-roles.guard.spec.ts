@@ -1,9 +1,10 @@
 import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import type { ExecutionContext } from "@nestjs/common";
 import type { Reflector } from "@nestjs/core";
+import type { PlatformRoleKey } from "@prisma/client";
 import { PlatformRolesGuard } from "./platform-roles.guard";
 
-const createContext = (user?: { platformRoles: string[] }): ExecutionContext => ({
+const createContext = (user?: { platformRoles: PlatformRoleKey[] }): ExecutionContext => ({
   getClass: jest.fn(),
   getHandler: jest.fn(),
   switchToHttp: jest.fn(() => ({
@@ -12,7 +13,7 @@ const createContext = (user?: { platformRoles: string[] }): ExecutionContext => 
 } as unknown as ExecutionContext);
 
 const createReflector = (
-  options: { isPublic?: boolean; requiredRoles?: string[] } = {}
+  options: { isPublic?: boolean; requiredRoles?: PlatformRoleKey[] } = {}
 ): Reflector => ({
   getAllAndOverride: jest.fn((key: unknown) => {
     if (key === "isPublic") {

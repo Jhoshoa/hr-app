@@ -1,4 +1,5 @@
 import type { Request } from "express";
+import type { PlatformRoleKey } from "@prisma/client";
 
 export interface AuthenticatedUserContext {
   readonly id: string;
@@ -6,7 +7,7 @@ export interface AuthenticatedUserContext {
   readonly name?: string;
   readonly externalAuthProvider: string;
   readonly externalAuthUserId: string;
-  readonly platformRoles: string[];
+  readonly platformRoles: PlatformRoleKey[];
 }
 
 export interface TenantContext {

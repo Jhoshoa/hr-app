@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { Prisma } from "@prisma/client";
+import type { PlatformRoleKey, Prisma } from "@prisma/client";
 import type { AuthenticatedUser } from "../../domain/entities/authenticated-user.entity";
 import type { ExternalAuthUser } from "../../domain/entities/external-auth-user.entity";
 import type { TenantMembershipContext } from "../../domain/entities/tenant-membership.entity";
@@ -97,7 +97,7 @@ export class PrismaUsersRepository implements UsersRepository {
     return this.toAuthenticatedUser(user);
   };
 
-  findPlatformRolesByUserId = async (userId: string): Promise<string[]> => {
+  findPlatformRolesByUserId = async (userId: string): Promise<PlatformRoleKey[]> => {
     const roles = await this.prisma.platformUserRole.findMany({
       where: { userId },
       orderBy: { roleKey: "asc" }

@@ -38,6 +38,7 @@ export class SupabaseAuthProvider implements AuthProvider {
       provider: "supabase",
       providerUserId: data.user.id,
       email: data.user.email,
+      emailVerified: this.isEmailVerified(data.user),
       name: this.resolveName(data.user.user_metadata)
     };
   };
@@ -53,6 +54,7 @@ export class SupabaseAuthProvider implements AuthProvider {
       provider: "supabase",
       providerUserId: data.user.id,
       email: data.user.email,
+      emailVerified: this.isEmailVerified(data.user),
       name: this.resolveName(data.user.user_metadata)
     };
   };
@@ -83,4 +85,9 @@ export class SupabaseAuthProvider implements AuthProvider {
     const name = metadata.name ?? metadata.full_name;
     return typeof name === "string" ? name : undefined;
   };
+
+  private isEmailVerified = (user: {
+    email_confirmed_at?: string | null;
+    confirmed_at?: string | null;
+  }): boolean => Boolean(user.email_confirmed_at ?? user.confirmed_at);
 }

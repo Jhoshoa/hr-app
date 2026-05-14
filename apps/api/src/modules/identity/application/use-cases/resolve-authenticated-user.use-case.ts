@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AuthenticatedUserContext } from "../../../../common/types/request-context";
 import type { ExternalAuthUser } from "../../domain/entities/external-auth-user.entity";
@@ -43,6 +43,10 @@ export class ResolveAuthenticatedUserUseCase {
     }
 
     if (!existingEmailUser.externalAuthProvider && !existingEmailUser.externalAuthUserId) {
+      if (!externalUser.emailVerified) {
+        throw new UnauthorizedException("Verified email is required to claim pending access.");
+      }
+
       return this.usersRepository.linkExternalAuthUser(existingEmailUser.id, externalUser);
     }
 

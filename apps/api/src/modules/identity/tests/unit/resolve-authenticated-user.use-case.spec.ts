@@ -1,5 +1,5 @@
 import type { ConfigService } from "@nestjs/config";
-import { ConflictException } from "@nestjs/common";
+import { ConflictException, UnauthorizedException } from "@nestjs/common";
 import { ResolveAuthenticatedUserUseCase } from "../../application/use-cases/resolve-authenticated-user.use-case";
 import type { UsersRepository } from "../../domain/ports/users.repository.port";
 
@@ -57,6 +57,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       provider: "supabase",
       providerUserId: "external-1",
       email: "hr@example.com",
+      emailVerified: true,
       name: "HR User Updated"
     });
 
@@ -69,6 +70,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       provider: "supabase",
       providerUserId: "external-1",
       email: "hr@example.com",
+      emailVerified: true,
       name: "HR User Updated"
     });
     expect(repository.ensureDevelopmentTenantMembership).not.toHaveBeenCalled();
@@ -95,6 +97,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       provider: "supabase",
       providerUserId: "external-2",
       email: "new@example.com",
+      emailVerified: true,
       name: "New User"
     });
 
@@ -106,6 +109,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       provider: "supabase",
       providerUserId: "external-2",
       email: "new@example.com",
+      emailVerified: true,
       name: "New User"
     });
     expect(repository.syncExternalUserProfile).not.toHaveBeenCalled();
@@ -137,6 +141,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
       provider: "supabase",
       providerUserId: "external-3",
       email: "owner@example.com",
+      emailVerified: true,
       name: "Tenant Owner"
     };
 
@@ -147,6 +152,35 @@ describe("ResolveAuthenticatedUserUseCase", () => {
     expect(result.externalAuthUserId).toBe("external-3");
     expect(repository.linkExternalAuthUser).toHaveBeenCalledWith("user-3", externalUser);
     expect(repository.createFromExternalUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects pending user linking when the external email is not verified", async () => {
+    const repository = createRepository();
+    repository.findByExternalAuthId.mockResolvedValue(null);
+    repository.findByEmail.mockResolvedValue({
+      id: "user-5",
+      email: "pending@example.com",
+      name: "Pending User"
+    });
+
+    const useCase = new ResolveAuthenticatedUserUseCase(
+      createConfigService() as ConfigService,
+      repository
+    );
+
+    await expect(
+      useCase.execute({
+        provider: "supabase",
+        providerUserId: "external-5",
+        email: "pending@example.com",
+        emailVerified: false,
+        name: "Pending User"
+      })
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(repository.linkExternalAuthUser).not.toHaveBeenCalled();
+    expect(repository.createFromExternalUser).not.toHaveBeenCalled();
+    expect(repository.findPlatformRolesByUserId).not.toHaveBeenCalled();
   });
 
   it("rejects an email match already linked to another external identity", async () => {
@@ -170,6 +204,7 @@ describe("ResolveAuthenticatedUserUseCase", () => {
         provider: "supabase",
         providerUserId: "external-4",
         email: "conflict@example.com",
+        emailVerified: true,
         name: "Existing User"
       })
     ).rejects.toBeInstanceOf(ConflictException);

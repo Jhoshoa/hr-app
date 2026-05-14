@@ -1,3 +1,4 @@
+import type { PlatformRoleKey } from "@prisma/client";
 import type { AuthenticatedUser } from "../entities/authenticated-user.entity";
 import type { ExternalAuthUser } from "../entities/external-auth-user.entity";
 import type { TenantMembershipContext } from "../entities/tenant-membership.entity";
@@ -29,5 +30,5 @@ export interface UsersRepository {
     userId: string,
     tenantSlug: string
   ) => Promise<TenantMembershipContext | null>;
-  findPlatformRolesByUserId: (userId: string) => Promise<string[]>;
+  findPlatformRolesByUserId: (userId: string) => Promise<PlatformRoleKey[]>;
 }

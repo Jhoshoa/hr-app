@@ -6,6 +6,7 @@ import {
   UnauthorizedException
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
+import type { PlatformRoleKey } from "@prisma/client";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 import { REQUIRED_PLATFORM_ROLES_KEY } from "../decorators/platform-roles.decorator";
 import type { RequestWithContext } from "../types/request-context";
@@ -24,7 +25,7 @@ export class PlatformRolesGuard implements CanActivate {
       return true;
     }
 
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+    const requiredRoles = this.reflector.getAllAndOverride<PlatformRoleKey[]>(
       REQUIRED_PLATFORM_ROLES_KEY,
       [context.getHandler(), context.getClass()]
     );
