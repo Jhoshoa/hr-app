@@ -1,9 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { AuditEventEntity } from "../../domain/entities/audit-event.entity";
-import {
-  AUDIT_EVENTS_REPOSITORY,
-  AuditEventsRepository
-} from "../../domain/ports/audit-events.repository.port";
+import { AUDIT_EVENTS_REPOSITORY } from "../../domain/ports/audit-events.repository.port";
+import type { AuditEventsRepository } from "../../domain/ports/audit-events.repository.port";
 
 @Injectable()
 export class ListAuditEventsUseCase {

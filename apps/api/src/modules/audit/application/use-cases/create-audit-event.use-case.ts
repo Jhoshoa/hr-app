@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import {
-  AUDIT_EVENTS_REPOSITORY,
+import { AUDIT_EVENTS_REPOSITORY } from "../../domain/ports/audit-events.repository.port";
+import type {
   AuditEventsRepository,
   CreateAuditEventInput
 } from "../../domain/ports/audit-events.repository.port";

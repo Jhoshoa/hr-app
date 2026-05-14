@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { USERS_REPOSITORY, UsersRepository } from "../../domain/ports/users.repository.port";
+import { USERS_REPOSITORY } from "../../domain/ports/users.repository.port";
+import type { UsersRepository } from "../../domain/ports/users.repository.port";
 import type { TenantMembershipContext } from "../../domain/entities/tenant-membership.entity";
 
 @Injectable()

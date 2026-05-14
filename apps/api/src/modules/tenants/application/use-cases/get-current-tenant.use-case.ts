@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { TenantEntity } from "../../domain/entities/tenant.entity";
-import { TENANTS_REPOSITORY, TenantsRepository } from "../../domain/ports/tenants.repository.port";
+import { TENANTS_REPOSITORY } from "../../domain/ports/tenants.repository.port";
+import type { TenantsRepository } from "../../domain/ports/tenants.repository.port";
 
 @Injectable()
 export class GetCurrentTenantUseCase {

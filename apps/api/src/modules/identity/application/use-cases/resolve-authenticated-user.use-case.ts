@@ -2,7 +2,8 @@ import { ConflictException, Inject, Injectable, UnauthorizedException } from "@n
 import { ConfigService } from "@nestjs/config";
 import type { AuthenticatedUserContext } from "../../../../common/types/request-context";
 import type { ExternalAuthUser } from "../../domain/entities/external-auth-user.entity";
-import { USERS_REPOSITORY, UsersRepository } from "../../domain/ports/users.repository.port";
+import { USERS_REPOSITORY } from "../../domain/ports/users.repository.port";
+import type { UsersRepository } from "../../domain/ports/users.repository.port";
 
 @Injectable()
 export class ResolveAuthenticatedUserUseCase {

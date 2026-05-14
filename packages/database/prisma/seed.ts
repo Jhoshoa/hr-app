@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -19,6 +21,10 @@ const permissions = [
   ["employees.compensation.manage", "Manage employee compensation records"],
   ["employees.custom-fields.manage", "Manage employee custom field definitions"]
 ] as const;
+
+const normalizeEmail = (email: string): string => email.trim().toLowerCase();
+
+const getBooleanEnv = (key: string): boolean => process.env[key] === "true";
 
 const seed = async (): Promise<void> => {
   const tenant = await prisma.tenant.upsert({
@@ -70,6 +76,64 @@ const seed = async (): Promise<void> => {
       }
     });
   }
+
+  await seedPlatformOwner(tenant.id, ownerRole.id);
+};
+
+const seedPlatformOwner = async (tenantId: string, ownerRoleId: string): Promise<void> => {
+  const platformOwnerEmail = process.env.PLATFORM_OWNER_EMAIL?.trim();
+
+  if (!platformOwnerEmail) {
+    return;
+  }
+
+  const user = await prisma.user.upsert({
+    where: { email: normalizeEmail(platformOwnerEmail) },
+    update: {},
+    create: {
+      email: normalizeEmail(platformOwnerEmail),
+      status: "INVITED"
+    }
+  });
+
+  await prisma.platformUserRole.upsert({
+    where: {
+      userId_roleKey: {
+        userId: user.id,
+        roleKey: "PLATFORM_OWNER"
+      }
+    },
+    update: {},
+    create: {
+      userId: user.id,
+      roleKey: "PLATFORM_OWNER"
+    }
+  });
+
+  if (!getBooleanEnv("SEED_PLATFORM_OWNER_TENANT_MEMBERSHIP")) {
+    return;
+  }
+
+  await prisma.tenantMembership.upsert({
+    where: {
+      tenantId_userId: {
+        tenantId,
+        userId: user.id
+      }
+    },
+    update: {
+      roleId: ownerRoleId,
+      status: "ACTIVE",
+      joinedAt: new Date()
+    },
+    create: {
+      tenantId,
+      userId: user.id,
+      roleId: ownerRoleId,
+      status: "ACTIVE",
+      joinedAt: new Date()
+    }
+  });
 };
 
 seed()

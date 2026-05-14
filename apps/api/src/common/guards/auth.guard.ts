@@ -2,7 +2,8 @@ import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedExceptio
 import { Reflector } from "@nestjs/core";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 import type { RequestWithContext } from "../types/request-context";
-import { AUTH_PROVIDER, AuthProvider } from "../../modules/identity/domain/ports/auth-provider.port";
+import { AUTH_PROVIDER } from "../../modules/identity/domain/ports/auth-provider.port";
+import type { AuthProvider } from "../../modules/identity/domain/ports/auth-provider.port";
 import { ResolveAuthenticatedUserUseCase } from "../../modules/identity/application/use-cases/resolve-authenticated-user.use-case";
 
 @Injectable()

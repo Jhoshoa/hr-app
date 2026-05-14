@@ -1,6 +1,7 @@
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import type { TenantContext } from "../../../../common/types/request-context";
-import { USERS_REPOSITORY, UsersRepository } from "../../domain/ports/users.repository.port";
+import { USERS_REPOSITORY } from "../../domain/ports/users.repository.port";
+import type { UsersRepository } from "../../domain/ports/users.repository.port";
 
 interface ResolveTenantContextInput {
   readonly userId: string;
