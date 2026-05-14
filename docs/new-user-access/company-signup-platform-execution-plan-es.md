@@ -7,6 +7,107 @@ Documentos base:
 ```text
 docs/new-user-access/company-signup-and-access-approval-plan.md
 docs/new-user-access/platform-owner-bootstrap-and-auth-es.md
+docs/new-user-access/supabase-auth-dev-user-seeding-plan.md
+docs/loading-state/auth-resolve-route-and-role-based-loading-plan.md
+```
+
+## Estado Actual Actualizado - 14 De Mayo De 2026
+
+Este plan fue creado antes de varias mejoras de autenticacion y acceso local.
+El flujo actual ya no usa auto-join ni `PLATFORM_OWNER_EMAIL` como mecanismo
+principal de desarrollo.
+
+### Implementado
+
+```text
+Phase 1: Base de datos y Prisma.
+Phase 2: Identity pending users y platform roles.
+Phase 3: Platform authorization.
+Phase 4: Bootstrap local, reemplazado por Supabase Auth dev user seeding.
+Phase 5: Backend public company signup.
+Phase 6: Backend platform approval.
+Phase 7: Frontend auth gate y platform access.
+Phase 8: Frontend public company signup.
+```
+
+Tambien se implemento un flujo adicional no contemplado originalmente:
+
+```text
+/auth/resolve
+```
+
+Ese resolver centraliza el landing post-login segun `/me`, evita mostrar
+dashboard a usuarios platform-only, y valida `redirectTo` antes de redirigir.
+
+### Parcial
+
+```text
+Phase 10: Navigation y permisos frontend.
+Phase 11: Auditoria y eventos.
+Phase 12: Pruebas end-to-end y criterios de aceptacion.
+```
+
+### Pendiente Principal
+
+```text
+Phase 9: Frontend Platform Company Signups.
+```
+
+La ruta existe:
+
+```text
+/platform/company-signups
+```
+
+pero todavia muestra un placeholder/skeleton. Falta conectarla al backend real
+con tabla, filtros, drawer de detalle, approve dialog, reject dialog, toasts e
+invalidaciones.
+
+### Decisiones Actualizadas
+
+Autenticacion local de desarrollo:
+
+```text
+Supabase Auth real + Postgres local.
+```
+
+Usuarios de desarrollo:
+
+```text
+platform.owner@example.test / Password123!
+demo.owner@example.test / Password123!
+secondary.owner@example.test / Password123!
+```
+
+Comandos actuales:
+
+```powershell
+corepack pnpm db:rebuild:local
+corepack pnpm auth:seed:dev
+```
+
+Variables removidas del flujo normal:
+
+```text
+DEFAULT_TENANT_SLUG
+DEFAULT_TENANT_ROLE
+AUTO_JOIN_DEFAULT_TENANT
+DEV_SEED_USER_EMAIL
+PLATFORM_OWNER_EMAIL
+SEED_PLATFORM_OWNER_TENANT_MEMBERSHIP
+```
+
+Variable de desarrollo vigente:
+
+```env
+DEV_AUTH_SEED_PASSWORD=Password123!
+```
+
+El backend ya no auto-asigna tenants durante `/me`. El acceso depende solo de:
+
+```text
+TenantMembership
+PlatformUserRole
 ```
 
 ## Objetivo
@@ -306,7 +407,9 @@ pnpm --filter @hr-app/api typecheck
 
 ### Objetivo
 
-Permitir que el login con Google conecte con un `User` creado previamente por email.
+Permitir que cualquier login valido de Supabase Auth conecte con un `User`
+creado previamente por email, incluyendo email/password sembrado para
+desarrollo y Google OAuth para usuarios reales.
 
 ### Backend
 
@@ -360,11 +463,13 @@ platformRoles: PlatformRoleKey[];
 }
 ```
 
-### Validacion Google
+### Validacion Supabase Auth
 
-Si `ExternalAuthUser` puede exponer email verified, exigirlo para vincular usuarios
-pendientes. Si Supabase provider actual no lo expone, dejar TODO explicito en el provider
-y validar lo disponible en metadata.
+Si `ExternalAuthUser` puede exponer email verified, exigirlo para vincular
+usuarios pendientes. Esto aplica tanto para Google OAuth como para
+email/password manejado por Supabase Auth.
+
+El backend no implementa passwords propios. Solo acepta JWTs de Supabase.
 
 ### Tests
 
@@ -443,19 +548,35 @@ platform route con PLATFORM_ADMIN en approve -> 200/expected use case
 
 ### Objetivo
 
-Crear el primer platform owner por email sin crear password.
+Crear usuarios y accesos conocidos para desarrollo local.
+
+Estado actualizado:
+
+```text
+Implementado con Supabase Auth dev user seeding.
+```
+
+El approach original con `PLATFORM_OWNER_EMAIL` fue reemplazado porque no
+permitia iniciar sesion con los usuarios demo. Ahora se crean usuarios reales en
+Supabase Auth y registros equivalentes en la base local de la app.
 
 ### Env
 
-Agregar a `.env.example`:
+Variable actual:
 
 ```env
-PLATFORM_OWNER_EMAIL=
-SEED_SAMPLE_COMPANY_SIGNUPS=true
+DEV_AUTH_SEED_PASSWORD=Password123!
 ```
 
-Actualizar backend env schema/config si el API necesita leerlo. Para `packages/database`
-seed puede leer `process.env.PLATFORM_OWNER_EMAIL` directamente.
+Requiere tambien:
+
+```env
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` se usa solo en scripts/backend. Nunca debe exponerse
+como `NEXT_PUBLIC_*`.
 
 ### Seeder
 
@@ -463,6 +584,7 @@ Actualizar:
 
 ```text
 packages/database/prisma/seed.ts
+packages/database/scripts/seed-supabase-auth-users.ts
 ```
 
 Logica:
@@ -471,21 +593,18 @@ Logica:
 1. Seed assuresoft-demo.
 2. Seed permissions.
 3. Seed owner role y role permissions.
-4. Si PLATFORM_OWNER_EMAIL existe:
-   - upsert User por email.
-   - status ACTIVE o INVITED.
-   - externalAuthProvider/externalAuthUserId null.
-   - upsert PlatformUserRole PLATFORM_OWNER.
-   - opcional: upsert TenantMembership owner de assuresoft-demo solo en development.
-5. Si SEED_SAMPLE_COMPANY_SIGNUPS=true:
-   - crear 2-3 CompanySignupRequest PENDING.
-   - crear 1 REJECTED/APPROVED solo si ayuda para UI.
+4. Seed platform.owner@example.test como PlatformUserRole PLATFORM_OWNER.
+5. Seed demo.owner@example.test como owner de assuresoft-demo.
+6. Seed secondary.owner@example.test como owner de secondary-demo.
+7. Seed pending.signup@example.test como CompanySignupRequest PENDING.
+8. auth:seed:dev crea/actualiza los usuarios login en Supabase Auth.
 ```
 
 Precaucion:
 
 ```text
-El seeder no debe crear passwords.
+El seeder Prisma no crea passwords.
+El script auth:seed:dev crea passwords solo en Supabase Auth para desarrollo.
 El seeder no debe correr privilegios permanentes en produccion.
 ```
 
@@ -804,6 +923,25 @@ tenant owner without platform role cannot access /platform endpoints
 
 Permitir que un platform owner sin tenants entre a `/platform`.
 
+Estado actualizado:
+
+```text
+Implementado, incluyendo /auth/resolve.
+```
+
+El post-login ya no debe enviar al usuario directo a `/dashboard`. El flujo
+actual es:
+
+```text
+/login
+  -> Supabase sign in
+  -> /auth/resolve
+  -> /me
+  -> /platform/company-signups | /dashboard | /no-access
+```
+
+Esto evita que usuarios platform-only vean contenido tenant por unos segundos.
+
 ### Types
 
 Actualizar:
@@ -825,7 +963,7 @@ Cambiar logica:
 
 ```text
 si tenants.length === 0 y platformRoles.length === 0 -> /no-access
-si tenants.length === 0 y platformRoles.length > 0 -> permitir rutas /platform
+si tenants.length === 0 y platformRoles.length > 0 -> redirigir a /platform/company-signups
 si esta en ruta tenant app sin tenant -> redirigir a /platform/company-signups o selector futuro
 ```
 
@@ -877,6 +1015,13 @@ Nav inicial:
 Company signups
 Tenants (placeholder/futuro)
 Platform users (placeholder/futuro)
+```
+
+Nota actual:
+
+```text
+PlatformShell y PlatformAccessGate ya existen.
+La pagina /platform/company-signups existe pero todavia requiere UI real.
 ```
 
 ## Phase 8: Frontend Public Company Signup
@@ -1011,6 +1156,14 @@ error generic: No se pudo enviar la solicitud
 ### Objetivo
 
 Crear dashboard interno para revisar y aprobar/rechazar requests.
+
+Estado actualizado:
+
+```text
+Pendiente principal.
+```
+
+Esta es la siguiente fase recomendada.
 
 ### Archivos
 
@@ -1251,8 +1404,9 @@ pnpm --filter @hr-app/web test
 
 ### Flujo Manual Minimo
 
-1. Seed con `PLATFORM_OWNER_EMAIL`.
-2. Login con Google usando ese email.
+1. Ejecutar `corepack pnpm db:rebuild:local`.
+2. Ejecutar `corepack pnpm auth:seed:dev`.
+3. Login con `platform.owner@example.test / Password123!`.
 3. Entrar a `/platform/company-signups` sin tenant membership.
 4. Abrir `/company-signup`.
 5. Enviar solicitud publica.
@@ -1261,7 +1415,7 @@ pnpm --filter @hr-app/web test
 8. Confirmar que se creo Tenant.
 9. Confirmar que se creo o reutilizo User por adminEmail.
 10. Confirmar `TenantMembership` ACTIVE owner.
-11. Login con Google como first owner.
+11. Login con Supabase Auth como first owner.
 12. Confirmar `/me` devuelve tenant access.
 
 ### Casos De Error Obligatorios
@@ -1279,25 +1433,34 @@ reject doble devuelve 409
 
 ## Orden Recomendado De Implementacion
 
-1. Phase 1: Prisma schema + migration.
-2. Phase 2: pending users + `/me` platformRoles.
-3. Phase 3: platform roles guard/decorator.
-4. Phase 4: seed `PLATFORM_OWNER_EMAIL`.
-5. Phase 5: public signup endpoint + tests.
-6. Phase 6: platform approval endpoints + tests.
-7. Phase 7: frontend auth/platform gate.
-8. Phase 8: public signup UI.
-9. Phase 9: platform dashboard UI.
-10. Phase 10: navigation gates.
-11. Phase 11: audit/events polish.
-12. Phase 12: e2e/manual verification.
+Estado historico original:
+
+```text
+1. Phase 1: Prisma schema + migration. Done.
+2. Phase 2: pending users + /me platformRoles. Done.
+3. Phase 3: platform roles guard/decorator. Done.
+4. Phase 4: local bootstrap. Done con auth:seed:dev.
+5. Phase 5: public signup endpoint + tests. Done.
+6. Phase 6: platform approval endpoints + tests. Done.
+7. Phase 7: frontend auth/platform gate. Done.
+8. Phase 8: public signup UI. Done.
+```
+
+Orden actual recomendado:
+
+```text
+1. Phase 9: Frontend Platform Company Signups.
+2. Phase 10: Platform role UI gates/navigation polish.
+3. Phase 11: Audit/events polish.
+4. Phase 12: E2E/manual verification.
+5. Production onboarding/invitations/access management.
+```
 
 ## Riesgos Y Precauciones
 
 ### Riesgo: Platform Owner Sin Tenant
 
-Hoy la app asume que usuario autenticado sin tenants no tiene acceso. Esto debe cambiar
-antes de probar platform dashboard.
+Resuelto para el flujo actual. La app ya soporta platform users sin tenants.
 
 Solucion:
 
@@ -1305,6 +1468,7 @@ Solucion:
 /me devuelve platformRoles.
 AppAccessGate permite acceso si platformRoles.length > 0.
 PlatformShell no depende de currentTenant.
+/auth/resolve evita el flash inicial del dashboard.
 ```
 
 ### Riesgo: baseApi Envia x-tenant-slug A Platform
@@ -1312,7 +1476,7 @@ PlatformShell no depende de currentTenant.
 No es critico si backend usa `@SkipTenant()`, pero los endpoints platform no deben leer
 tenant context.
 
-### Riesgo: Usuario Pendiente Y Login Google
+### Riesgo: Usuario Pendiente Y Login Supabase Auth
 
 Si `externalAuthUserId` sigue required, approval no puede crear User pendiente.
 
@@ -1320,6 +1484,7 @@ Solucion:
 
 ```text
 hacer externalAuthProvider/externalAuthUserId nullable antes de approval.
+vincular por email verificado cuando el usuario inicia sesion con Supabase Auth.
 ```
 
 ### Riesgo: Race Conditions
@@ -1365,13 +1530,13 @@ PlatformRoleGate solo platform.
 El feature esta listo cuando:
 
 ```text
-public signup crea solo CompanySignupRequest PENDING
-availability endpoints funcionan con debounce desde UI
-platform owner puede entrar sin tenant
-platform dashboard lista PENDING requests
+public signup crea solo CompanySignupRequest PENDING [done]
+availability endpoints funcionan con debounce desde UI [done]
+platform owner puede entrar sin tenant [done]
+platform dashboard lista PENDING requests [pending Phase 9]
 approve crea tenant + roles + first admin user + membership en una transaccion
 reject deja audit trail
-first admin puede logearse con Google y recibir tenant access
+first admin puede logearse con Supabase Auth y recibir tenant access
 tenant owner no puede acceder a /platform
 platform roles no dependen de TenantMembership
 frontend muestra skeletons, empty states, errors y toasts

@@ -6,7 +6,7 @@ import { ErrorState } from "@/components/data-display/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { setCurrentUser, setPlatformRoles } from "@/features/auth/auth-slice";
 import { useGetMeQuery } from "@/features/auth/current-user-api";
-import { setTenants } from "@/features/tenants/tenant-slice";
+import { selectTenant, setTenants } from "@/features/tenants/tenant-slice";
 import {
   clearWorkspaceContextCache,
   loadWorkspaceContextCache,
@@ -23,6 +23,7 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const isTenantHydrated = useAppSelector((state) => state.tenant.isHydrated);
+  const currentTenant = useAppSelector((state) => state.tenant.currentTenant);
   const [cachedWorkspace] = useState(() => loadWorkspaceContextCache());
   const { data, isError, isLoading } = useGetMeQuery(undefined, { refetchOnMountOrArgChange: true });
   const hasTenantContext = useMemo(() => isTenantHydrated, [isTenantHydrated]);
@@ -35,6 +36,9 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
     dispatch(setCurrentUser(cachedWorkspace.user));
     dispatch(setPlatformRoles(cachedWorkspace.platformRoles));
     dispatch(setTenants(cachedWorkspace.tenants));
+    if (cachedWorkspace.selectedTenantSlug) {
+      dispatch(selectTenant(cachedWorkspace.selectedTenantSlug));
+    }
   }, [cachedWorkspace, dispatch, isTenantHydrated]);
 
   useEffect(() => {
@@ -57,13 +61,16 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
     saveWorkspaceContextCache({
       user: data.user,
       tenants: data.tenants,
-      platformRoles: data.platformRoles
+      platformRoles: data.platformRoles,
+      selectedTenantSlug: data.tenants.find((tenant) => tenant.tenantSlug === currentTenant.tenantSlug)
+        ? currentTenant.tenantSlug
+        : data.tenants[0]?.tenantSlug
     });
 
     if (data.tenants.length === 0 && data.platformRoles.length > 0) {
       router.replace(platformHomePath);
     }
-  }, [data, dispatch, router]);
+  }, [currentTenant.tenantSlug, data, dispatch, router]);
 
   if (isLoading) {
     return <WorkspaceLoadingState />;

@@ -6,10 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { baseApi } from "@/features/api/base-api";
 import { clearCurrentUser } from "@/features/auth/auth-slice";
-import { clearTenants, selectTenant } from "@/features/tenants/tenant-slice";
+import { clearTenants } from "@/features/tenants/tenant-slice";
 import { useAvailableTenants } from "@/hooks/use-available-tenants";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useSwitchTenant } from "@/hooks/use-switch-tenant";
 import { loginPath } from "@/lib/auth/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { clearWorkspaceContextCache } from "@/lib/auth/workspace-cache";
@@ -27,10 +28,11 @@ export function UserMenu() {
   const currentUser = useCurrentUser();
   const currentTenant = useCurrentTenant();
   const availableTenants = useAvailableTenants();
+  const switchTenant = useSwitchTenant();
   const displayName = getDisplayName(currentUser?.name, currentUser?.email);
 
   const handleTenantSelect = (tenantSlug: string) => {
-    dispatch(selectTenant(tenantSlug));
+    switchTenant(tenantSlug);
     setIsOpen(false);
   };
 

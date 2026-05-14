@@ -28,11 +28,15 @@ export const tenantSlice = createSlice({
 
       if (tenant) {
         state.currentTenant = tenant;
+        state.isHydrated = true;
       }
     },
     setTenants: (state, action: { payload: TenantSummary[] }) => {
       state.availableTenants = action.payload;
-      state.currentTenant = action.payload[0] ?? currentTenantFixture;
+      state.currentTenant =
+        action.payload.find((tenant) => tenant.tenantSlug === state.currentTenant.tenantSlug) ??
+        action.payload[0] ??
+        currentTenantFixture;
       state.isHydrated = action.payload.length > 0;
     },
     updateCurrentTenantName: (state, action: { payload: string }) => {

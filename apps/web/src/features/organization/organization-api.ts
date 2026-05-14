@@ -8,6 +8,7 @@ import type {
 
 interface OrganizationRecordRequest {
   readonly kind: OrganizationRecordKind;
+  readonly tenantSlug: string;
 }
 
 interface OrganizationRecordMutationRequest extends OrganizationRecordRequest {
@@ -28,7 +29,9 @@ export const organizationApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listOrganizationRecords: builder.query<OrganizationRecord[], OrganizationRecordRequest>({
       query: ({ kind }) => pathFor(kind),
-      providesTags: (_result, _error, { kind }) => [{ type: "OrganizationRecord", id: kind }]
+      providesTags: (_result, _error, { kind, tenantSlug }) => [
+        { type: "OrganizationRecord", id: `${tenantSlug}:${kind}` }
+      ]
     }),
     createOrganizationRecord: builder.mutation<OrganizationRecord, OrganizationRecordMutationRequest>({
       query: ({ kind, payload }) => ({
@@ -36,7 +39,9 @@ export const organizationApi = baseApi.injectEndpoints({
         method: "POST",
         body: payload
       }),
-      invalidatesTags: (_result, _error, { kind }) => [{ type: "OrganizationRecord", id: kind }]
+      invalidatesTags: (_result, _error, { kind, tenantSlug }) => [
+        { type: "OrganizationRecord", id: `${tenantSlug}:${kind}` }
+      ]
     }),
     updateOrganizationRecord: builder.mutation<OrganizationRecord, OrganizationRecordUpdateRequest>({
       query: ({ kind, id, payload }) => ({
@@ -44,21 +49,27 @@ export const organizationApi = baseApi.injectEndpoints({
         method: "PATCH",
         body: payload
       }),
-      invalidatesTags: (_result, _error, { kind }) => [{ type: "OrganizationRecord", id: kind }]
+      invalidatesTags: (_result, _error, { kind, tenantSlug }) => [
+        { type: "OrganizationRecord", id: `${tenantSlug}:${kind}` }
+      ]
     }),
     archiveOrganizationRecord: builder.mutation<OrganizationRecord, OrganizationRecordByIdRequest>({
       query: ({ kind, id }) => ({
         url: `${pathFor(kind)}/${id}/archive`,
         method: "POST"
       }),
-      invalidatesTags: (_result, _error, { kind }) => [{ type: "OrganizationRecord", id: kind }]
+      invalidatesTags: (_result, _error, { kind, tenantSlug }) => [
+        { type: "OrganizationRecord", id: `${tenantSlug}:${kind}` }
+      ]
     }),
     reactivateOrganizationRecord: builder.mutation<OrganizationRecord, OrganizationRecordByIdRequest>({
       query: ({ kind, id }) => ({
         url: `${pathFor(kind)}/${id}/reactivate`,
         method: "POST"
       }),
-      invalidatesTags: (_result, _error, { kind }) => [{ type: "OrganizationRecord", id: kind }]
+      invalidatesTags: (_result, _error, { kind, tenantSlug }) => [
+        { type: "OrganizationRecord", id: `${tenantSlug}:${kind}` }
+      ]
     })
   })
 });

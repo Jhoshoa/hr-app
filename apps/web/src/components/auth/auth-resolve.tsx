@@ -67,7 +67,8 @@ export function AuthResolve() {
     saveWorkspaceContextCache({
       user: data.user,
       tenants: data.tenants,
-      platformRoles: data.platformRoles
+      platformRoles: data.platformRoles,
+      selectedTenantSlug: data.tenants[0]?.tenantSlug
     });
 
     router.replace(resolveInitialRoute(data, redirectTo));

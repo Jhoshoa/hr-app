@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
+import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { cn } from "@/lib/utils";
 import {
   useArchiveOrganizationRecordMutation,
@@ -76,11 +77,16 @@ export function OrganizationSettingsPage() {
 
 function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationCatalogConfig }>) {
   const { showToast } = useToast();
+  const currentTenant = useCurrentTenant();
+  const tenantSlug = currentTenant.tenantSlug;
   const [page, setPage] = useState(1);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
-  const { data = [], isError, isFetching } = useListOrganizationRecordsQuery({ kind: catalog.kind });
+  const { data = [], isError, isFetching } = useListOrganizationRecordsQuery(
+    { kind: catalog.kind, tenantSlug },
+    { skip: !tenantSlug }
+  );
   const [archiveRecord, archiveState] = useArchiveOrganizationRecordMutation();
   const [reactivateRecord, reactivateState] = useReactivateOrganizationRecordMutation();
 
@@ -90,6 +96,12 @@ function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationC
   );
   const paginated = paginateRecords(sortedRecords, page, ORGANIZATION_PAGE_SIZE);
 
+  useEffect(() => {
+    setPage(1);
+    setDrawer(null);
+    setPendingAction(null);
+  }, [catalog.kind, tenantSlug]);
+
   const onConfirmAction = async () => {
     if (!pendingAction) {
       return;
@@ -97,10 +109,10 @@ function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationC
 
     try {
       if (pendingAction.action === "archive") {
-        await archiveRecord({ kind: catalog.kind, id: pendingAction.record.id }).unwrap();
+        await archiveRecord({ kind: catalog.kind, id: pendingAction.record.id, tenantSlug }).unwrap();
         showToast({ title: `${catalog.singularLabel} archived`, tone: "success" });
       } else {
-        await reactivateRecord({ kind: catalog.kind, id: pendingAction.record.id }).unwrap();
+        await reactivateRecord({ kind: catalog.kind, id: pendingAction.record.id, tenantSlug }).unwrap();
         showToast({ title: `${catalog.singularLabel} reactivated`, tone: "success" });
       }
       setPendingAction(null);
@@ -213,7 +225,7 @@ function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationC
         </footer>
       ) : null}
 
-      <OrganizationRecordDrawer catalog={catalog} drawer={drawer} onClose={() => setDrawer(null)} />
+      <OrganizationRecordDrawer catalog={catalog} drawer={drawer} onClose={() => setDrawer(null)} tenantSlug={tenantSlug} />
 
       <ConfirmDialog
         confirmLabel={pendingAction?.action === "archive" ? "Archive" : "Reactivate"}
@@ -235,11 +247,13 @@ function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationC
 function OrganizationRecordDrawer({
   catalog,
   drawer,
-  onClose
+  onClose,
+  tenantSlug
 }: Readonly<{
   catalog: OrganizationCatalogConfig;
   drawer: DrawerState | null;
   onClose: () => void;
+  tenantSlug: string;
 }>) {
   const { showToast } = useToast();
   const [createRecord, createState] = useCreateOrganizationRecordMutation();
@@ -295,10 +309,10 @@ function OrganizationRecordDrawer({
 
     try {
       if (drawer?.mode === "edit") {
-        await updateRecord({ kind: catalog.kind, id: drawer.record.id, payload }).unwrap();
+        await updateRecord({ kind: catalog.kind, id: drawer.record.id, payload, tenantSlug }).unwrap();
         showToast({ title: `${catalog.singularLabel} updated`, tone: "success" });
       } else {
-        await createRecord({ kind: catalog.kind, payload }).unwrap();
+        await createRecord({ kind: catalog.kind, payload, tenantSlug }).unwrap();
         showToast({ title: `${catalog.singularLabel} created`, tone: "success" });
       }
       onClose();

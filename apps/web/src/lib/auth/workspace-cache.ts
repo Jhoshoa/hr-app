@@ -6,6 +6,7 @@ export interface WorkspaceContextCache {
   readonly user: CurrentUser;
   readonly tenants: TenantSummary[];
   readonly platformRoles: PlatformRoleKey[];
+  readonly selectedTenantSlug?: string;
 }
 
 const isWorkspaceContextCache = (value: unknown): value is WorkspaceContextCache => {
@@ -46,6 +47,23 @@ export const saveWorkspaceContextCache = (context: WorkspaceContextCache) => {
   }
 
   window.localStorage.setItem(workspaceCacheKey, JSON.stringify(context));
+};
+
+export const saveSelectedTenantSlugToWorkspaceCache = (tenantSlug: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const currentCache = loadWorkspaceContextCache();
+
+  if (!currentCache) {
+    return;
+  }
+
+  saveWorkspaceContextCache({
+    ...currentCache,
+    selectedTenantSlug: tenantSlug
+  });
 };
 
 export const clearWorkspaceContextCache = () => {

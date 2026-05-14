@@ -55,7 +55,8 @@ export function PlatformAccessGate({ children }: PlatformAccessGateProps) {
     saveWorkspaceContextCache({
       user: data.user,
       tenants: data.tenants,
-      platformRoles: data.platformRoles
+      platformRoles: data.platformRoles,
+      selectedTenantSlug: data.tenants[0]?.tenantSlug
     });
 
     if (data.platformRoles.length > 0 && !window.location.pathname.startsWith("/platform")) {

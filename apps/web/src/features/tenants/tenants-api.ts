@@ -11,6 +11,7 @@ export interface TenantSettings {
 }
 
 export interface UpdateTenantSettingsRequest {
+  readonly tenantSlug: string;
   readonly name?: string;
   readonly defaultLanguage?: "es" | "en";
   readonly defaultCurrency?: "BOB" | "USD";
@@ -19,17 +20,20 @@ export interface UpdateTenantSettingsRequest {
 
 export const tenantsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getCurrentTenant: builder.query<TenantSettings, void>({
+    getCurrentTenant: builder.query<TenantSettings, string>({
       query: () => "tenants/current",
-      providesTags: [{ type: "Tenant", id: "current" }]
+      providesTags: (_result, _error, tenantSlug) => [{ type: "Tenant", id: `current:${tenantSlug}` }]
     }),
     updateCurrentTenant: builder.mutation<TenantSettings, UpdateTenantSettingsRequest>({
-      query: (body) => ({
+      query: ({ tenantSlug: _tenantSlug, ...body }) => ({
         url: "tenants/current",
         method: "PATCH",
         body
       }),
-      invalidatesTags: [{ type: "Tenant", id: "current" }, "CurrentUser"]
+      invalidatesTags: (_result, _error, { tenantSlug }) => [
+        { type: "Tenant", id: `current:${tenantSlug}` },
+        "CurrentUser"
+      ]
     })
   })
 });

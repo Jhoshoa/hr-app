@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { useAppDispatch } from "@/store/hooks";
 import { companySettingsSchema, type CompanySettingsFormValues } from "../company-settings-schema";
 import { useGetCurrentTenantQuery, useUpdateCurrentTenantMutation } from "../tenants-api";
@@ -39,7 +40,11 @@ const timezoneOptions = [
 export function CompanySettingsPage() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
-  const { data: tenant, isError, isFetching } = useGetCurrentTenantQuery();
+  const currentTenant = useCurrentTenant();
+  const tenantSlug = currentTenant.tenantSlug;
+  const { data: tenant, isError, isFetching } = useGetCurrentTenantQuery(tenantSlug, {
+    skip: !tenantSlug
+  });
   const [updateTenant, updateState] = useUpdateCurrentTenantMutation();
   const showInitialSkeleton = isFetching && !tenant;
 
@@ -73,7 +78,7 @@ export function CompanySettingsPage() {
 
   const onSubmit = async (values: CompanySettingsFormValues) => {
     try {
-      const updatedTenant = await updateTenant(values).unwrap();
+      const updatedTenant = await updateTenant({ tenantSlug, ...values }).unwrap();
       dispatch(updateCurrentTenantName(updatedTenant.name));
       reset({
         name: updatedTenant.name,
