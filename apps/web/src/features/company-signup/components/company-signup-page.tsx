@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
@@ -74,7 +74,7 @@ export function CompanySignupPage() {
   const [checkWebsite, websiteAvailability] = useLazyCheckCompanySignupWebsiteAvailabilityQuery();
 
   const {
-    formState: { errors, isSubmitting, touchedFields },
+    formState: { errors, isSubmitting, isValid },
     handleSubmit,
     register,
     watch
@@ -93,6 +93,7 @@ export function CompanySignupPage() {
       preferredLanguage: "es",
       timezone: ""
     },
+    mode: "onChange",
     resolver: zodResolver(companySignupSchema)
   });
 
@@ -108,15 +109,22 @@ export function CompanySignupPage() {
   const adminEmailConflict =
     adminEmailAvailability.currentData?.value === debouncedAdminEmail &&
     adminEmailAvailability.currentData.available === false;
+  const tenantSlugAvailabilityResolved = tenantSlugAvailability.currentData?.value === debouncedTenantSlug;
+  const adminEmailAvailabilityResolved = adminEmailAvailability.currentData?.value === debouncedAdminEmail;
   const isSubmitDisabled =
     Boolean(submittedRequest) ||
     createState.isLoading ||
     isSubmitting ||
+    !isValid ||
+    tenantSlugAvailability.isFetching ||
+    adminEmailAvailability.isFetching ||
+    !tenantSlugAvailabilityResolved ||
+    !adminEmailAvailabilityResolved ||
     tenantSlugConflict ||
     adminEmailConflict;
 
   useEffect(() => {
-    if (!touchedFields.desiredTenantSlug || !canCheckTenantSlugAvailability(debouncedTenantSlug)) {
+    if (!canCheckTenantSlugAvailability(debouncedTenantSlug)) {
       return;
     }
 
@@ -126,10 +134,10 @@ export function CompanySignupPage() {
 
     lastTenantSlugCheckRef.current = debouncedTenantSlug;
     void checkTenantSlug(debouncedTenantSlug, true);
-  }, [checkTenantSlug, debouncedTenantSlug, touchedFields.desiredTenantSlug]);
+  }, [checkTenantSlug, debouncedTenantSlug]);
 
   useEffect(() => {
-    if (!touchedFields.adminEmail || !canCheckAdminEmailAvailability(debouncedAdminEmail)) {
+    if (!canCheckAdminEmailAvailability(debouncedAdminEmail)) {
       return;
     }
 
@@ -139,10 +147,10 @@ export function CompanySignupPage() {
 
     lastAdminEmailCheckRef.current = debouncedAdminEmail;
     void checkAdminEmail(debouncedAdminEmail, true);
-  }, [checkAdminEmail, debouncedAdminEmail, touchedFields.adminEmail]);
+  }, [checkAdminEmail, debouncedAdminEmail]);
 
   useEffect(() => {
-    if (!touchedFields.companyWebsite || !canCheckCompanyWebsiteAvailability(debouncedCompanyWebsite)) {
+    if (!canCheckCompanyWebsiteAvailability(debouncedCompanyWebsite)) {
       return;
     }
 
@@ -152,7 +160,7 @@ export function CompanySignupPage() {
 
     lastWebsiteCheckRef.current = debouncedCompanyWebsite;
     void checkWebsite(debouncedCompanyWebsite, true);
-  }, [checkWebsite, debouncedCompanyWebsite, touchedFields.companyWebsite]);
+  }, [checkWebsite, debouncedCompanyWebsite]);
 
   const onSubmit = async (values: CompanySignupRequestPayload) => {
     if (submitInFlightRef.current || createState.isLoading || submittedRequest) {
@@ -207,20 +215,21 @@ export function CompanySignupPage() {
             <section className="rounded-lg border border-border bg-surface p-5">
               <h2 className="text-base font-semibold">Company</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field label="Company name" error={errors.companyName?.message}>
-                  <Input placeholder="Acme Operations" {...register("companyName")} />
+                <Field label="Company name" error={errors.companyName?.message} required>
+                  <Input placeholder="Acme Operations" required {...register("companyName")} />
                 </Field>
 
-                <Field label="Desired workspace slug" error={errors.desiredTenantSlug?.message}>
+                <Field label="Desired workspace slug" error={errors.desiredTenantSlug?.message} required>
                   <Input
                     autoCapitalize="none"
                     autoCorrect="off"
                     placeholder="acme-operations"
+                    required
                     {...register("desiredTenantSlug")}
                   />
                   <AvailabilityMessage
                     isFetching={tenantSlugAvailability.isFetching}
-                    isTouched={Boolean(touchedFields.desiredTenantSlug)}
+                    isTouched={Boolean(desiredTenantSlug)}
                     status={
                       tenantSlugAvailability.currentData?.value === debouncedTenantSlug
                         ? tenantSlugAvailability.currentData
@@ -234,7 +243,7 @@ export function CompanySignupPage() {
                   <Input placeholder="https://acme.example" {...register("companyWebsite")} />
                   <WebsiteAvailabilityMessage
                     isFetching={websiteAvailability.isFetching}
-                    isTouched={Boolean(touchedFields.companyWebsite)}
+                    isTouched={Boolean(companyWebsite)}
                     status={
                       websiteAvailability.currentData?.value === debouncedCompanyWebsite
                         ? websiteAvailability.currentData
@@ -243,8 +252,8 @@ export function CompanySignupPage() {
                   />
                 </Field>
 
-                <Field label="Company size" error={errors.companySize?.message}>
-                  <Select {...register("companySize")}>
+                <Field label="Company size" error={errors.companySize?.message} required>
+                  <Select required {...register("companySize")}>
                     {companySizeOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -263,8 +272,8 @@ export function CompanySignupPage() {
                   </Select>
                 </Field>
 
-                <Field label="Timezone" error={errors.timezone?.message}>
-                  <Select {...register("timezone")}>
+                <Field label="Timezone" error={errors.timezone?.message} required>
+                  <Select required {...register("timezone")}>
                     {timezoneOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -278,26 +287,27 @@ export function CompanySignupPage() {
             <section className="rounded-lg border border-border bg-surface p-5">
               <h2 className="text-base font-semibold">Admin user</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field label="First name" error={errors.adminFirstName?.message}>
-                  <Input placeholder="Maria" {...register("adminFirstName")} />
+                <Field label="First name" error={errors.adminFirstName?.message} required>
+                  <Input placeholder="Maria" required {...register("adminFirstName")} />
                 </Field>
 
-                <Field label="Last name" error={errors.adminLastName?.message}>
-                  <Input placeholder="Rojas" {...register("adminLastName")} />
+                <Field label="Last name" error={errors.adminLastName?.message} required>
+                  <Input placeholder="Rojas" required {...register("adminLastName")} />
                 </Field>
 
-                <Field label="Admin email" error={errors.adminEmail?.message}>
+                <Field label="Admin email" error={errors.adminEmail?.message} required>
                   <Input
                     autoCapitalize="none"
                     autoComplete="email"
                     autoCorrect="off"
                     placeholder="admin@company.com"
+                    required
                     type="email"
                     {...register("adminEmail")}
                   />
                   <AvailabilityMessage
                     isFetching={adminEmailAvailability.isFetching}
-                    isTouched={Boolean(touchedFields.adminEmail)}
+                    isTouched={Boolean(adminEmail)}
                     status={
                       adminEmailAvailability.currentData?.value === debouncedAdminEmail
                         ? adminEmailAvailability.currentData
@@ -311,8 +321,8 @@ export function CompanySignupPage() {
                   <Input placeholder="+1 555 0100" {...register("phone")} />
                 </Field>
 
-                <Field label="Preferred language" error={errors.preferredLanguage?.message}>
-                  <Select {...register("preferredLanguage")}>
+                <Field label="Preferred language" error={errors.preferredLanguage?.message} required>
+                  <Select required {...register("preferredLanguage")}>
                     <option value="es">Spanish</option>
                     <option value="en">English</option>
                   </Select>
@@ -359,25 +369,37 @@ export function CompanySignupPage() {
 function Field({
   children,
   error,
-  label
-}: Readonly<{ children: ReactNode; error?: string; label: string }>) {
+  label,
+  required
+}: Readonly<{ children: ReactNode; error?: string; label: string; required?: boolean }>) {
   return (
     <label className="block">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium">
+        {label}
+        {required ? (
+          <span aria-hidden="true" className="ml-1">
+            *
+          </span>
+        ) : null}
+      </span>
       <div className="mt-1">{children}</div>
       {error ? <span className="mt-1 block text-sm text-rose-600">{error}</span> : null}
     </label>
   );
 }
 
-function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
+export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select(
+  props,
+  ref
+) {
   return (
     <select
       className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+      ref={ref}
       {...props}
     />
   );
-}
+});
 
 function CheckItem({ children }: Readonly<{ children: ReactNode }>) {
   return (

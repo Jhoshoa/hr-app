@@ -42,20 +42,27 @@ describe("companySignupSchema", () => {
   it("converts empty optional fields to undefined", () => {
     const result = companySignupSchema.parse({
       ...validInput,
-      companySize: "",
       companyWebsite: "",
       country: "",
       message: "",
       phone: "",
-      timezone: ""
     });
 
-    expect(result.companySize).toBeUndefined();
     expect(result.companyWebsite).toBeUndefined();
     expect(result.country).toBeUndefined();
     expect(result.message).toBeUndefined();
     expect(result.phone).toBeUndefined();
-    expect(result.timezone).toBeUndefined();
+  });
+
+  it("requires company size, timezone, and preferred language", () => {
+    const result = companySignupSchema.safeParse({
+      ...validInput,
+      companySize: "",
+      preferredLanguage: "",
+      timezone: ""
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("guards availability checks with local validation", () => {

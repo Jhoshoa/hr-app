@@ -4,6 +4,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  IsTimeZone,
   Matches,
   MaxLength,
   MinLength
@@ -46,11 +47,10 @@ export class CreateCompanySignupRequestDto {
   @MaxLength(200)
   companyWebsite?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
+  @ApiProperty({ enum: ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"] })
   @IsString()
-  @MaxLength(80)
-  companySize?: string;
+  @IsIn(["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"])
+  companySize!: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -58,11 +58,11 @@ export class CreateCompanySignupRequestDto {
   @MaxLength(80)
   country?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
+  @ApiProperty()
   @IsString()
+  @IsTimeZone()
   @MaxLength(80)
-  timezone?: string;
+  timezone!: string;
 
   @ApiProperty({ default: "es", enum: ["es", "en"] })
   @IsString()

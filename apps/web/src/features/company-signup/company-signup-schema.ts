@@ -8,6 +8,9 @@ const optionalTrimmedString = (maxLength: number) =>
     .max(maxLength)
     .transform((value) => (value === "" ? undefined : value));
 
+const requiredTrimmedString = (message: string, maxLength: number) =>
+  z.string().trim().min(1, message).max(maxLength);
+
 export const normalizeTenantSlugInput = (value: string) =>
   value.trim().toLowerCase().replace(/\s+/g, "-");
 
@@ -20,7 +23,7 @@ export const companySignupSchema = z.object({
   adminFirstName: z.string().trim().min(1, "Enter the admin first name.").max(80, "First name is too long."),
   adminLastName: z.string().trim().min(1, "Enter the admin last name.").max(80, "Last name is too long."),
   companyName: z.string().trim().min(2, "Enter the company name.").max(160, "Company name is too long."),
-  companySize: optionalTrimmedString(80),
+  companySize: requiredTrimmedString("Select a company size.", 80),
   companyWebsite: optionalTrimmedString(200).refine(
     (value) => !value || value.includes("."),
     "Enter a valid company website."
@@ -39,7 +42,7 @@ export const companySignupSchema = z.object({
   message: optionalTrimmedString(1000),
   phone: optionalTrimmedString(40),
   preferredLanguage: z.enum(["es", "en"]),
-  timezone: optionalTrimmedString(80)
+  timezone: requiredTrimmedString("Select a timezone.", 80)
 });
 
 export type CompanySignupFormValues = z.input<typeof companySignupSchema>;
