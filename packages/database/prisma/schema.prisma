@@ -25,6 +25,19 @@ enum MembershipStatus {
   DISABLED
 }
 
+enum CompanySignupStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PlatformRoleKey {
+  PLATFORM_OWNER
+  PLATFORM_ADMIN
+  PLATFORM_SUPPORT
+}
+
 enum RecordStatus {
   ACTIVE
   INACTIVE
@@ -64,44 +77,88 @@ enum CustomFieldVisibility {
 }
 
 model Tenant {
-  id              String             @id @default(uuid()) @db.Uuid
-  name            String
-  slug            String             @unique
-  status          TenantStatus       @default(ACTIVE)
-  defaultLanguage String             @default("es")
-  defaultCurrency String             @default("BOB")
-  timezone        String             @default("America/La_Paz")
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  memberships     TenantMembership[]
-  roles           Role[]
-  auditEvents     AuditEvent[]
-  departments     Department[]
-  locations       Location[]
-  jobTitles       JobTitle[]
-  employmentTypes EmploymentType[]
-  workModes       WorkMode[]
-  clientProjects  ClientProject[]
-  employees       Employee[]
+  id                     String                 @id @default(uuid()) @db.Uuid
+  name                   String
+  slug                   String                 @unique
+  status                 TenantStatus           @default(ACTIVE)
+  defaultLanguage        String                 @default("es")
+  defaultCurrency        String                 @default("BOB")
+  timezone               String                 @default("America/La_Paz")
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  memberships            TenantMembership[]
+  roles                  Role[]
+  auditEvents            AuditEvent[]
+  departments            Department[]
+  locations              Location[]
+  jobTitles              JobTitle[]
+  employmentTypes        EmploymentType[]
+  workModes              WorkMode[]
+  clientProjects         ClientProject[]
+  employees              Employee[]
+  approvedCompanySignups CompanySignupRequest[] @relation("CompanySignupApprovedTenant")
 
   @@index([status])
 }
 
 model User {
-  id                   String             @id @default(uuid()) @db.Uuid
-  email                String             @unique
+  id                   String                 @id @default(uuid()) @db.Uuid
+  email                String                 @unique
   name                 String?
-  status               UserStatus         @default(INVITED)
-  externalAuthProvider String             @default("supabase")
-  externalAuthUserId   String             @unique
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  status               UserStatus             @default(INVITED)
+  externalAuthProvider String?
+  externalAuthUserId   String?                @unique
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
   memberships          TenantMembership[]
+  platformRoles        PlatformUserRole[]
+  reviewedSignups      CompanySignupRequest[] @relation("CompanySignupReviewedBy")
   auditEvents          AuditEvent[]
   employees            Employee[]
 
   @@index([email])
   @@index([externalAuthProvider, externalAuthUserId])
+}
+
+model PlatformUserRole {
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String          @db.Uuid
+  roleKey   PlatformRoleKey
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleKey])
+  @@index([roleKey])
+}
+
+model CompanySignupRequest {
+  id                String              @id @default(uuid()) @db.Uuid
+  companyName       String
+  desiredTenantSlug String
+  adminFirstName    String
+  adminLastName     String
+  adminEmail        String
+  companyWebsite    String?
+  companySize       String?
+  country           String?
+  timezone          String?
+  preferredLanguage String              @default("es")
+  phone             String?
+  message           String?
+  status            CompanySignupStatus @default(PENDING)
+  approvedTenantId  String?             @db.Uuid
+  reviewedByUserId  String?             @db.Uuid
+  reviewedAt        DateTime?
+  rejectionReason   String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  approvedTenant    Tenant?             @relation("CompanySignupApprovedTenant", fields: [approvedTenantId], references: [id], onDelete: SetNull)
+  reviewedBy        User?               @relation("CompanySignupReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([adminEmail])
+  @@index([desiredTenantSlug])
 }
 
 model TenantMembership {
@@ -124,17 +181,17 @@ model TenantMembership {
 }
 
 model Role {
-  id          String             @id @default(uuid()) @db.Uuid
-  tenantId    String?            @db.Uuid
-  key         String
-  name        String
-  description String?
-  isSystemRole Boolean           @default(false)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  tenant      Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships TenantMembership[]
-  permissions RolePermission[]
+  id           String             @id @default(uuid()) @db.Uuid
+  tenantId     String?            @db.Uuid
+  key          String
+  name         String
+  description  String?
+  isSystemRole Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships  TenantMembership[]
+  permissions  RolePermission[]
 
   @@unique([tenantId, key])
   @@index([tenantId])
@@ -144,7 +201,7 @@ model Permission {
   id          String           @id @default(uuid()) @db.Uuid
   key         String           @unique
   description String
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime         @default(now())
   roles       RolePermission[]
 }
 
@@ -177,16 +234,16 @@ model AuditEvent {
 }
 
 model Department {
-  id                 String       @id @default(uuid()) @db.Uuid
-  tenantId           String       @db.Uuid
+  id                 String                  @id @default(uuid()) @db.Uuid
+  tenantId           String                  @db.Uuid
   name               String
-  parentDepartmentId String?      @db.Uuid
-  status             RecordStatus @default(ACTIVE)
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parentDepartment   Department?  @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
-  childDepartments   Department[] @relation("DepartmentHierarchy")
+  parentDepartmentId String?                 @db.Uuid
+  status             RecordStatus            @default(ACTIVE)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentDepartment   Department?             @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
+  childDepartments   Department[]            @relation("DepartmentHierarchy")
   jobAssignments     EmployeeJobAssignment[]
 
   @@unique([tenantId, name])
@@ -194,16 +251,16 @@ model Department {
 }
 
 model Location {
-  id             String       @id @default(uuid()) @db.Uuid
-  tenantId       String       @db.Uuid
+  id             String                  @id @default(uuid()) @db.Uuid
+  tenantId       String                  @db.Uuid
   name           String
-  country        String       @default("BO")
+  country        String                  @default("BO")
   city           String?
-  timezone       String       @default("America/La_Paz")
-  status         RecordStatus @default(ACTIVE)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  timezone       String                  @default("America/La_Paz")
+  status         RecordStatus            @default(ACTIVE)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   jobAssignments EmployeeJobAssignment[]
 
   @@unique([tenantId, name])
@@ -211,14 +268,14 @@ model Location {
 }
 
 model JobTitle {
-  id             String       @id @default(uuid()) @db.Uuid
-  tenantId       String       @db.Uuid
+  id             String                  @id @default(uuid()) @db.Uuid
+  tenantId       String                  @db.Uuid
   name           String
   level          String?
-  status         RecordStatus @default(ACTIVE)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status         RecordStatus            @default(ACTIVE)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   jobAssignments EmployeeJobAssignment[]
 
   @@unique([tenantId, name])
@@ -226,14 +283,14 @@ model JobTitle {
 }
 
 model EmploymentType {
-  id             String       @id @default(uuid()) @db.Uuid
-  tenantId       String       @db.Uuid
+  id             String                  @id @default(uuid()) @db.Uuid
+  tenantId       String                  @db.Uuid
   name           String
   category       String?
-  status         RecordStatus @default(ACTIVE)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status         RecordStatus            @default(ACTIVE)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   jobAssignments EmployeeJobAssignment[]
 
   @@unique([tenantId, name])
@@ -241,14 +298,14 @@ model EmploymentType {
 }
 
 model WorkMode {
-  id             String       @id @default(uuid()) @db.Uuid
-  tenantId       String       @db.Uuid
+  id             String                  @id @default(uuid()) @db.Uuid
+  tenantId       String                  @db.Uuid
   name           String
   type           String
-  status         RecordStatus @default(ACTIVE)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status         RecordStatus            @default(ACTIVE)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   jobAssignments EmployeeJobAssignment[]
 
   @@unique([tenantId, name])
@@ -256,14 +313,14 @@ model WorkMode {
 }
 
 model ClientProject {
-  id                String       @id @default(uuid()) @db.Uuid
-  tenantId          String       @db.Uuid
+  id                String             @id @default(uuid()) @db.Uuid
+  tenantId          String             @db.Uuid
   name              String
   code              String?
-  status            RecordStatus @default(ACTIVE)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status            RecordStatus       @default(ACTIVE)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   clientAssignments ClientAssignment[]
 
   @@unique([tenantId, name])
@@ -372,17 +429,17 @@ model CompensationRecord {
 }
 
 model EmployeeCustomFieldDefinition {
-  id          String                  @id @default(uuid()) @db.Uuid
-  tenantId    String                  @db.Uuid
-  key         String
-  label       String
-  type        CustomFieldType
-  isRequired  Boolean                 @default(false)
-  visibility  CustomFieldVisibility   @default(HR_ONLY)
-  options     Json?
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
-  values      EmployeeCustomFieldValue[]
+  id         String                     @id @default(uuid()) @db.Uuid
+  tenantId   String                     @db.Uuid
+  key        String
+  label      String
+  type       CustomFieldType
+  isRequired Boolean                    @default(false)
+  visibility CustomFieldVisibility      @default(HR_ONLY)
+  options    Json?
+  createdAt  DateTime                   @default(now())
+  updatedAt  DateTime                   @updatedAt
+  values     EmployeeCustomFieldValue[]
 
   @@unique([tenantId, key])
   @@index([tenantId])

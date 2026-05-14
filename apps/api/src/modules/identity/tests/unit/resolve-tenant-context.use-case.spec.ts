@@ -4,11 +4,14 @@ import type { UsersRepository } from "../../domain/ports/users.repository.port";
 
 const createRepository = (): jest.Mocked<UsersRepository> => ({
   findByExternalAuthId: jest.fn(),
+  findByEmail: jest.fn(),
+  linkExternalAuthUser: jest.fn(),
   createFromExternalUser: jest.fn(),
   syncExternalUserProfile: jest.fn(),
   ensureDevelopmentTenantMembership: jest.fn(),
   findTenantMembershipsByUserId: jest.fn(),
-  findTenantMembershipContext: jest.fn()
+  findTenantMembershipContext: jest.fn(),
+  findPlatformRolesByUserId: jest.fn()
 });
 
 describe("ResolveTenantContextUseCase", () => {

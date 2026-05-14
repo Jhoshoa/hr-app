@@ -1,10 +1,11 @@
-import type { CurrentUser, TenantSummary } from "@/types/identity";
+import type { CurrentUser, PlatformRoleKey, TenantSummary } from "@/types/identity";
 
 const workspaceCacheKey = "hr-app:workspace-context";
 
 export interface WorkspaceContextCache {
   readonly user: CurrentUser;
   readonly tenants: TenantSummary[];
+  readonly platformRoles: PlatformRoleKey[];
 }
 
 const isWorkspaceContextCache = (value: unknown): value is WorkspaceContextCache => {
@@ -13,7 +14,11 @@ const isWorkspaceContextCache = (value: unknown): value is WorkspaceContextCache
   }
 
   const candidate = value as Partial<WorkspaceContextCache>;
-  return Boolean(candidate.user?.id && Array.isArray(candidate.tenants));
+  return Boolean(
+    candidate.user?.id &&
+    Array.isArray(candidate.tenants) &&
+    Array.isArray(candidate.platformRoles)
+  );
 };
 
 export const loadWorkspaceContextCache = (): WorkspaceContextCache | null => {

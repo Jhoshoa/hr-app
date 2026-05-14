@@ -6,6 +6,7 @@ export interface AuthenticatedUserContext {
   readonly name?: string;
   readonly externalAuthProvider: string;
   readonly externalAuthUserId: string;
+  readonly platformRoles: string[];
 }
 
 export interface TenantContext {

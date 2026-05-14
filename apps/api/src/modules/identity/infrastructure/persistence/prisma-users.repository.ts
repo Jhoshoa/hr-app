@@ -37,19 +37,25 @@ export class PrismaUsersRepository implements UsersRepository {
       return null;
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name ?? undefined,
-      externalAuthProvider: user.externalAuthProvider,
-      externalAuthUserId: user.externalAuthUserId
-    };
+    return this.toAuthenticatedUser(user);
   };
 
-  createFromExternalUser = async (externalUser: ExternalAuthUser): Promise<AuthenticatedUser> => {
-    const user = await this.prisma.user.create({
+  findByEmail = async (email: string): Promise<AuthenticatedUser | null> => {
+    const user = await this.prisma.user.findUnique({
+      where: { email: this.normalizeEmail(email) }
+    });
+
+    return user ? this.toAuthenticatedUser(user) : null;
+  };
+
+  linkExternalAuthUser = async (
+    userId: string,
+    externalUser: ExternalAuthUser
+  ): Promise<AuthenticatedUser> => {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
       data: {
-        email: externalUser.email,
+        email: this.normalizeEmail(externalUser.email),
         name: externalUser.name,
         status: "ACTIVE",
         externalAuthProvider: externalUser.provider,
@@ -57,13 +63,21 @@ export class PrismaUsersRepository implements UsersRepository {
       }
     });
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name ?? undefined,
-      externalAuthProvider: user.externalAuthProvider,
-      externalAuthUserId: user.externalAuthUserId
-    };
+    return this.toAuthenticatedUser(user);
+  };
+
+  createFromExternalUser = async (externalUser: ExternalAuthUser): Promise<AuthenticatedUser> => {
+    const user = await this.prisma.user.create({
+      data: {
+        email: this.normalizeEmail(externalUser.email),
+        name: externalUser.name,
+        status: "ACTIVE",
+        externalAuthProvider: externalUser.provider,
+        externalAuthUserId: externalUser.providerUserId
+      }
+    });
+
+    return this.toAuthenticatedUser(user);
   };
 
   syncExternalUserProfile = async (
@@ -73,18 +87,23 @@ export class PrismaUsersRepository implements UsersRepository {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        email: externalUser.email,
-        name: externalUser.name
+        email: this.normalizeEmail(externalUser.email),
+        name: externalUser.name,
+        externalAuthProvider: externalUser.provider,
+        externalAuthUserId: externalUser.providerUserId
       }
     });
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name ?? undefined,
-      externalAuthProvider: user.externalAuthProvider,
-      externalAuthUserId: user.externalAuthUserId
-    };
+    return this.toAuthenticatedUser(user);
+  };
+
+  findPlatformRolesByUserId = async (userId: string): Promise<string[]> => {
+    const roles = await this.prisma.platformUserRole.findMany({
+      where: { userId },
+      orderBy: { roleKey: "asc" }
+    });
+
+    return roles.map((role) => role.roleKey);
   };
 
   ensureDevelopmentTenantMembership = async (
@@ -207,4 +226,20 @@ export class PrismaUsersRepository implements UsersRepository {
     roleKey: membership.role.key,
     permissions: membership.role.permissions.map((rolePermission) => rolePermission.permission.key)
   });
+
+  private toAuthenticatedUser = (user: {
+    id: string;
+    email: string;
+    name: string | null;
+    externalAuthProvider: string | null;
+    externalAuthUserId: string | null;
+  }): AuthenticatedUser => ({
+    id: user.id,
+    email: user.email,
+    name: user.name ?? undefined,
+    externalAuthProvider: user.externalAuthProvider ?? undefined,
+    externalAuthUserId: user.externalAuthUserId ?? undefined
+  });
+
+  private normalizeEmail = (email: string): string => email.trim().toLowerCase();
 }

@@ -9,6 +9,11 @@ export interface UsersRepository {
     provider: string,
     providerUserId: string
   ) => Promise<AuthenticatedUser | null>;
+  findByEmail: (email: string) => Promise<AuthenticatedUser | null>;
+  linkExternalAuthUser: (
+    userId: string,
+    externalUser: ExternalAuthUser
+  ) => Promise<AuthenticatedUser>;
   createFromExternalUser: (externalUser: ExternalAuthUser) => Promise<AuthenticatedUser>;
   syncExternalUserProfile: (
     userId: string,
@@ -24,4 +29,5 @@ export interface UsersRepository {
     userId: string,
     tenantSlug: string
   ) => Promise<TenantMembershipContext | null>;
+  findPlatformRolesByUserId: (userId: string) => Promise<string[]>;
 }

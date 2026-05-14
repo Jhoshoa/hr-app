@@ -18,7 +18,8 @@ export class MeController {
 
     return {
       user,
-      tenants
+      tenants,
+      platformRoles: user.platformRoles
     };
   }
 }

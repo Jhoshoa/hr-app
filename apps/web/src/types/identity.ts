@@ -1,3 +1,5 @@
+export type PlatformRoleKey = "PLATFORM_OWNER" | "PLATFORM_ADMIN" | "PLATFORM_SUPPORT";
+
 export interface TenantSummary {
   readonly tenantId: string;
   readonly tenantSlug: string;

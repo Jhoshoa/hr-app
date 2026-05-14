@@ -2,6 +2,6 @@ export interface AuthenticatedUser {
   readonly id: string;
   readonly email: string;
   readonly name?: string;
-  readonly externalAuthProvider: string;
-  readonly externalAuthUserId: string;
+  readonly externalAuthProvider?: string;
+  readonly externalAuthUserId?: string;
 }

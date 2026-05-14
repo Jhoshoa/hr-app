@@ -6,6 +6,7 @@ import { InMemoryEventBusModule } from "./events/event-bus.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { AuthGuard } from "./common/guards/auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
+import { PlatformRolesGuard } from "./common/guards/platform-roles.guard";
 import { TenantGuard } from "./common/guards/tenant.guard";
 import { AuditModule } from "./modules/audit/audit.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
@@ -30,6 +31,7 @@ import { TenantsModule } from "./modules/tenants/tenants.module";
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    { provide: APP_GUARD, useClass: PlatformRolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard }
   ]
 })

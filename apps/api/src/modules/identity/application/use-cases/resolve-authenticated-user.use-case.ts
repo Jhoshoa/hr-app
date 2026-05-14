@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AuthenticatedUserContext } from "../../../../common/types/request-context";
 import type { ExternalAuthUser } from "../../domain/entities/external-auth-user.entity";
@@ -19,16 +19,34 @@ export class ResolveAuthenticatedUserUseCase {
 
     const user = existingUser
       ? await this.usersRepository.syncExternalUserProfile(existingUser.id, externalUser)
-      : await this.usersRepository.createFromExternalUser(externalUser);
+      : await this.resolveByEmailOrCreate(externalUser);
     await this.ensureDevelopmentTenantMembership(user.id);
+    const platformRoles = await this.usersRepository.findPlatformRolesByUserId(user.id);
 
     return {
       id: user.id,
       email: user.email,
       name: user.name,
-      externalAuthProvider: user.externalAuthProvider,
-      externalAuthUserId: user.externalAuthUserId
+      externalAuthProvider: externalUser.provider,
+      externalAuthUserId: externalUser.providerUserId,
+      platformRoles
     };
+  };
+
+  private resolveByEmailOrCreate = async (
+    externalUser: ExternalAuthUser
+  ) => {
+    const existingEmailUser = await this.usersRepository.findByEmail(externalUser.email);
+
+    if (!existingEmailUser) {
+      return this.usersRepository.createFromExternalUser(externalUser);
+    }
+
+    if (!existingEmailUser.externalAuthProvider && !existingEmailUser.externalAuthUserId) {
+      return this.usersRepository.linkExternalAuthUser(existingEmailUser.id, externalUser);
+    }
+
+    throw new ConflictException("A user with this email is linked to another identity.");
   };
 
   private ensureDevelopmentTenantMembership = async (userId: string): Promise<void> => {

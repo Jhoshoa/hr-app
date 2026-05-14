@@ -25,7 +25,8 @@ describe("workspace-cache", () => {
           roleKey: "hr_admin",
           permissions: ["tenant.read"]
         }
-      ]
+      ],
+      platformRoles: ["PLATFORM_OWNER"]
     });
 
     expect(loadWorkspaceContextCache()).toEqual({
@@ -42,7 +43,8 @@ describe("workspace-cache", () => {
           roleKey: "hr_admin",
           permissions: ["tenant.read"]
         }
-      ]
+      ],
+      platformRoles: ["PLATFORM_OWNER"]
     });
   });
 
@@ -52,7 +54,8 @@ describe("workspace-cache", () => {
         id: "user-1",
         email: "hr@example.com"
       },
-      tenants: []
+      tenants: [],
+      platformRoles: []
     });
 
     clearWorkspaceContextCache();

@@ -52,7 +52,11 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
 
     dispatch(setCurrentUser(data.user));
     dispatch(setTenants(data.tenants));
-    saveWorkspaceContextCache({ user: data.user, tenants: data.tenants });
+    saveWorkspaceContextCache({
+      user: data.user,
+      tenants: data.tenants,
+      platformRoles: data.platformRoles
+    });
   }, [data, dispatch, router]);
 
   if (isLoading && !hasWorkspaceContext) {
