@@ -1,6 +1,9 @@
 # Auth Resolve Route And Role-Based Loading Plan
 
 Created: May 14, 2026.
+```doc
+Este documento era para la implementacion del Rosolve route y Role-Based loading plan
+```
 
 ## Problem
 

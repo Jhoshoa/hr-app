@@ -1,4 +1,5 @@
 export const authCallbackPath = "/auth/callback";
+export const authResolvePath = "/auth/resolve";
 export const appHomePath = "/dashboard";
 export const loginPath = "/login";
 export const platformHomePath = "/platform/company-signups";

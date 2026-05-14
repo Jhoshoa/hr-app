@@ -49,7 +49,7 @@ describe("LoginForm", () => {
       email: "demo.owner@example.test",
       password: "Password123!"
     });
-    expect(replace).toHaveBeenCalledWith("/settings");
+    expect(replace).toHaveBeenCalledWith("/auth/resolve?redirectTo=%2Fsettings");
   });
 
   it("shows Supabase email login errors", async () => {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { env } from "@/config/env";
-import { appHomePath, getAuthCallbackUrl } from "@/lib/auth/auth-redirects";
+import { appHomePath, authResolvePath, getAuthCallbackUrl } from "@/lib/auth/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 
 export function LoginForm() {
@@ -73,7 +73,7 @@ export function LoginForm() {
       return;
     }
 
-    router.replace(redirectTo);
+    router.replace(`${authResolvePath}?redirectTo=${encodeURIComponent(redirectTo)}`);
   };
 
   return (

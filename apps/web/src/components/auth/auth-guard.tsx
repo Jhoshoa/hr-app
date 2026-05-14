@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import { appHomePath, loginPath } from "@/lib/auth/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/auth/supabase-client";
-import { clearWorkspaceContextCache } from "@/lib/auth/workspace-cache";
+import { clearWorkspaceContextCache, loadWorkspaceContextCache } from "@/lib/auth/workspace-cache";
 
 interface AuthGuardProps {
   readonly children: ReactNode;
@@ -38,6 +38,17 @@ export function AuthGuard({ children }: AuthGuardProps) {
       if (!data.session) {
         clearWorkspaceContextCache();
         router.replace(`${loginPath}?redirectTo=${encodeURIComponent(pathname || appHomePath)}`);
+        return;
+      }
+
+      const cachedWorkspace = loadWorkspaceContextCache();
+
+      if (
+        cachedWorkspace &&
+        data.session.user.email &&
+        cachedWorkspace.user.email !== data.session.user.email
+      ) {
+        clearWorkspaceContextCache();
       }
     });
 
@@ -49,6 +60,17 @@ export function AuthGuard({ children }: AuthGuardProps) {
       if (!nextSession) {
         clearWorkspaceContextCache();
         router.replace(loginPath);
+        return;
+      }
+
+      const cachedWorkspace = loadWorkspaceContextCache();
+
+      if (
+        cachedWorkspace &&
+        nextSession.user.email &&
+        cachedWorkspace.user.email !== nextSession.user.email
+      ) {
+        clearWorkspaceContextCache();
       }
     });
 

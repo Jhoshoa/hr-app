@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { appHomePath, loginPath } from "@/lib/auth/auth-redirects";
+import { appHomePath, authResolvePath, loginPath } from "@/lib/auth/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 
 export function AuthCallback() {
@@ -26,7 +26,7 @@ export function AuthCallback() {
         return;
       }
 
-      router.replace(redirectTo);
+      router.replace(`${authResolvePath}?redirectTo=${encodeURIComponent(redirectTo)}`);
     });
   }, [router, searchParams]);
 

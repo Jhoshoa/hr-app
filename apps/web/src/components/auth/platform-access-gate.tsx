@@ -24,7 +24,6 @@ export function PlatformAccessGate({ children }: PlatformAccessGateProps) {
   const router = useRouter();
   const [cachedWorkspace] = useState(() => loadWorkspaceContextCache());
   const { data, isError, isLoading } = useGetMeQuery(undefined, { refetchOnMountOrArgChange: true });
-  const hasPlatformContext = Boolean(cachedWorkspace?.platformRoles.length);
 
   useEffect(() => {
     if (!cachedWorkspace || cachedWorkspace.platformRoles.length === 0) {
@@ -64,11 +63,11 @@ export function PlatformAccessGate({ children }: PlatformAccessGateProps) {
     }
   }, [data, dispatch, router]);
 
-  if (isLoading && !hasPlatformContext) {
+  if (isLoading) {
     return <PlatformAccessLoadingState />;
   }
 
-  if (isError && !hasPlatformContext) {
+  if (isError) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-4">
         <ErrorState
@@ -77,10 +76,6 @@ export function PlatformAccessGate({ children }: PlatformAccessGateProps) {
         />
       </main>
     );
-  }
-
-  if (!data && hasPlatformContext) {
-    return children;
   }
 
   if (!data || data.platformRoles.length === 0) {

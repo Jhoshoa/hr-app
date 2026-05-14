@@ -25,10 +25,7 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
   const isTenantHydrated = useAppSelector((state) => state.tenant.isHydrated);
   const [cachedWorkspace] = useState(() => loadWorkspaceContextCache());
   const { data, isError, isLoading } = useGetMeQuery(undefined, { refetchOnMountOrArgChange: true });
-  const hasTenantContext = useMemo(
-    () => isTenantHydrated || Boolean(cachedWorkspace?.tenants.length),
-    [cachedWorkspace, isTenantHydrated]
-  );
+  const hasTenantContext = useMemo(() => isTenantHydrated, [isTenantHydrated]);
 
   useEffect(() => {
     if (!cachedWorkspace || isTenantHydrated) {
@@ -49,6 +46,7 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
       clearWorkspaceContextCache();
       dispatch(setCurrentUser(data.user));
       dispatch(setPlatformRoles([]));
+      dispatch(setTenants([]));
       router.replace("/no-access");
       return;
     }
@@ -67,11 +65,11 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
     }
   }, [data, dispatch, router]);
 
-  if (isLoading && !hasTenantContext) {
+  if (isLoading) {
     return <WorkspaceLoadingState />;
   }
 
-  if (isError && !hasTenantContext) {
+  if (isError) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-4">
         <ErrorState
@@ -82,7 +80,11 @@ export function AppAccessGate({ children }: AppAccessGateProps) {
     );
   }
 
-  if (data?.tenants.length === 0) {
+  if (!data && hasTenantContext) {
+    return children;
+  }
+
+  if (!data || data.tenants.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4 text-sm text-muted-foreground">
         Redirecting...
