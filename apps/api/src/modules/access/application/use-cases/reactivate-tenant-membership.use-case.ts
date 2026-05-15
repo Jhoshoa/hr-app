@@ -27,6 +27,8 @@ export class ReactivateTenantMembershipUseCase {
       await this.tenantUsersRepository.findByMembershipId(input.tenantId, input.membershipId)
     );
 
+    this.accessPolicyService.assertActorIsNotTargetMembership(input.actorUserId, current);
+
     const tenantUser = await this.tenantUsersRepository.setStatus({
       tenantId: input.tenantId,
       membershipId: input.membershipId,
@@ -49,4 +51,3 @@ export class ReactivateTenantMembershipUseCase {
     return tenantUser;
   };
 }
-

@@ -1,6 +1,6 @@
 import { ConflictException } from "@nestjs/common";
 import { AccessPolicyService } from "../../application/services/access-policy.service";
-import { DisableTenantMembershipUseCase } from "../../application/use-cases/disable-tenant-membership.use-case";
+import { ReactivateTenantMembershipUseCase } from "../../application/use-cases/reactivate-tenant-membership.use-case";
 import type { TenantUserEntity } from "../../domain/entities/tenant-user.entity";
 import type { TenantUsersRepository } from "../../domain/ports/tenant-users.repository.port";
 import type { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
@@ -13,7 +13,7 @@ const createTenantUser = (overrides: Partial<TenantUserEntity> = {}): TenantUser
   email: "target@example.com",
   name: "Target User",
   userStatus: "ACTIVE",
-  membershipStatus: "ACTIVE",
+  membershipStatus: "DISABLED",
   roles: [
     {
       id: "role-1",
@@ -39,17 +39,17 @@ const createTenantUsersRepository = (): jest.Mocked<TenantUsersRepository> => ({
   setStatus: jest.fn()
 });
 
-describe("DisableTenantMembershipUseCase", () => {
-  it("disables tenant membership and audits the action", async () => {
+describe("ReactivateTenantMembershipUseCase", () => {
+  it("reactivates tenant membership and audits the action", async () => {
     const repository = createTenantUsersRepository();
     const current = createTenantUser();
-    const disabled = createTenantUser({ membershipStatus: "DISABLED" });
+    const reactivated = createTenantUser({ membershipStatus: "ACTIVE" });
     repository.findByMembershipId.mockResolvedValue(current);
-    repository.setStatus.mockResolvedValue(disabled);
+    repository.setStatus.mockResolvedValue(reactivated);
     const createAuditEventUseCase = {
       execute: jest.fn().mockResolvedValue({ id: "audit-1" })
     } as unknown as jest.Mocked<CreateAuditEventUseCase>;
-    const useCase = new DisableTenantMembershipUseCase(
+    const useCase = new ReactivateTenantMembershipUseCase(
       repository,
       new AccessPolicyService(),
       createAuditEventUseCase
@@ -61,24 +61,24 @@ describe("DisableTenantMembershipUseCase", () => {
       membershipId: "membership-1"
     });
 
-    expect(result).toBe(disabled);
+    expect(result).toBe(reactivated);
     expect(repository.setStatus).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       membershipId: "membership-1",
-      status: "DISABLED"
+      status: "ACTIVE"
     });
     expect(createAuditEventUseCase.execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: "membership.disabled",
+        action: "membership.reactivated",
         resourceId: "membership-1"
       })
     );
   });
 
-  it("blocks self-disable", async () => {
+  it("blocks self-reactivate as a sensitive self access mutation", async () => {
     const repository = createTenantUsersRepository();
     repository.findByMembershipId.mockResolvedValue(createTenantUser());
-    const useCase = new DisableTenantMembershipUseCase(
+    const useCase = new ReactivateTenantMembershipUseCase(
       repository,
       new AccessPolicyService(),
       { execute: jest.fn() } as unknown as CreateAuditEventUseCase

@@ -138,7 +138,7 @@ describe("Access tenant users API", () => {
         externalAuthUserId: `${testId}-admin`
       }
     });
-    await prisma.tenantMembership.create({
+    const adminMembership = await prisma.tenantMembership.create({
       data: {
         tenantId: tenantA.id,
         userId: adminUser.id,
@@ -226,6 +226,36 @@ describe("Access tenant users API", () => {
     ]);
 
     await request(app.getHttpServer())
+      .put(`/api/v1/tenant-users/${adminMembership.id}/roles`)
+      .set("Authorization", `Bearer ${testId}-admin`)
+      .set("x-tenant-slug", tenantA.slug)
+      .send({ roleIds: [employeeRole.id] })
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/tenant-users/${adminMembership.id}/disable`)
+      .set("Authorization", `Bearer ${testId}-admin`)
+      .set("x-tenant-slug", tenantA.slug)
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/tenant-users/${adminMembership.id}/reactivate`)
+      .set("Authorization", `Bearer ${testId}-admin`)
+      .set("x-tenant-slug", tenantA.slug)
+      .expect(409);
+
+    const adminMembershipAfterSelfAttempts = await prisma.tenantMembership.findUniqueOrThrow({
+      where: { id: adminMembership.id },
+      include: { roles: true }
+    });
+
+    expect(adminMembershipAfterSelfAttempts.status).toBe("ACTIVE");
+    expect(adminMembershipAfterSelfAttempts.roleId).toBe(adminRole.id);
+    expect(adminMembershipAfterSelfAttempts.roles).toEqual([
+      expect.objectContaining({ roleId: adminRole.id })
+    ]);
+
+    await request(app.getHttpServer())
       .post(`/api/v1/tenant-users/${targetMembership.id}/disable`)
       .set("Authorization", `Bearer ${testId}-admin`)
       .set("x-tenant-slug", tenantA.slug)
@@ -282,4 +312,3 @@ describe("Access tenant users API", () => {
       }
     });
 });
-

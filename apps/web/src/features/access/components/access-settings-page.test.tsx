@@ -7,7 +7,7 @@ import { AccessSettingsPage } from "./access-settings-page";
 const currentTenant = vi.fn();
 const currentUser = vi.fn();
 let queryState = { isError: false, isFetching: false };
-let getRoleState = { data: undefined, isFetching: false };
+let getRoleState: { data: unknown; isFetching: boolean } = { data: undefined, isFetching: false };
 const mutationState = { isLoading: false };
 
 vi.mock("@/hooks/use-current-tenant", () => ({
@@ -40,6 +40,19 @@ vi.mock("../access-api", () => ({
             status: "ACTIVE",
             memberCount: 1,
             permissionCount: 4,
+            createdAt: "2026-05-15T00:00:00.000Z",
+            updatedAt: "2026-05-15T00:00:00.000Z"
+          },
+          {
+            id: "role-2",
+            tenantId: "tenant-1",
+            key: "supervisor",
+            name: "Supervisor",
+            description: "Team supervisor",
+            isSystemRole: false,
+            status: "ACTIVE",
+            memberCount: 0,
+            permissionCount: 1,
             createdAt: "2026-05-15T00:00:00.000Z",
             updatedAt: "2026-05-15T00:00:00.000Z"
           }
@@ -147,5 +160,89 @@ describe("AccessSettingsPage", () => {
 
     expect(screen.getByLabelText("Loading role details")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("shows a role form skeleton while edited role details are not available yet", () => {
+    getRoleState = { data: undefined, isFetching: false };
+
+    render(
+      <ToastProvider>
+        <AccessSettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Roles" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Supervisor" }));
+
+    expect(screen.getByLabelText("Loading role details")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("keeps user role save disabled until role selection changes", () => {
+    render(
+      <ToastProvider>
+        <AccessSettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit roles for ana@example.com" }));
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Supervisor/ }));
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
+  it("keeps self access save disabled even when role selection changes", () => {
+    currentUser.mockReturnValue({ id: "user-1", email: "ana@example.com" });
+
+    render(
+      <ToastProvider>
+        <AccessSettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit roles for ana@example.com" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Supervisor/ }));
+
+    expect(screen.getByText("Self access changes are blocked by the backend.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("keeps edit role save disabled until metadata changes", () => {
+    getRoleState = {
+      isFetching: false,
+      data: {
+        id: "role-2",
+        tenantId: "tenant-1",
+        key: "supervisor",
+        name: "Supervisor",
+        description: "Team supervisor",
+        isSystemRole: false,
+        status: "ACTIVE",
+        memberCount: 0,
+        permissionCount: 1,
+        createdAt: "2026-05-15T00:00:00.000Z",
+        updatedAt: "2026-05-15T00:00:00.000Z",
+        permissions: []
+      }
+    };
+
+    render(
+      <ToastProvider>
+        <AccessSettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Roles" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Supervisor" }));
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Senior Supervisor" } });
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 });

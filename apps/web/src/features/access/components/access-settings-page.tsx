@@ -57,6 +57,7 @@ import {
   canResendInvitation,
   formatAccessDate,
   getInvitationDisplayStatus,
+  groupPermissionKeysForDisplay,
   groupPermissionsByModule,
   maxInvitationResends,
   roleKeyFromName
@@ -143,6 +144,9 @@ function UsersPanel() {
     skip: !tenant.tenantSlug || !hasAnyAccessPermission(tenant.permissions, accessPermissions.viewUsers)
   });
   const { data: roles, isFetching: rolesFetching } = useListRolesQuery(tenant.tenantSlug, {
+    skip: !tenant.tenantSlug || !hasAnyAccessPermission(tenant.permissions, accessPermissions.viewRoles)
+  });
+  const { data: permissions = [] } = useListPermissionsQuery(tenant.tenantSlug, {
     skip: !tenant.tenantSlug || !hasAnyAccessPermission(tenant.permissions, accessPermissions.viewRoles)
   });
   const [drawerUser, setDrawerUser] = useState<TenantUser | null>(null);
@@ -256,6 +260,7 @@ function UsersPanel() {
       {!isFetching && userRows.length === 0 ? <EmptyPanel title="No tenant users exist." /> : null}
       <UserRolesDrawer
         activeRoles={(roles ?? []).filter((role) => role.status === "ACTIVE")}
+        permissions={permissions}
         isLoadingRoles={rolesFetching && !roles}
         onClose={() => setDrawerUser(null)}
         tenantSlug={tenant.tenantSlug}
@@ -611,10 +616,11 @@ function RoleDrawer({
   tenantSlug: string;
 }>) {
   const roleId = drawer?.role?.id;
-  const { data: roleDetail, isFetching: isRoleDetailFetching } = useGetRoleQuery(
+  const { data: roleDetail } = useGetRoleQuery(
     { tenantSlug, roleId: roleId ?? "" },
     { skip: !roleId || !tenantSlug }
   );
+  const selectedRoleDetail = roleDetail?.id === roleId ? roleDetail : undefined;
   const [createRole, createState] = useCreateRoleMutation();
   const [updateRole, updateState] = useUpdateRoleMutation();
   const [updateRolePermissions, updatePermissionsState] = useUpdateRolePermissionsMutation();
@@ -641,20 +647,56 @@ function RoleDrawer({
       setDescription("");
       setPermissionIds([]);
     } else {
+      if (!selectedRoleDetail) {
+        return;
+      }
+
       const suffix = drawer.mode === "clone" ? " Copy" : "";
-      setName(`${drawer.role.name}${suffix}`);
-      setKey(drawer.mode === "clone" ? roleKeyFromName(`${drawer.role.key}_copy`) : drawer.role.key);
-      setDescription(drawer.role.description ?? "");
-      setPermissionIds((roleDetail?.permissions ?? []).map((permission) => permission.id));
+      setName(`${selectedRoleDetail.name}${suffix}`);
+      setKey(
+        drawer.mode === "clone" ? roleKeyFromName(`${selectedRoleDetail.key}_copy`) : selectedRoleDetail.key
+      );
+      setDescription(selectedRoleDetail.description ?? "");
+      setPermissionIds(selectedRoleDetail.permissions.map((permission) => permission.id));
     }
     setError(null);
-  }, [drawer, roleDetail]);
+  }, [drawer, selectedRoleDetail]);
 
   const isSaving = createState.isLoading || updateState.isLoading || updatePermissionsState.isLoading;
   const title =
     drawer?.mode === "clone" ? "Clone role" : drawer?.mode === "edit" ? "Edit role" : "Create role";
-  const showInitialSkeleton =
-    Boolean(drawer && drawer.mode !== "create" && !roleDetail && isRoleDetailFetching);
+  const showInitialSkeleton = Boolean(drawer && drawer.mode !== "create" && !selectedRoleDetail);
+  const initialRoleForm = useMemo(() => {
+    if (!drawer) {
+      return { name: "", key: "", description: "", permissionIds: [] as string[] };
+    }
+
+    if (drawer.mode === "create") {
+      return { name: "", key: "", description: "", permissionIds: [] as string[] };
+    }
+
+    const suffix = drawer.mode === "clone" ? " Copy" : "";
+
+    return {
+      name: `${selectedRoleDetail?.name ?? drawer.role.name}${suffix}`,
+      key:
+        drawer.mode === "clone"
+          ? roleKeyFromName(`${selectedRoleDetail?.key ?? drawer.role.key}_copy`)
+          : selectedRoleDetail?.key ?? drawer.role.key,
+      description: selectedRoleDetail?.description ?? drawer.role.description ?? "",
+      permissionIds: (selectedRoleDetail?.permissions ?? []).map((permission) => permission.id).sort()
+    };
+  }, [drawer, selectedRoleDetail]);
+  const isRoleFormDirty = useMemo(() => {
+    const currentPermissionIds = [...permissionIds].sort();
+
+    return (
+      name.trim() !== initialRoleForm.name ||
+      key.trim() !== initialRoleForm.key ||
+      description.trim() !== initialRoleForm.description ||
+      !areStringSetsEqual(currentPermissionIds, initialRoleForm.permissionIds)
+    );
+  }, [description, initialRoleForm, key, name, permissionIds]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -710,7 +752,11 @@ function RoleDrawer({
           <Button disabled={isSaving} onClick={onClose} type="button" variant="secondary">
             Cancel
           </Button>
-          <Button disabled={isSaving || showInitialSkeleton} form="access-role-form" type="submit">
+          <Button
+            disabled={isSaving || showInitialSkeleton || !isRoleFormDirty}
+            form="access-role-form"
+            type="submit"
+          >
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </>
@@ -759,12 +805,14 @@ function UserRolesDrawer({
   activeRoles,
   isLoadingRoles,
   onClose,
+  permissions,
   tenantSlug,
   user
 }: Readonly<{
   activeRoles: readonly AccessRoleSummary[];
   isLoadingRoles: boolean;
   onClose: () => void;
+  permissions: readonly AccessPermission[];
   tenantSlug: string;
   user: TenantUser | null;
 }>) {
@@ -780,18 +828,19 @@ function UserRolesDrawer({
     setError(null);
   }, [user]);
 
-  const effectivePermissionKeys = useMemo(() => {
-    const keys = new Set<string>();
-    const selectedRoles = activeRoles.filter((role) => roleIds.includes(role.id));
-
-    if (user && selectedRoles.length === 0) {
-      for (const permission of user.effectivePermissions) {
-        keys.add(permission);
-      }
+  const effectivePermissionGroups = useMemo(
+    () => groupPermissionKeysForDisplay(user?.effectivePermissions ?? [], permissions),
+    [permissions, user]
+  );
+  const currentRoleIds = useMemo(() => user?.roles.map((role) => role.id) ?? [], [user]);
+  const hasRoleSelectionChanges = useMemo(() => {
+    if (!user) {
+      return false;
     }
 
-    return [...keys].sort();
-  }, [activeRoles, roleIds, user]);
+    return !areStringSetsEqual(currentRoleIds, roleIds);
+  }, [currentRoleIds, roleIds, user]);
+  const canSaveUserRoles = hasRoleSelectionChanges && !isSelf && !isLoadingRoles;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -824,7 +873,7 @@ function UserRolesDrawer({
               Cancel
             </Button>
             <Button
-              disabled={updateState.isLoading || isSelf}
+              disabled={updateState.isLoading || !canSaveUserRoles}
               form="access-user-roles-form"
               type="submit"
             >
@@ -856,16 +905,12 @@ function UserRolesDrawer({
           ) : (
             <RoleCheckboxList activeRoles={activeRoles} selectedRoleIds={roleIds} onChange={setRoleIds} />
           )}
-          <div>
-            <h3 className="text-sm font-semibold">Current effective permissions</h3>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(effectivePermissionKeys.length > 0 ? effectivePermissionKeys : user.effectivePermissions).map((permission) => (
-                <Badge key={permission} tone="gray">
-                  {permission}
-                </Badge>
-              ))}
-            </div>
-          </div>
+          <EffectivePermissionsPanel
+            groups={effectivePermissionGroups}
+            hasPendingRoleChanges={hasRoleSelectionChanges}
+            currentRoleCount={user.roles.length}
+            permissionCount={user.effectivePermissions.length}
+          />
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         </form>
       ) : null}
@@ -1024,6 +1069,68 @@ function PermissionMatrix({
         ))}
       </div>
     </div>
+  );
+}
+
+function EffectivePermissionsPanel({
+  groups,
+  hasPendingRoleChanges,
+  currentRoleCount,
+  permissionCount,
+}: Readonly<{
+  groups: ReturnType<typeof groupPermissionKeysForDisplay>;
+  hasPendingRoleChanges: boolean;
+  currentRoleCount: number;
+  permissionCount: number;
+}>) {
+  return (
+    <section className="rounded-md border border-border bg-muted/20">
+      <header className="border-b border-border px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Current effective permissions</h3>
+          <Badge tone="gray">
+            {permissionCount} permissions from {currentRoleCount} current roles
+          </Badge>
+        </div>
+        {hasPendingRoleChanges ? (
+          <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            This list shows the current saved access. It will refresh after saving role changes.
+          </p>
+        ) : null}
+      </header>
+
+      {groups.length === 0 ? (
+        <p className="px-3 py-4 text-sm text-muted-foreground">No effective permissions are currently assigned.</p>
+      ) : (
+        <div className="max-h-80 overflow-y-auto p-3">
+          <div className="space-y-3">
+            {groups.map((group) => (
+              <div className="rounded-md border border-border bg-surface" key={group.moduleName}>
+                <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.moduleName}
+                  </h4>
+                  <span className="text-xs text-muted-foreground">{group.permissions.length}</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {group.permissions.map((permission) => (
+                    <div className="px-3 py-2" key={permission.key}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+                          {permission.key}
+                        </code>
+                        {permission.isCritical ? <Badge tone="amber">Critical</Badge> : null}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{permission.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1209,4 +1316,14 @@ function TableRowsSkeleton({
       ))}
     </>
   );
+}
+
+function areStringSetsEqual(first: readonly string[], second: readonly string[]) {
+  if (first.length !== second.length) {
+    return false;
+  }
+
+  const secondSet = new Set(second);
+
+  return first.every((value) => secondSet.has(value));
 }

@@ -4,6 +4,7 @@ import {
   canCancelInvitation,
   canResendInvitation,
   getInvitationDisplayStatus,
+  groupPermissionKeysForDisplay,
   groupPermissionsByModule,
   roleKeyFromName
 } from "./access-utils";
@@ -55,5 +56,41 @@ describe("access-utils", () => {
 
   it("creates stable role keys from names", () => {
     expect(roleKeyFromName("Finance Reviewer!")).toBe("finance_reviewer");
+  });
+
+  it("groups effective permission keys with catalog metadata and fallback modules", () => {
+    const catalog = [
+      {
+        id: "1",
+        key: "users.read",
+        description: "Read users",
+        module: "Users",
+        sortOrder: 10,
+        isCritical: false
+      },
+      {
+        id: "2",
+        key: "tenant.manage",
+        description: "Manage tenant",
+        module: "Tenant",
+        sortOrder: 20,
+        isCritical: true
+      }
+    ] as AccessPermission[];
+
+    expect(groupPermissionKeysForDisplay(["employees.read", "tenant.manage", "users.read"], catalog)).toEqual([
+      expect.objectContaining({
+        moduleName: "Employees",
+        permissions: [expect.objectContaining({ key: "employees.read" })]
+      }),
+      expect.objectContaining({
+        moduleName: "Tenant",
+        permissions: [expect.objectContaining({ key: "tenant.manage", isCritical: true })]
+      }),
+      expect.objectContaining({
+        moduleName: "Users",
+        permissions: [expect.objectContaining({ key: "users.read", description: "Read users" })]
+      })
+    ]);
   });
 });

@@ -148,6 +148,6 @@ describe("UpdateTenantUserRolesUseCase", () => {
         roleIds: ["role-2"]
       })
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(tenantUsersRepository.replaceRoles).not.toHaveBeenCalled();
   });
 });
-
