@@ -994,9 +994,8 @@ Agregar:
 
 ```txt
 apps/web/app/(app)/settings/access/page.tsx
-apps/web/app/(app)/settings/access/roles/page.tsx
-apps/web/app/(app)/settings/access/users/page.tsx
-apps/web/app/(app)/settings/access/invitations/page.tsx
+apps/web/app/(auth)/invitations/accept/page.tsx
+apps/web/app/(auth)/auth/confirm/page.tsx
 ```
 
 Opcion UX recomendada:
@@ -1007,9 +1006,19 @@ Opcion UX recomendada:
     Users
     Roles
     Invitations
+
+/invitations/accept?token=<acceptanceToken>
+  invitation preview
+  account creation/login
+  accept invitation
+
+/auth/confirm
+  Supabase email verification callback
 ```
 
-Si el equipo prefiere rutas separadas, mantener la misma shell y tabs con links.
+Si el equipo prefiere rutas separadas para tabs, mantener la misma shell y tabs
+con links. La ruta de aceptacion debe vivir fuera del layout tenant-scoped
+porque el usuario puede no tener tenant activo todavia.
 
 Actualizar `settings/page.tsx` para mostrar card "Access" solo si:
 
@@ -1028,6 +1037,7 @@ apps/web/src/features/access/access-api.ts
 apps/web/src/features/access/access-types.ts
 apps/web/src/features/access/access-schema.ts
 apps/web/src/features/access/access-utils.ts
+apps/web/src/features/access/access-permissions.ts
 ```
 
 Agregar tags en `baseApi`:
@@ -1037,6 +1047,7 @@ Permission
 Role
 TenantUser
 TenantInvitation
+InvitationPreview
 CurrentUser
 ```
 
@@ -1046,6 +1057,8 @@ Invalidaciones:
 - Cambiar membership roles invalida `TenantUser` y `CurrentUser`.
 - Desactivar/reactivar membership invalida `TenantUser` y `CurrentUser`.
 - Crear/cancelar invitacion invalida `TenantInvitation` y `TenantUser`.
+- Reenviar invitacion invalida `TenantInvitation`.
+- Aceptar invitacion invalida `CurrentUser`, `TenantInvitation` y `TenantUser`.
 
 Usar `tenantSlug` en tags igual que `OrganizationRecord`:
 
@@ -1066,6 +1079,9 @@ apps/web/src/features/access/components/users-panel.tsx
 apps/web/src/features/access/components/user-role-drawer.tsx
 apps/web/src/features/access/components/invitations-panel.tsx
 apps/web/src/features/access/components/invitation-drawer.tsx
+apps/web/src/features/access/components/invitation-accept-page.tsx
+apps/web/src/features/access/components/invitation-preview-state.tsx
+apps/web/src/features/access/components/invitation-account-form.tsx
 ```
 
 Reutilizar:
@@ -1166,9 +1182,11 @@ Tabla:
 
 ```txt
 Email
-Role
+Roles
 Status
 Expires
+Resends
+Last sent
 Invited
 Actions
 ```
@@ -1189,8 +1207,99 @@ Reglas UX:
 
 - No permitir seleccionar roles archivados.
 - Requerir al menos un role.
+- Resend solo para `PENDING` o `EXPIRED`.
+- Cancel solo para `PENDING` o `EXPIRED`.
+- Deshabilitar resend si `resendCount >= 3`.
+- Si `status=PENDING` pero `expiresAt <= now`, mostrar visualmente como
+  expired usando helper frontend; backend sigue siendo fuente de verdad.
 - Mostrar error de duplicate pending invitation con mensaje accionable.
 - Toast success/error en create/resend/cancel.
+
+Mientras no exista email provider real, create/resend pueden mostrar un modal
+dev-safe con:
+
+```txt
+https://app.example.com/invitations/accept?token=<acceptanceToken>
+```
+
+No mostrar `acceptanceToken` en produccion cuando se integre email real.
+
+### Invitation Accept Page
+
+Ruta:
+
+```txt
+/invitations/accept?token=<acceptanceToken>
+```
+
+Flujo:
+
+```txt
+1. Leer token del query string.
+2. Llamar preview endpoint.
+3. Mostrar tenant, email invitado, status y expiracion.
+4. Si hay sesion y email coincide, aceptar.
+5. Si hay sesion y email no coincide, mostrar mismatch y opcion de sign out.
+6. Si no hay sesion, mostrar signup/login con email bloqueado.
+7. Si signup requiere verificacion, mostrar check-email y usar /auth/confirm.
+8. Cuando haya sesion valida, llamar POST /tenant-invitations/accept.
+9. Invalidar /me y redirigir al tenant/workspace.
+```
+
+Formulario recomendado para usuario nuevo:
+
+```txt
+Email: ana@company.com, locked
+Password
+Confirm password
+Create account and accept invitation
+```
+
+No aceptar invitaciones solo por token sin sesion. Backend debe seguir
+validando:
+
+```txt
+authenticatedUser.email == invitation.email
+```
+
+### Invitation Preview Endpoint
+
+Agregar para Fase 5:
+
+```txt
+GET /tenant-invitations/preview?token=<acceptanceToken>
+```
+
+Respuesta:
+
+```ts
+{
+  tenantName: string;
+  invitedEmail: string;
+  status: "PENDING" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+  expiresAt: string;
+}
+```
+
+No debe activar membership ni devolver `tokenHash`, permisos o IDs internos
+innecesarios.
+
+### Supabase Email Verification
+
+Si email confirmation esta activo en Supabase:
+
+```txt
+signup -> Supabase envia email -> /auth/confirm -> vuelve a /invitations/accept
+```
+
+`/auth/confirm` debe verificar el token de Supabase, no el token de invitacion.
+
+Mantener separados:
+
+```txt
+App invitation token: activa TenantInvitation/TenantMembership.
+Supabase verification token: confirma control del email y crea sesion.
+```
 
 ## Control Frontend De Acceso
 
@@ -1405,14 +1514,31 @@ DoD:
 
 Objetivo:
 
-Construir pantallas administrativas siguiendo patrones existentes.
+Construir pantallas administrativas y el flujo de aceptacion de invitaciones
+siguiendo patrones existentes.
 
 Tareas:
 
 - Agregar `access-api`, types y utils.
+- Agregar `access-permissions`.
+- Agregar tags `Permission`, `Role`, `TenantUser`, `TenantInvitation`,
+  `InvitationPreview`.
 - Agregar rutas `/settings/access`.
+- Agregar ruta `/invitations/accept?token=...`.
+- Revisar/agregar ruta `/auth/confirm` para Supabase email verification.
 - Agregar card Access en Settings.
 - Crear panels Users/Roles/Invitations.
+- Implementar Roles tab con Permission Matrix.
+- Implementar Users tab con roles multi-select y effective permissions.
+- Implementar Invitations tab con roles multi-select, `resendCount`,
+  `lastSentAt`, `expiresAt`, resend/cancel.
+- Implementar preview endpoint backend para invitaciones.
+- Implementar pantalla de aceptacion con:
+  - preview de invitacion;
+  - sesion coincidente;
+  - sesion con email incorrecto;
+  - signup/login con email bloqueado;
+  - soporte para email verification de Supabase.
 - Crear drawers, permission matrix y confirm dialogs.
 - Usar toasts para feedback.
 - Agregar tests.
@@ -1423,6 +1549,16 @@ DoD:
 - Backend sigue devolviendo 403 para usuarios sin permisos.
 - Cambios actualizan tablas y `/me`.
 - UI queda consistente con Organization Settings.
+- Invitation accept no requiere tenant activo.
+- Invitation accept no activa acceso sin sesion autenticada y email match.
+- Usuario nuevo puede crear cuenta con email bloqueado antes de aceptar.
+- Email verification preserva el retorno a `/invitations/accept`.
+
+Documento detallado de Fase 5:
+
+```txt
+docs/rolo-permission-planning/phase-5-access-settings-and-invitation-ux-implementation-plan.md
+```
 
 ### Fase 6: Hardening
 
@@ -1544,6 +1680,26 @@ Mitigacion:
   inicial recomendado de 3 reenvios.
 - Email/session match.
 - Audit.
+
+### Riesgo: Invitation Signup Incompleto Para Usuarios Nuevos
+
+Mitigacion:
+
+- No redirigir solo al login generico como experiencia final.
+- Crear `/invitations/accept` con preview, signup/login y email bloqueado.
+- Agregar `/auth/confirm` para email verification de Supabase cuando aplique.
+- Preservar `next=/invitations/accept?token=...` durante signup/confirmacion.
+- Mostrar mismatch si hay sesion con email distinto.
+
+### Riesgo: Futuras Integraciones De Identidad Rompen El Flujo
+
+Mitigacion:
+
+- Separar app invitation token de Supabase verification token.
+- No asumir Google como unico provider.
+- Preparar UI para Microsoft/SSO sin mostrar botones no funcionales.
+- Mantener la aceptacion final en backend con email match.
+- Futuro mapping: external groups/SSO/SCIM -> Role, no directo a permissions.
 
 ## Recomendacion Final
 

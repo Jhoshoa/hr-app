@@ -43,6 +43,7 @@ const createInvitationsRepository = (): jest.Mocked<TenantInvitationsRepository>
   cancel: jest.fn(),
   create: jest.fn(),
   findById: jest.fn(),
+  findPreviewByTokenHash: jest.fn(),
   findByTokenHash: jest.fn(),
   findMembershipStatusByEmail: jest.fn(),
   findPendingByEmail: jest.fn(),

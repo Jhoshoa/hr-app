@@ -28,9 +28,9 @@ export class AccessPolicyService {
     return tenantUser;
   };
 
-  assertInvitationExists = (
-    invitation: TenantInvitationEntity | null
-  ): TenantInvitationEntity => {
+  assertInvitationExists = <TInvitation>(
+    invitation: TInvitation | null
+  ): TInvitation => {
     if (!invitation) {
       throw new NotFoundException("Invitation was not found.");
     }

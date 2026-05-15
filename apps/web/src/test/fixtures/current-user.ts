@@ -16,6 +16,14 @@ export const currentTenantFixture: TenantSummary = {
     "roles.manage"
   ],
   roleKey: "hr_admin",
+  roles: [
+    {
+      id: "role-hr-admin",
+      isSystemRole: true,
+      key: "hr_admin",
+      name: "HR Admin"
+    }
+  ],
   tenantId: "tenant-assuresoft-demo",
   tenantName: "Andes People Ops",
   tenantSlug: "assuresoft-demo"

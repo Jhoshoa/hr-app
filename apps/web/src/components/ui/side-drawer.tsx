@@ -7,12 +7,13 @@ import { Button } from "./button";
 interface SideDrawerProps {
   readonly children: ReactNode;
   readonly description?: string;
+  readonly footer?: ReactNode;
   readonly isOpen: boolean;
   readonly onClose: () => void;
   readonly title: string;
 }
 
-export function SideDrawer({ children, description, isOpen, onClose, title }: SideDrawerProps) {
+export function SideDrawer({ children, description, footer, isOpen, onClose, title }: SideDrawerProps) {
   if (!isOpen) {
     return null;
   }
@@ -36,6 +37,11 @@ export function SideDrawer({ children, description, isOpen, onClose, title }: Si
           </Button>
         </header>
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
+        {footer ? (
+          <footer className="border-t border-border bg-surface px-5 py-4">
+            <div className="flex justify-end gap-2">{footer}</div>
+          </footer>
+        ) : null}
       </section>
     </div>
   );

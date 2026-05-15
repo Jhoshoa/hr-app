@@ -20,3 +20,9 @@ export class AcceptTenantInvitationDto {
   token!: string;
 }
 
+export class PreviewTenantInvitationQueryDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(20)
+  token!: string;
+}

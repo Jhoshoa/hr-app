@@ -30,6 +30,16 @@ export interface TenantInvitationWithToken extends TenantInvitationEntity {
   readonly acceptanceToken: string;
 }
 
+export interface TenantInvitationPreviewEntity {
+  readonly tenantName: string;
+  readonly invitedEmail: string;
+  readonly status: TenantInvitationStatus;
+  readonly expiresAt: Date;
+  readonly roles: readonly {
+    readonly name: string;
+  }[];
+}
+
 export interface CreateTenantInvitationInput {
   readonly tenantId: string;
   readonly email: string;

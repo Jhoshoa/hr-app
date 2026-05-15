@@ -6,6 +6,7 @@ interface BackendTenantMembership {
   readonly tenantSlug: string;
   readonly tenantName: string;
   readonly roleKey: string;
+  readonly roles?: TenantSummary["roles"];
   readonly permissions: string[];
 }
 

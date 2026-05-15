@@ -15,6 +15,7 @@ import { ListPermissionsUseCase } from "./application/use-cases/list-permissions
 import { ListRolesUseCase } from "./application/use-cases/list-roles.use-case";
 import { ListTenantInvitationsUseCase } from "./application/use-cases/list-tenant-invitations.use-case";
 import { ListTenantUsersUseCase } from "./application/use-cases/list-tenant-users.use-case";
+import { PreviewTenantInvitationUseCase } from "./application/use-cases/preview-tenant-invitation.use-case";
 import { ReactivateRoleUseCase } from "./application/use-cases/reactivate-role.use-case";
 import { ReactivateTenantMembershipUseCase } from "./application/use-cases/reactivate-tenant-membership.use-case";
 import { ResendTenantInvitationUseCase } from "./application/use-cases/resend-tenant-invitation.use-case";
@@ -60,6 +61,7 @@ import { TenantUsersController } from "./presentation/controllers/tenant-users.c
     DisableTenantMembershipUseCase,
     ReactivateTenantMembershipUseCase,
     ListTenantInvitationsUseCase,
+    PreviewTenantInvitationUseCase,
     CreateTenantInvitationUseCase,
     ResendTenantInvitationUseCase,
     CancelTenantInvitationUseCase,

@@ -5,7 +5,15 @@ export interface TenantSummary {
   readonly tenantSlug: string;
   readonly tenantName: string;
   readonly roleKey: string;
+  readonly roles?: TenantRoleSummary[];
   readonly permissions: string[];
+}
+
+export interface TenantRoleSummary {
+  readonly id: string;
+  readonly key: string;
+  readonly name: string;
+  readonly isSystemRole: boolean;
 }
 
 export interface CurrentUser {

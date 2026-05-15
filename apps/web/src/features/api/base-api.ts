@@ -28,6 +28,11 @@ export const baseApi = createApi({
     "Tenant",
     "AuditEvent",
     "OrganizationRecord",
+    "Permission",
+    "Role",
+    "TenantUser",
+    "TenantInvitation",
+    "InvitationPreview",
     "CompanySignupRequest",
     "CompanySignupAvailability",
     "PlatformTenant"

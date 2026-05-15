@@ -2,7 +2,8 @@ import type {
   AcceptTenantInvitationInput,
   CreateTenantInvitationInput,
   ResendTenantInvitationInput,
-  TenantInvitationEntity
+  TenantInvitationEntity,
+  TenantInvitationPreviewEntity
 } from "../entities/tenant-invitation.entity";
 
 export const TENANT_INVITATIONS_REPOSITORY = Symbol("TENANT_INVITATIONS_REPOSITORY");
@@ -12,6 +13,7 @@ export interface TenantInvitationsRepository {
   findById: (tenantId: string, invitationId: string) => Promise<TenantInvitationEntity | null>;
   findPendingByEmail: (tenantId: string, email: string) => Promise<TenantInvitationEntity | null>;
   findByTokenHash: (tokenHash: string) => Promise<TenantInvitationEntity | null>;
+  findPreviewByTokenHash: (tokenHash: string) => Promise<TenantInvitationPreviewEntity | null>;
   findMembershipStatusByEmail: (
     tenantId: string,
     email: string

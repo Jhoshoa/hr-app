@@ -5,7 +5,8 @@ import type {
   AcceptTenantInvitationInput,
   CreateTenantInvitationInput,
   ResendTenantInvitationInput,
-  TenantInvitationEntity
+  TenantInvitationEntity,
+  TenantInvitationPreviewEntity
 } from "../../domain/entities/tenant-invitation.entity";
 import type { TenantInvitationsRepository } from "../../domain/ports/tenant-invitations.repository.port";
 
@@ -71,6 +72,55 @@ export class PrismaTenantInvitationsRepository implements TenantInvitationsRepos
     });
 
     return invitation ? this.toEntity(invitation) : null;
+  };
+
+  findPreviewByTokenHash = async (
+    tokenHash: string
+  ): Promise<TenantInvitationPreviewEntity | null> => {
+    const invitation = await this.prisma.tenantInvitation.findUnique({
+      select: {
+        email: true,
+        status: true,
+        expiresAt: true,
+        tenant: {
+          select: {
+            name: true
+          }
+        },
+        roles: {
+          orderBy: {
+            role: {
+              name: "asc"
+            }
+          },
+          select: {
+            role: {
+              select: {
+                name: true
+              }
+            }
+          }
+        }
+      },
+      where: { tokenHash }
+    });
+
+    if (!invitation) {
+      return null;
+    }
+
+    return {
+      tenantName: invitation.tenant.name,
+      invitedEmail: invitation.email,
+      status:
+        invitation.status === "PENDING" && invitation.expiresAt.getTime() <= Date.now()
+          ? "EXPIRED"
+          : invitation.status,
+      expiresAt: invitation.expiresAt,
+      roles: invitation.roles.map((invitationRole) => ({
+        name: invitationRole.role.name
+      }))
+    };
   };
 
   findMembershipStatusByEmail = async (

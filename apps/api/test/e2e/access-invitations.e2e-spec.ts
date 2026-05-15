@@ -153,6 +153,24 @@ describe("Access invitations API", () => {
       expect.objectContaining({ key: "employee" })
     ]);
 
+    await request(app.getHttpServer())
+      .get("/api/v1/tenant-invitations/preview")
+      .query({ token })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual(
+          expect.objectContaining({
+            tenantName: `${testId} Tenant`,
+            invitedEmail: `${testId}-target@example.com`,
+            status: "PENDING",
+            expiresAt: expect.any(String),
+            roles: [{ name: "Employee" }]
+          })
+        );
+        expect(response.body.id).toBeUndefined();
+        expect(response.body.tokenHash).toBeUndefined();
+      });
+
     const storedInvitation = await prisma.tenantInvitation.findUniqueOrThrow({
       where: { id: invitationId }
     });
@@ -328,6 +346,14 @@ describe("Access invitations API", () => {
       },
       where: { id: invitationId }
     });
+
+    await request(app.getHttpServer())
+      .get("/api/v1/tenant-invitations/preview")
+      .query({ token })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.status).toBe("EXPIRED");
+      });
 
     await request(app.getHttpServer())
       .post("/api/v1/tenant-invitations/accept")

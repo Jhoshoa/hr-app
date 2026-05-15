@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentTenant } from "../../../../common/decorators/current-tenant.decorator";
 import { CurrentUser } from "../../../../common/decorators/current-user.decorator";
 import { Permissions } from "../../../../common/decorators/permissions.decorator";
+import { Public } from "../../../../common/decorators/public.decorator";
 import { SkipTenant } from "../../../../common/decorators/skip-tenant.decorator";
 import type {
   AuthenticatedUserContext,
@@ -12,8 +13,13 @@ import { AcceptTenantInvitationUseCase } from "../../application/use-cases/accep
 import { CancelTenantInvitationUseCase } from "../../application/use-cases/cancel-tenant-invitation.use-case";
 import { CreateTenantInvitationUseCase } from "../../application/use-cases/create-tenant-invitation.use-case";
 import { ListTenantInvitationsUseCase } from "../../application/use-cases/list-tenant-invitations.use-case";
+import { PreviewTenantInvitationUseCase } from "../../application/use-cases/preview-tenant-invitation.use-case";
 import { ResendTenantInvitationUseCase } from "../../application/use-cases/resend-tenant-invitation.use-case";
-import { AcceptTenantInvitationDto, CreateTenantInvitationDto } from "../dto/tenant-invitation.dto";
+import {
+  AcceptTenantInvitationDto,
+  CreateTenantInvitationDto,
+  PreviewTenantInvitationQueryDto
+} from "../dto/tenant-invitation.dto";
 
 @ApiBearerAuth()
 @ApiTags("access")
@@ -24,7 +30,8 @@ export class TenantInvitationsController {
     private readonly createTenantInvitationUseCase: CreateTenantInvitationUseCase,
     private readonly resendTenantInvitationUseCase: ResendTenantInvitationUseCase,
     private readonly cancelTenantInvitationUseCase: CancelTenantInvitationUseCase,
-    private readonly acceptTenantInvitationUseCase: AcceptTenantInvitationUseCase
+    private readonly acceptTenantInvitationUseCase: AcceptTenantInvitationUseCase,
+    private readonly previewTenantInvitationUseCase: PreviewTenantInvitationUseCase
   ) {}
 
   @Get()
@@ -61,6 +68,13 @@ export class TenantInvitationsController {
       userId: user.id,
       userEmail: user.email
     });
+  }
+
+  @Get("preview")
+  @Public()
+  @SkipTenant()
+  async previewTenantInvitation(@Query() query: PreviewTenantInvitationQueryDto) {
+    return this.previewTenantInvitationUseCase.execute(query.token);
   }
 
   @Post(":invitationId/resend")
