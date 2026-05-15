@@ -37,6 +37,7 @@ const createRolesRepository = (): jest.Mocked<RolesRepository> => ({
   countActiveMembershipAssignments: jest.fn(),
   countActiveOwnerMemberships: jest.fn().mockResolvedValue(1),
   create: jest.fn(),
+  findActiveIdsByTenant: jest.fn(),
   findById: jest.fn(),
   findByKey: jest.fn(),
   list: jest.fn(),
@@ -121,4 +122,3 @@ describe("UpdateRolePermissionsUseCase", () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 });
-

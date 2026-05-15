@@ -94,6 +94,25 @@ export class PrismaRolesRepository implements RolesRepository {
     return role ? this.toDetail(role) : null;
   };
 
+  findActiveIdsByTenant = async (tenantId: string, roleIds: readonly string[]): Promise<string[]> => {
+    if (roleIds.length === 0) {
+      return [];
+    }
+
+    const roles = await this.prisma.role.findMany({
+      select: { id: true },
+      where: {
+        id: {
+          in: [...roleIds]
+        },
+        tenantId,
+        status: "ACTIVE"
+      }
+    });
+
+    return roles.map((role) => role.id);
+  };
+
   create = async (input: CreateRoleInput): Promise<RoleDetailEntity> => {
     const role = await this.prisma.role.create({
       data: {
@@ -246,4 +265,3 @@ export class PrismaRolesRepository implements RolesRepository {
     permissions: role.permissions.map((rolePermission) => rolePermission.permission)
   });
 }
-

@@ -23,6 +23,7 @@ const createRolesRepository = (): jest.Mocked<RolesRepository> => ({
   countActiveMembershipAssignments: jest.fn(),
   countActiveOwnerMemberships: jest.fn(),
   create: jest.fn(),
+  findActiveIdsByTenant: jest.fn(),
   findById: jest.fn(),
   findByKey: jest.fn(),
   list: jest.fn(),
@@ -66,4 +67,3 @@ describe("AccessPolicyService", () => {
     );
   });
 });
-

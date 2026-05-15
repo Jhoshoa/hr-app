@@ -11,6 +11,7 @@ export interface RolesRepository {
   list: (tenantId: string) => Promise<RoleSummaryEntity[]>;
   findById: (tenantId: string, roleId: string) => Promise<RoleDetailEntity | null>;
   findByKey: (tenantId: string, key: string) => Promise<RoleDetailEntity | null>;
+  findActiveIdsByTenant: (tenantId: string, roleIds: readonly string[]) => Promise<string[]>;
   create: (input: CreateRoleInput) => Promise<RoleDetailEntity>;
   update: (input: UpdateRoleInput) => Promise<RoleDetailEntity>;
   replacePermissions: (
@@ -26,4 +27,3 @@ export interface RolesRepository {
   countActiveMembershipAssignments: (tenantId: string, roleId: string) => Promise<number>;
   countActiveOwnerMemberships: (tenantId: string) => Promise<number>;
 }
-

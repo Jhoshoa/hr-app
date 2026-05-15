@@ -1,6 +1,7 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { RoleDetailEntity } from "../../domain/entities/role.entity";
 import type { RolesRepository } from "../../domain/ports/roles.repository.port";
+import type { TenantUserEntity } from "../../domain/entities/tenant-user.entity";
 
 @Injectable()
 export class AccessPolicyService {
@@ -15,6 +16,43 @@ export class AccessPolicyService {
   assertRoleIsEditable = (role: RoleDetailEntity): void => {
     if (role.key === "owner") {
       throw new ConflictException("Owner role cannot be modified.");
+    }
+  };
+
+  assertTenantUserExists = (tenantUser: TenantUserEntity | null): TenantUserEntity => {
+    if (!tenantUser) {
+      throw new NotFoundException("Tenant user was not found.");
+    }
+
+    return tenantUser;
+  };
+
+  assertRoleIdsAreValid = async (
+    rolesRepository: RolesRepository,
+    tenantId: string,
+    roleIds: readonly string[]
+  ): Promise<string[]> => {
+    const uniqueRoleIds = [...new Set(roleIds)];
+
+    if (uniqueRoleIds.length === 0) {
+      throw new BadRequestException("Tenant user must have at least one role.");
+    }
+
+    const activeRoleIds = await rolesRepository.findActiveIdsByTenant(tenantId, uniqueRoleIds);
+
+    if (activeRoleIds.length !== uniqueRoleIds.length) {
+      throw new BadRequestException("One or more roles are invalid.");
+    }
+
+    return uniqueRoleIds;
+  };
+
+  assertActorIsNotTargetMembership = (
+    actorUserId: string,
+    target: Pick<TenantUserEntity, "userId">
+  ): void => {
+    if (actorUserId === target.userId) {
+      throw new ConflictException("Users cannot modify their own tenant access.");
     }
   };
 
@@ -49,4 +87,3 @@ export class AccessPolicyService {
     }
   };
 }
-

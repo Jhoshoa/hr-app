@@ -27,6 +27,7 @@ export class ResolveTenantContextUseCase {
       slug: membership.tenantSlug,
       name: membership.tenantName,
       roleKey: membership.roleKey,
+      roles: membership.roles,
       permissions: membership.permissions
     };
   };

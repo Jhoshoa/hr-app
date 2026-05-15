@@ -18,6 +18,19 @@ type MembershipWithTenantRolePermissions = Prisma.TenantMembershipGetPayload<{
         };
       };
     };
+    roles: {
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: {
+                permission: true;
+              };
+            };
+          };
+        };
+      };
+    };
   };
 }>;
 
@@ -123,6 +136,24 @@ export class PrismaUsersRepository implements UsersRepository {
               }
             }
           }
+        },
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            role: {
+              name: "asc"
+            }
+          }
         }
       },
       orderBy: {
@@ -158,6 +189,24 @@ export class PrismaUsersRepository implements UsersRepository {
               }
             }
           }
+        },
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            role: {
+              name: "asc"
+            }
+          }
         }
       }
     });
@@ -171,13 +220,33 @@ export class PrismaUsersRepository implements UsersRepository {
 
   private toMembershipContext = (
     membership: MembershipWithTenantRolePermissions
-  ): TenantMembershipContext => ({
-    tenantId: membership.tenantId,
-    tenantSlug: membership.tenant.slug,
-    tenantName: membership.tenant.name,
-    roleKey: membership.role.key,
-    permissions: membership.role.permissions.map((rolePermission) => rolePermission.permission.key)
-  });
+  ): TenantMembershipContext => {
+    const activeRoles = membership.roles
+      .map((membershipRole) => membershipRole.role)
+      .filter((role) => role.status === "ACTIVE");
+    const roles = activeRoles.length > 0 ? activeRoles : [membership.role];
+    const permissions = new Set<string>();
+
+    for (const role of roles) {
+      for (const rolePermission of role.permissions) {
+        permissions.add(rolePermission.permission.key);
+      }
+    }
+
+    return {
+      tenantId: membership.tenantId,
+      tenantSlug: membership.tenant.slug,
+      tenantName: membership.tenant.name,
+      roleKey: roles[0]?.key ?? membership.role.key,
+      roles: roles.map((role) => ({
+        id: role.id,
+        key: role.key,
+        name: role.name,
+        isSystemRole: role.isSystemRole
+      })),
+      permissions: [...permissions].sort()
+    };
+  };
 
   private toAuthenticatedUser = (user: {
     id: string;

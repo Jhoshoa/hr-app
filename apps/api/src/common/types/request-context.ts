@@ -15,6 +15,12 @@ export interface TenantContext {
   readonly slug: string;
   readonly name?: string;
   readonly roleKey: string;
+  readonly roles?: readonly {
+    readonly id: string;
+    readonly key: string;
+    readonly name: string;
+    readonly isSystemRole: boolean;
+  }[];
   readonly permissions: string[];
 }
 
