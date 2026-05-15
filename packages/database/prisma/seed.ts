@@ -1,27 +1,76 @@
 /// <reference types="node" />
 
 import { PrismaClient, type Role, type Tenant, type User } from "@prisma/client";
+import { permissionCatalog, type PermissionKey } from "../src/permission-catalog";
 import { devSeedUsers } from "./dev-seed-data";
 
 const prisma = new PrismaClient();
 
-const permissions = [
-  ["tenant.read", "Read tenant information"],
-  ["tenant.manage", "Manage tenant settings"],
-  ["users.read", "Read users"],
-  ["users.manage", "Manage users and invitations"],
-  ["roles.manage", "Manage roles and permissions"],
-  ["audit.read", "Read audit events"],
-  ["organization.read", "Read organization setup records"],
-  ["organization.manage", "Manage organization setup records"],
-  ["employees.read", "Read employee directory and profiles"],
-  ["employees.self.read", "Read own employee profile"],
-  ["employees.team.read", "Read direct report employee profiles"],
-  ["employees.manage", "Manage employee profiles and job data"],
-  ["employees.compensation.read", "Read employee compensation records"],
-  ["employees.compensation.manage", "Manage employee compensation records"],
-  ["employees.custom-fields.manage", "Manage employee custom field definitions"]
-] as const;
+interface RoleTemplate {
+  readonly key: string;
+  readonly name: string;
+  readonly description: string;
+  readonly permissionKeys: readonly PermissionKey[];
+}
+
+const roleTemplates = [
+  {
+    key: "hr_admin",
+    name: "HR Admin",
+    description: "Administrative HR access for tenant operations.",
+    permissionKeys: [
+      "tenant.read",
+      "users.read",
+      "users.manage",
+      "roles.manage",
+      "organization.read",
+      "organization.manage",
+      "employees.read",
+      "employees.manage",
+      "employees.compensation.read",
+      "employees.compensation.manage",
+      "employees.custom-fields.manage",
+      "audit.read"
+    ]
+  },
+  {
+    key: "hr_staff",
+    name: "HR Staff",
+    description: "Operational HR access without tenant access administration.",
+    permissionKeys: [
+      "tenant.read",
+      "users.read",
+      "organization.read",
+      "employees.read",
+      "employees.manage",
+      "employees.custom-fields.manage"
+    ]
+  },
+  {
+    key: "manager",
+    name: "Manager",
+    description: "Manager access to employee directory and direct reports.",
+    permissionKeys: ["tenant.read", "employees.read", "employees.team.read"]
+  },
+  {
+    key: "employee",
+    name: "Employee",
+    description: "Basic employee self-service access.",
+    permissionKeys: ["tenant.read", "employees.self.read"]
+  },
+  {
+    key: "finance_viewer",
+    name: "Finance Viewer",
+    description: "Read-only employee compensation access.",
+    permissionKeys: ["tenant.read", "employees.read", "employees.compensation.read"]
+  },
+  {
+    key: "recruiter",
+    name: "Recruiter",
+    description: "Recruiting-oriented access to users and employee directory.",
+    permissionKeys: ["tenant.read", "users.read", "employees.read"]
+  }
+] as const satisfies readonly RoleTemplate[];
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
@@ -37,6 +86,7 @@ const seed = async (): Promise<void> => {
   });
   const primaryOwnerRole = await upsertOwnerRole(primaryTenant.id);
   await assignAllPermissions(primaryOwnerRole.id);
+  await seedRoleTemplates(primaryTenant.id);
 
   await seedPlatformOwner(devSeedUsers.platformOwner.email, devSeedUsers.platformOwner.name);
   await seedTenantAdmin({
@@ -55,6 +105,7 @@ const seed = async (): Promise<void> => {
   });
   const secondaryOwnerRole = await upsertOwnerRole(secondaryTenant.id);
   await assignAllPermissions(secondaryOwnerRole.id);
+  await seedRoleTemplates(secondaryTenant.id);
 
   await seedTenantAdmin({
     tenantId: secondaryTenant.id,
@@ -63,15 +114,29 @@ const seed = async (): Promise<void> => {
     name: devSeedUsers.secondaryTenantAdmin.name
   });
 
+  await ensureLegacyMembershipRoles();
   await seedPendingCompanySignupRequest();
 };
 
 const seedPermissions = async (): Promise<void> => {
-  for (const [key, description] of permissions) {
+  for (const permission of permissionCatalog) {
     await prisma.permission.upsert({
-      where: { key },
-      update: { description },
-      create: { key, description }
+      where: { key: permission.key },
+      update: {
+        description: permission.description,
+        module: permission.module,
+        action: permission.action,
+        sortOrder: permission.sortOrder,
+        isCritical: permission.isCritical ?? false
+      },
+      create: {
+        key: permission.key,
+        description: permission.description,
+        module: permission.module,
+        action: permission.action,
+        sortOrder: permission.sortOrder,
+        isCritical: permission.isCritical ?? false
+      }
     });
   }
 };
@@ -102,34 +167,131 @@ const upsertOwnerRole = async (tenantId: string): Promise<Role> =>
     update: {
       name: "Owner",
       description: "Full tenant access",
-      isSystemRole: true
+      isSystemRole: true,
+      status: "ACTIVE"
     },
     create: {
       tenantId,
       key: "owner",
       name: "Owner",
       description: "Full tenant access",
-      isSystemRole: true
+      isSystemRole: true,
+      status: "ACTIVE"
     }
   });
 
 const assignAllPermissions = async (roleId: string): Promise<void> => {
   const allPermissions = await prisma.permission.findMany();
 
-  for (const permission of allPermissions) {
+  await syncRolePermissions(
+    roleId,
+    allPermissions.map((permission) => permission.id)
+  );
+};
+
+const syncRolePermissions = async (
+  roleId: string,
+  permissionIds: readonly string[]
+): Promise<void> => {
+  await prisma.rolePermission.deleteMany({
+    where: {
+      roleId,
+      permissionId: {
+        notIn: [...permissionIds]
+      }
+    }
+  });
+
+  for (const permissionId of permissionIds) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
           roleId,
-          permissionId: permission.id
+          permissionId
         }
       },
       update: {},
       create: {
         roleId,
-        permissionId: permission.id
+        permissionId
       }
     });
+  }
+};
+
+const seedRoleTemplates = async (tenantId: string): Promise<void> => {
+  const permissions = await prisma.permission.findMany({
+    where: {
+      key: {
+        in: roleTemplates.flatMap((template) => [...template.permissionKeys])
+      }
+    }
+  });
+  const permissionIdByKey = new Map(permissions.map((permission) => [permission.key, permission.id]));
+
+  for (const template of roleTemplates) {
+    const role = await prisma.role.upsert({
+      where: {
+        tenantId_key: {
+          tenantId,
+          key: template.key
+        }
+      },
+      update: {
+        name: template.name,
+        description: template.description,
+        isSystemRole: true,
+        status: "ACTIVE"
+      },
+      create: {
+        tenantId,
+        key: template.key,
+        name: template.name,
+        description: template.description,
+        isSystemRole: true,
+        status: "ACTIVE"
+      }
+    });
+    const permissionIds = template.permissionKeys.map((permissionKey) => {
+      const permissionId = permissionIdByKey.get(permissionKey);
+
+      if (!permissionId) {
+        throw new Error(`Missing permission in catalog seed: ${permissionKey}`);
+      }
+
+      return permissionId;
+    });
+
+    await syncRolePermissions(role.id, permissionIds);
+  }
+};
+
+const assignMembershipRole = async (membershipId: string, roleId: string): Promise<void> => {
+  await prisma.tenantMembershipRole.upsert({
+    where: {
+      membershipId_roleId: {
+        membershipId,
+        roleId
+      }
+    },
+    update: {},
+    create: {
+      membershipId,
+      roleId
+    }
+  });
+};
+
+const ensureLegacyMembershipRoles = async (): Promise<void> => {
+  const memberships = await prisma.tenantMembership.findMany({
+    select: {
+      id: true,
+      roleId: true
+    }
+  });
+
+  for (const membership of memberships) {
+    await assignMembershipRole(membership.id, membership.roleId);
   }
 };
 
@@ -187,7 +349,7 @@ const seedTenantAdmin = async (input: TenantAdminSeedInput): Promise<void> => {
     return;
   }
 
-  await prisma.tenantMembership.upsert({
+  const membership = await prisma.tenantMembership.upsert({
     where: {
       tenantId_userId: {
         tenantId: input.tenantId,
@@ -207,6 +369,8 @@ const seedTenantAdmin = async (input: TenantAdminSeedInput): Promise<void> => {
       joinedAt: new Date()
     }
   });
+
+  await assignMembershipRole(membership.id, input.ownerRoleId);
 };
 
 const seedPendingCompanySignupRequest = async (): Promise<void> => {

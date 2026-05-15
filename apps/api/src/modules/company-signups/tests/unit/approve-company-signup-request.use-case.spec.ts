@@ -71,6 +71,9 @@ describe("ApproveCompanySignupRequestUseCase", () => {
       tenantMembership: {
         upsert: jest.fn().mockResolvedValue({ id: "membership-1" })
       },
+      tenantMembershipRole: {
+        upsert: jest.fn().mockResolvedValue({ membershipId: "membership-1", roleId: "role-1" })
+      },
       auditEvent: {
         create: jest.fn().mockResolvedValue({ id: "audit-1" })
       }
@@ -113,6 +116,19 @@ describe("ApproveCompanySignupRequestUseCase", () => {
         })
       })
     );
+    expect(tx.tenantMembershipRole.upsert).toHaveBeenCalledWith({
+      where: {
+        membershipId_roleId: {
+          membershipId: "membership-1",
+          roleId: "role-1"
+        }
+      },
+      update: {},
+      create: {
+        membershipId: "membership-1",
+        roleId: "role-1"
+      }
+    });
     expect(tx.companySignupRequest.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "request-1", status: "PENDING" },

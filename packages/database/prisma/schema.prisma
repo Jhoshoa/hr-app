@@ -32,6 +32,13 @@ enum CompanySignupStatus {
   CANCELLED
 }
 
+enum TenantInvitationStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+}
+
 enum PlatformRoleKey {
   PLATFORM_OWNER
   PLATFORM_ADMIN
@@ -88,6 +95,7 @@ model Tenant {
   updatedAt              DateTime               @updatedAt
   memberships            TenantMembership[]
   roles                  Role[]
+  invitations            TenantInvitation[]
   auditEvents            AuditEvent[]
   departments            Department[]
   locations              Location[]
@@ -102,19 +110,21 @@ model Tenant {
 }
 
 model User {
-  id                   String                 @id @default(uuid()) @db.Uuid
-  email                String                 @unique
-  name                 String?
-  status               UserStatus             @default(INVITED)
-  externalAuthProvider String?
-  externalAuthUserId   String?                @unique
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  memberships          TenantMembership[]
-  platformRoles        PlatformUserRole[]
-  reviewedSignups      CompanySignupRequest[] @relation("CompanySignupReviewedBy")
-  auditEvents          AuditEvent[]
-  employees            Employee[]
+  id                        String                 @id @default(uuid()) @db.Uuid
+  email                     String                 @unique
+  name                      String?
+  status                    UserStatus             @default(INVITED)
+  externalAuthProvider      String?
+  externalAuthUserId        String?                @unique
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
+  memberships               TenantMembership[]
+  invitedTenantInvitations  TenantInvitation[]     @relation("TenantInvitationInvitedBy")
+  acceptedTenantInvitations TenantInvitation[]     @relation("TenantInvitationAcceptedBy")
+  platformRoles             PlatformUserRole[]
+  reviewedSignups           CompanySignupRequest[] @relation("CompanySignupReviewedBy")
+  auditEvents               AuditEvent[]
+  employees                 Employee[]
 
   @@index([email])
   @@index([externalAuthProvider, externalAuthUserId])
@@ -162,18 +172,20 @@ model CompanySignupRequest {
 }
 
 model TenantMembership {
-  id        String           @id @default(uuid()) @db.Uuid
-  tenantId  String           @db.Uuid
-  userId    String           @db.Uuid
-  roleId    String           @db.Uuid
-  status    MembershipStatus @default(INVITED)
-  invitedAt DateTime         @default(now())
-  joinedAt  DateTime?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role             @relation(fields: [roleId], references: [id])
+  id          String                 @id @default(uuid()) @db.Uuid
+  tenantId    String                 @db.Uuid
+  userId      String                 @db.Uuid
+  roleId      String                 @db.Uuid
+  status      MembershipStatus       @default(INVITED)
+  invitedAt   DateTime               @default(now())
+  joinedAt    DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        Role                   @relation(fields: [roleId], references: [id])
+  roles       TenantMembershipRole[]
+  invitations TenantInvitation[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, status])
@@ -181,28 +193,47 @@ model TenantMembership {
 }
 
 model Role {
-  id           String             @id @default(uuid()) @db.Uuid
-  tenantId     String?            @db.Uuid
-  key          String
-  name         String
-  description  String?
-  isSystemRole Boolean            @default(false)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships  TenantMembership[]
-  permissions  RolePermission[]
+  id                    String                 @id @default(uuid()) @db.Uuid
+  tenantId              String?                @db.Uuid
+  key                   String
+  name                  String
+  description           String?
+  isSystemRole          Boolean                @default(false)
+  status                RecordStatus           @default(ACTIVE)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  tenant                Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships           TenantMembership[]
+  membershipAssignments TenantMembershipRole[]
+  invitationAssignments TenantInvitationRole[]
+  permissions           RolePermission[]
 
   @@unique([tenantId, key])
   @@index([tenantId])
+  @@index([tenantId, status])
 }
 
 model Permission {
   id          String           @id @default(uuid()) @db.Uuid
   key         String           @unique
   description String
+  module      String?
+  action      String?
+  sortOrder   Int              @default(0)
+  isCritical  Boolean          @default(false)
   createdAt   DateTime         @default(now())
   roles       RolePermission[]
+}
+
+model TenantMembershipRole {
+  membershipId String           @db.Uuid
+  roleId       String           @db.Uuid
+  createdAt    DateTime         @default(now())
+  membership   TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, roleId])
+  @@index([roleId])
 }
 
 model RolePermission {
@@ -212,6 +243,41 @@ model RolePermission {
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
+}
+
+model TenantInvitation {
+  id               String                 @id @default(uuid()) @db.Uuid
+  tenantId         String                 @db.Uuid
+  email            String
+  membershipId     String?                @db.Uuid
+  status           TenantInvitationStatus @default(PENDING)
+  tokenHash        String                 @unique
+  invitedByUserId  String?                @db.Uuid
+  acceptedByUserId String?                @db.Uuid
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership       TenantMembership?      @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  invitedBy        User?                  @relation("TenantInvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  acceptedBy       User?                  @relation("TenantInvitationAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  roles            TenantInvitationRole[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, email])
+}
+
+model TenantInvitationRole {
+  invitationId String           @db.Uuid
+  roleId       String           @db.Uuid
+  createdAt    DateTime         @default(now())
+  invitation   TenantInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  role         Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([invitationId, roleId])
+  @@index([roleId])
 }
 
 model AuditEvent {

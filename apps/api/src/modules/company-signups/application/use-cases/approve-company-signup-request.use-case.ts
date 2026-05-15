@@ -75,7 +75,7 @@ export class ApproveCompanySignupRequestUseCase {
           }
         });
 
-        await tx.tenantMembership.upsert({
+        const membership = await tx.tenantMembership.upsert({
           where: {
             tenantId_userId: {
               tenantId: tenant.id,
@@ -93,6 +93,19 @@ export class ApproveCompanySignupRequestUseCase {
             roleId: ownerRole.id,
             status: "ACTIVE",
             joinedAt: new Date()
+          }
+        });
+        await tx.tenantMembershipRole.upsert({
+          where: {
+            membershipId_roleId: {
+              membershipId: membership.id,
+              roleId: ownerRole.id
+            }
+          },
+          update: {},
+          create: {
+            membershipId: membership.id,
+            roleId: ownerRole.id
           }
         });
 
