@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import type { RoleDetailEntity } from "../../domain/entities/role.entity";
 import type { RolesRepository } from "../../domain/ports/roles.repository.port";
 import type { TenantUserEntity } from "../../domain/entities/tenant-user.entity";
+import type { TenantInvitationEntity } from "../../domain/entities/tenant-invitation.entity";
 
 @Injectable()
 export class AccessPolicyService {
@@ -25,6 +26,16 @@ export class AccessPolicyService {
     }
 
     return tenantUser;
+  };
+
+  assertInvitationExists = (
+    invitation: TenantInvitationEntity | null
+  ): TenantInvitationEntity => {
+    if (!invitation) {
+      throw new NotFoundException("Invitation was not found.");
+    }
+
+    return invitation;
   };
 
   assertRoleIdsAreValid = async (

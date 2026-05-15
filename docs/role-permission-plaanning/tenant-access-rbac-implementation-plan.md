@@ -349,6 +349,8 @@ model TenantInvitation {
   invitedByUserId String?                @db.Uuid
   acceptedByUserId String?               @db.Uuid
   expiresAt       DateTime
+  resendCount     Int                    @default(0)
+  lastSentAt      DateTime?
   acceptedAt      DateTime?
   cancelledAt     DateTime?
   createdAt       DateTime               @default(now())
@@ -377,8 +379,22 @@ Recomendacion:
 - Crear o reutilizar `User` en estado `INVITED`.
 - Crear `TenantMembership` en estado `INVITED` al invitar.
 - Asignar uno o mas roles iniciales a la invitacion y al membership invitado.
+- Setear `expiresAt = now + invitationTtl`.
+- Setear `lastSentAt = now`.
+- En `resend`, rotar token, reemplazar `tokenHash`, renovar `expiresAt`,
+  incrementar `resendCount` y actualizar `lastSentAt`.
+- No agregar `isValid`; la validez se deriva de
+  `status == PENDING && now < expiresAt`.
+- Al intentar aceptar una invitacion vencida, marcar `EXPIRED` y rechazar.
 - Al aceptar, pasar membership a `ACTIVE` y setear `joinedAt`.
 - `/me` debe seguir devolviendo solo memberships `ACTIVE`.
+
+Documento complementario de decisiones de expiracion, resend, link de
+aceptacion y configuracion futura:
+
+```txt
+docs/role-permission-planning/phase-4-invitation-expiration-resend-and-configuration-notes.md
+```
 
 ### Futuro: MembershipAccessScope
 
@@ -837,7 +853,14 @@ Validaciones:
 - Si existe membership `DISABLED`, requerir reactivacion explicita o flujo
   controlado.
 - Token se guarda hasheado, nunca en claro.
-- Token expira.
+- Token expira via `expiresAt`; al aceptar se valida `now < expiresAt`.
+- No usar `isValid`; usar `status + expiresAt` como fuente de validez.
+- `resend` debe invalidar el token anterior reemplazando `tokenHash`.
+- `resend` debe incrementar `resendCount`, setear `lastSentAt` y renovar
+  `expiresAt`.
+- Limite inicial recomendado: `maxResends = 3`.
+- Link de aceptacion futuro:
+  `https://app.example.com/invitations/accept?token=<acceptanceToken>`.
 - El email del usuario autenticado debe coincidir con el email invitado.
 - Al aceptar: `TenantInvitation.status=ACCEPTED`,
   `TenantMembership.status=ACTIVE`, `joinedAt=now`.
@@ -1358,9 +1381,13 @@ Tareas:
 
 - Crear/resend/cancel/list invitations.
 - Implementar token hashing y expiration.
+- Agregar `resendCount` y `lastSentAt` para controlar reenvios.
+- En `resend`, rotar token, renovar expiracion y registrar ultimo envio.
 - Implementar accept invitation.
 - Integrar email provider cuando exista; mientras tanto exponer dev-safe link
   solo en entorno local si se necesita.
+- Preparar link de aceptacion:
+  `https://app.example.com/invitations/accept?token=<acceptanceToken>`.
 - Agregar audit events.
 - Agregar tests.
 
@@ -1369,6 +1396,9 @@ DoD:
 - Invitacion crea membership INVITED.
 - Aceptar activa membership.
 - Token no se guarda en claro.
+- Invitacion vencida no puede aceptarse.
+- Reenvio invalida token anterior.
+- `resendCount` y `lastSentAt` se actualizan al reenviar.
 - Email/session mismatch falla.
 
 ### Fase 5: Frontend Access Settings
@@ -1507,7 +1537,11 @@ Mitigacion:
 
 - Token random fuerte.
 - Hash en DB.
-- Expiration.
+- Expiration con `expiresAt` validado al aceptar.
+- No usar `isValid`; derivar validez de `status == PENDING && now < expiresAt`.
+- Marcar `EXPIRED` cuando se intente aceptar una invitacion vencida.
+- Reenvios con rotacion de token, `resendCount`, `lastSentAt` y limite
+  inicial recomendado de 3 reenvios.
 - Email/session match.
 - Audit.
 

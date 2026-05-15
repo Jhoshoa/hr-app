@@ -255,6 +255,8 @@ model TenantInvitation {
   invitedByUserId  String?                @db.Uuid
   acceptedByUserId String?                @db.Uuid
   expiresAt        DateTime
+  resendCount      Int                    @default(0)
+  lastSentAt       DateTime?
   acceptedAt       DateTime?
   cancelledAt      DateTime?
   createdAt        DateTime               @default(now())
