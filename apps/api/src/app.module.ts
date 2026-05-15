@@ -8,6 +8,7 @@ import { AuthGuard } from "./common/guards/auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
 import { PlatformRolesGuard } from "./common/guards/platform-roles.guard";
 import { TenantGuard } from "./common/guards/tenant.guard";
+import { AccessModule } from "./modules/access/access.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { CompanySignupsModule } from "./modules/company-signups/company-signups.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
@@ -21,6 +22,7 @@ import { TenantsModule } from "./modules/tenants/tenants.module";
     AppConfigModule,
     PrismaModule,
     InMemoryEventBusModule,
+    AccessModule,
     AuditModule,
     CompanySignupsModule,
     IdentityModule,
