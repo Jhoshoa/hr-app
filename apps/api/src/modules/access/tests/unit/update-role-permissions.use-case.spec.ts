@@ -102,13 +102,16 @@ describe("UpdateRolePermissionsUseCase", () => {
     );
   });
 
-  it("blocks owner permission changes", async () => {
+  it("blocks system role permission changes", async () => {
     const repository = createRolesRepository();
-    repository.findById.mockResolvedValue(createRole({ key: "owner", isSystemRole: true }));
+    repository.findById.mockResolvedValue(createRole({ isSystemRole: true }));
+    const permissionValidationService = {
+      assertPermissionIdsExist: jest.fn()
+    } as unknown as jest.Mocked<PermissionValidationService>;
     const useCase = new UpdateRolePermissionsUseCase(
       repository,
       new AccessPolicyService(),
-      { assertPermissionIdsExist: jest.fn() } as unknown as PermissionValidationService,
+      permissionValidationService,
       { execute: jest.fn() } as unknown as CreateAuditEventUseCase
     );
 
@@ -120,5 +123,7 @@ describe("UpdateRolePermissionsUseCase", () => {
         permissionIds: []
       })
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(permissionValidationService.assertPermissionIdsExist).not.toHaveBeenCalled();
+    expect(repository.replacePermissions).not.toHaveBeenCalled();
   });
 });

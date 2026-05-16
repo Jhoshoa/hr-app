@@ -39,10 +39,10 @@ describe("AccessPolicyService", () => {
     expect(() => service.assertRoleExists(null)).toThrow(NotFoundException);
   });
 
-  it("blocks owner role modifications", () => {
+  it("blocks system role modifications", () => {
     const service = new AccessPolicyService();
 
-    expect(() => service.assertRoleIsEditable(createRole({ key: "owner" }))).toThrow(
+    expect(() => service.assertRoleIsEditable(createRole({ isSystemRole: true }))).toThrow(
       ConflictException
     );
   });

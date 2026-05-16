@@ -122,6 +122,28 @@ describe("Access roles API", () => {
         }
       }
     });
+    const systemRole = await prisma.role.create({
+      data: {
+        tenantId: tenantA.id,
+        key: "hr_admin",
+        name: "HR Admin",
+        isSystemRole: true,
+        permissions: {
+          create: {
+            permissionId: tenantReadPermission.id
+          }
+        }
+      }
+    });
+    const archivedSystemRole = await prisma.role.create({
+      data: {
+        tenantId: tenantA.id,
+        key: "manager",
+        name: "Manager",
+        isSystemRole: true,
+        status: "ARCHIVED"
+      }
+    });
     const tenantBRole = await prisma.role.create({
       data: {
         tenantId: tenantB.id,
@@ -193,6 +215,59 @@ describe("Access roles API", () => {
       .expect(200);
 
     await request(app.getHttpServer())
+      .patch(`/api/v1/roles/${systemRole.id}`)
+      .set("Authorization", `Bearer ${testId}`)
+      .set("x-tenant-slug", tenantA.slug)
+      .send({ name: "Edited HR Admin" })
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .put(`/api/v1/roles/${systemRole.id}/permissions`)
+      .set("Authorization", `Bearer ${testId}`)
+      .set("x-tenant-slug", tenantA.slug)
+      .send({ permissionIds: [] })
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/roles/${systemRole.id}/archive`)
+      .set("Authorization", `Bearer ${testId}`)
+      .set("x-tenant-slug", tenantA.slug)
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/roles/${archivedSystemRole.id}/reactivate`)
+      .set("Authorization", `Bearer ${testId}`)
+      .set("x-tenant-slug", tenantA.slug)
+      .expect(409);
+
+    const systemRolesAfterMutationAttempts = await prisma.role.findMany({
+      where: {
+        id: {
+          in: [systemRole.id, archivedSystemRole.id]
+        }
+      },
+      include: {
+        permissions: true
+      }
+    });
+
+    expect(systemRolesAfterMutationAttempts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: systemRole.id,
+          name: "HR Admin",
+          status: "ACTIVE",
+          permissions: [expect.objectContaining({ permissionId: tenantReadPermission.id })]
+        }),
+        expect.objectContaining({
+          id: archivedSystemRole.id,
+          name: "Manager",
+          status: "ARCHIVED"
+        })
+      ])
+    );
+
+    await request(app.getHttpServer())
       .post(`/api/v1/roles/${roleId}/archive`)
       .set("Authorization", `Bearer ${testId}`)
       .set("x-tenant-slug", tenantA.slug)
@@ -216,4 +291,3 @@ describe("Access roles API", () => {
     expect(membership.id).toBeTruthy();
   });
 });
-

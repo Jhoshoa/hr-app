@@ -22,6 +22,7 @@ export class ReactivateRoleUseCase {
     const current = this.accessPolicyService.assertRoleExists(
       await this.rolesRepository.findById(input.tenantId, input.roleId)
     );
+    this.accessPolicyService.assertRoleIsEditable(current);
 
     if (current.status === "ACTIVE") {
       throw new ConflictException("Role is already active.");
@@ -43,4 +44,3 @@ export class ReactivateRoleUseCase {
     return role;
   };
 }
-

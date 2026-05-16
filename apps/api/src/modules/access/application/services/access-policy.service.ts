@@ -15,8 +15,8 @@ export class AccessPolicyService {
   };
 
   assertRoleIsEditable = (role: RoleDetailEntity): void => {
-    if (role.key === "owner") {
-      throw new ConflictException("Owner role cannot be modified.");
+    if (role.isSystemRole) {
+      throw new ConflictException("System roles cannot be modified.");
     }
   };
 
