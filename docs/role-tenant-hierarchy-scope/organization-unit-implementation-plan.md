@@ -1312,3 +1312,79 @@ MembershipAccessScope:
   Access settings UI para scopes
   Employee read/manage scope enforcement
 ```
+
+## Hardening Implementado 2026-05-18
+
+Se completo el tramo pendiente para considerar `OrganizationUnit` listo como
+base consistente antes de avanzar a `MembershipAccessScope`:
+
+```txt
+Backend/API:
+  OrganizationUnitType mutation endpoints ahora pasan actorUserId.
+  OrganizationUnit mutation endpoints ahora pasan actorUserId.
+  OrganizationModule importa AuditModule para auditoria.
+  Los use cases separan actorUserId del payload de repositorio.
+  Agregados eventos:
+    organization_unit_type.created
+    organization_unit_type.updated
+    organization_unit_type.archived
+    organization_unit_type.reactivated
+    organization_unit.created
+    organization_unit.updated
+    organization_unit.archived
+    organization_unit.reactivated
+    employee.job_assignment.organization_unit_set
+```
+
+```txt
+E2E:
+  Agregado test dedicado organization-units.e2e-spec.ts.
+  Cubre:
+    tenant A/B isolation
+    create/update/list/archive/reactivate unit
+    duplicate name conflict
+    cycle validation
+    primaryLocationId cross-tenant rejection
+    assignment con organizationUnitId
+    GET /employees?organizationUnitId=...
+    archive bloqueado por children activos
+    archive bloqueado por assignment actual
+    audit events generados
+```
+
+```txt
+Frontend:
+  Employees list consume API real en lugar de fixtures.
+  Employees list envia filtros backend:
+    search
+    organizationUnitId
+  Employees list resuelve labels de:
+    department
+    jobTitle
+    location
+    organizationUnit
+  Agregado drawer para job assignments con:
+    organizationUnitId
+    departmentId
+    jobTitleId
+    locationId
+    employmentTypeId
+    workModeId
+    effectiveFrom
+    effectiveTo
+  OrganizationUnitsPanel permite crear Location inline y usarla como
+  primaryLocationId sin mezclar responsabilidades entre Location y
+  OrganizationUnit.
+```
+
+Validacion ejecutada:
+
+```txt
+corepack pnpm --filter @hr-app/api typecheck
+corepack pnpm --filter @hr-app/api lint
+corepack pnpm --filter @hr-app/api test
+corepack pnpm --filter @hr-app/api test:e2e
+corepack pnpm --filter @hr-app/web typecheck
+corepack pnpm --filter @hr-app/web lint
+corepack pnpm --filter @hr-app/web test
+```

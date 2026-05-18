@@ -27,6 +27,7 @@ export const baseApi = createApi({
     "CurrentUser",
     "Tenant",
     "AuditEvent",
+    "Employee",
     "OrganizationRecord",
     "OrganizationUnit",
     "OrganizationUnitType",

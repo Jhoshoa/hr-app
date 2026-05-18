@@ -1,8 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentTenant } from "../../../../common/decorators/current-tenant.decorator";
+import { CurrentUser } from "../../../../common/decorators/current-user.decorator";
 import { Permissions } from "../../../../common/decorators/permissions.decorator";
-import type { TenantContext } from "../../../../common/types/request-context";
+import type {
+  AuthenticatedUserContext,
+  TenantContext
+} from "../../../../common/types/request-context";
 import { ArchiveOrganizationUnitTypeUseCase } from "../../application/use-cases/archive-organization-unit-type.use-case";
 import { ArchiveOrganizationUnitUseCase } from "../../application/use-cases/archive-organization-unit.use-case";
 import { CreateOrganizationUnitTypeUseCase } from "../../application/use-cases/create-organization-unit-type.use-case";
@@ -51,9 +55,14 @@ export class OrganizationUnitsController {
   @Permissions("organization.manage")
   async createType(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Body() body: CreateOrganizationUnitTypeDto
   ) {
-    return this.createOrganizationUnitTypeUseCase.execute({ tenantId: tenant.id, ...body });
+    return this.createOrganizationUnitTypeUseCase.execute({
+      tenantId: tenant.id,
+      actorUserId: user.id,
+      ...body
+    });
   }
 
   @Get("organization-unit-types/:typeId")
@@ -66,11 +75,13 @@ export class OrganizationUnitsController {
   @Permissions("organization.manage")
   async updateType(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("typeId") typeId: string,
     @Body() body: UpdateOrganizationUnitTypeDto
   ) {
     return this.updateOrganizationUnitTypeUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       typeId,
       ...body
     });
@@ -78,14 +89,22 @@ export class OrganizationUnitsController {
 
   @Post("organization-unit-types/:typeId/archive")
   @Permissions("organization.manage")
-  async archiveType(@CurrentTenant() tenant: TenantContext, @Param("typeId") typeId: string) {
-    return this.archiveOrganizationUnitTypeUseCase.execute(tenant.id, typeId);
+  async archiveType(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Param("typeId") typeId: string
+  ) {
+    return this.archiveOrganizationUnitTypeUseCase.execute(tenant.id, typeId, user.id);
   }
 
   @Post("organization-unit-types/:typeId/reactivate")
   @Permissions("organization.manage")
-  async reactivateType(@CurrentTenant() tenant: TenantContext, @Param("typeId") typeId: string) {
-    return this.reactivateOrganizationUnitTypeUseCase.execute(tenant.id, typeId);
+  async reactivateType(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Param("typeId") typeId: string
+  ) {
+    return this.reactivateOrganizationUnitTypeUseCase.execute(tenant.id, typeId, user.id);
   }
 
   @Get("organization-units")
@@ -98,9 +117,14 @@ export class OrganizationUnitsController {
   @Permissions("organization.manage")
   async createUnit(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Body() body: CreateOrganizationUnitDto
   ) {
-    return this.createOrganizationUnitUseCase.execute({ tenantId: tenant.id, ...body });
+    return this.createOrganizationUnitUseCase.execute({
+      tenantId: tenant.id,
+      actorUserId: user.id,
+      ...body
+    });
   }
 
   @Get("organization-units/:unitId")
@@ -113,11 +137,13 @@ export class OrganizationUnitsController {
   @Permissions("organization.manage")
   async updateUnit(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("unitId") unitId: string,
     @Body() body: UpdateOrganizationUnitDto
   ) {
     return this.updateOrganizationUnitUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       unitId,
       ...body
     });
@@ -125,13 +151,21 @@ export class OrganizationUnitsController {
 
   @Post("organization-units/:unitId/archive")
   @Permissions("organization.manage")
-  async archiveUnit(@CurrentTenant() tenant: TenantContext, @Param("unitId") unitId: string) {
-    return this.archiveOrganizationUnitUseCase.execute(tenant.id, unitId);
+  async archiveUnit(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Param("unitId") unitId: string
+  ) {
+    return this.archiveOrganizationUnitUseCase.execute(tenant.id, unitId, user.id);
   }
 
   @Post("organization-units/:unitId/reactivate")
   @Permissions("organization.manage")
-  async reactivateUnit(@CurrentTenant() tenant: TenantContext, @Param("unitId") unitId: string) {
-    return this.reactivateOrganizationUnitUseCase.execute(tenant.id, unitId);
+  async reactivateUnit(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Param("unitId") unitId: string
+  ) {
+    return this.reactivateOrganizationUnitUseCase.execute(tenant.id, unitId, user.id);
   }
 }

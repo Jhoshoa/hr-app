@@ -5,16 +5,22 @@ import {
   type OrganizationUnitsRepository
 } from "../../domain/ports/organization-units.repository.port";
 import { OrganizationUnitsPolicyService } from "../services/organization-units-policy.service";
+import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
 
 @Injectable()
 export class ReactivateOrganizationUnitUseCase {
   constructor(
     @Inject(ORGANIZATION_UNITS_REPOSITORY)
     private readonly organizationUnitsRepository: OrganizationUnitsRepository,
-    private readonly policy: OrganizationUnitsPolicyService
+    private readonly policy: OrganizationUnitsPolicyService,
+    private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
-  execute = async (tenantId: string, unitId: string): Promise<OrganizationUnitEntity> => {
+  execute = async (
+    tenantId: string,
+    unitId: string,
+    actorUserId: string
+  ): Promise<OrganizationUnitEntity> => {
     const unit = this.policy.assertUnitExists(
       await this.organizationUnitsRepository.findUnitById(tenantId, unitId)
     );
@@ -37,6 +43,21 @@ export class ReactivateOrganizationUnitUseCase {
       throw new BadRequestException("Primary location must be active and belong to the tenant.");
     }
 
-    return this.organizationUnitsRepository.setUnitStatus(tenantId, unitId, "ACTIVE");
+    const reactivatedUnit = await this.organizationUnitsRepository.setUnitStatus(tenantId, unitId, "ACTIVE");
+
+    await this.createAuditEventUseCase.execute({
+      tenantId,
+      actorUserId,
+      action: "organization_unit.reactivated",
+      resourceType: "organization_unit",
+      resourceId: reactivatedUnit.id,
+      metadata: {
+        name: reactivatedUnit.name,
+        key: reactivatedUnit.key,
+        code: reactivatedUnit.code
+      }
+    });
+
+    return reactivatedUnit;
   };
 }

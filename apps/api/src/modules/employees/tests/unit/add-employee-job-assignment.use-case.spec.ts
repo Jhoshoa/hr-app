@@ -90,6 +90,17 @@ describe("AddEmployeeJobAssignmentUseCase", () => {
       organizationUnitId: "unit-1",
       effectiveFrom
     });
+    expect(createAuditEventUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "employee.job_assignment.organization_unit_set",
+        actorUserId: "user-1",
+        resourceId: "employee-1",
+        metadata: expect.objectContaining({
+          assignmentId: "assignment-1",
+          organizationUnitId: "unit-1"
+        })
+      })
+    );
   });
 
   it("rejects inactive or cross-tenant organization units", async () => {

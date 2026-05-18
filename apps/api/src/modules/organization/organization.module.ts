@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuditModule } from "../audit/audit.module";
 import { CreateOrganizationRecordUseCase } from "./application/use-cases/create-organization-record.use-case";
 import { ListOrganizationRecordsUseCase } from "./application/use-cases/list-organization-records.use-case";
 import { GetOrganizationRecordUseCase } from "./application/use-cases/get-organization-record.use-case";
@@ -26,6 +27,7 @@ import { OrganizationController } from "./presentation/controllers/organization.
 import { OrganizationUnitsController } from "./presentation/controllers/organization-units.controller";
 
 @Module({
+  imports: [AuditModule],
   controllers: [OrganizationController, OrganizationUnitsController],
   providers: [
     CreateOrganizationRecordUseCase,

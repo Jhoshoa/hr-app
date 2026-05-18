@@ -8,16 +8,22 @@ import {
   type OrganizationUnitsRepository
 } from "../../domain/ports/organization-units.repository.port";
 import { OrganizationUnitsPolicyService } from "../services/organization-units-policy.service";
+import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
+
+export interface CreateOrganizationUnitCommand extends CreateOrganizationUnitInput {
+  readonly actorUserId: string;
+}
 
 @Injectable()
 export class CreateOrganizationUnitUseCase {
   constructor(
     @Inject(ORGANIZATION_UNITS_REPOSITORY)
     private readonly organizationUnitsRepository: OrganizationUnitsRepository,
-    private readonly policy: OrganizationUnitsPolicyService
+    private readonly policy: OrganizationUnitsPolicyService,
+    private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
-  execute = async (input: CreateOrganizationUnitInput): Promise<OrganizationUnitEntity> => {
+  execute = async (input: CreateOrganizationUnitCommand): Promise<OrganizationUnitEntity> => {
     const type = this.policy.assertTypeExists(
       await this.organizationUnitsRepository.findTypeById(input.tenantId, input.typeId)
     );
@@ -59,6 +65,25 @@ export class CreateOrganizationUnitUseCase {
       input.code
     );
 
-    return this.organizationUnitsRepository.createUnit(input);
+    const { actorUserId, ...createInput } = input;
+    const unit = await this.organizationUnitsRepository.createUnit(createInput);
+
+    await this.createAuditEventUseCase.execute({
+      tenantId: input.tenantId,
+      actorUserId,
+      action: "organization_unit.created",
+      resourceType: "organization_unit",
+      resourceId: unit.id,
+      metadata: {
+        typeId: unit.typeId,
+        parentOrganizationUnitId: unit.parentOrganizationUnitId,
+        primaryLocationId: unit.primaryLocationId,
+        key: unit.key,
+        name: unit.name,
+        code: unit.code
+      }
+    });
+
+    return unit;
   };
 }

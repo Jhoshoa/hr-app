@@ -53,6 +53,20 @@ export class AddEmployeeJobAssignmentUseCase {
       }
     });
 
+    if (assignment.organizationUnitId) {
+      await this.createAuditEventUseCase.execute({
+        tenantId: input.tenantId,
+        actorUserId: input.actorUserId,
+        action: "employee.job_assignment.organization_unit_set",
+        resourceType: "employee",
+        resourceId: input.employeeId,
+        metadata: {
+          assignmentId: assignment.id,
+          organizationUnitId: assignment.organizationUnitId
+        }
+      });
+    }
+
     return assignment;
   };
 }

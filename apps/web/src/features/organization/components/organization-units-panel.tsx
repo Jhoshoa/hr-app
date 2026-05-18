@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
-import { useListOrganizationRecordsQuery } from "../organization-api";
+import {
+  useCreateOrganizationRecordMutation,
+  useListOrganizationRecordsQuery
+} from "../organization-api";
 import {
   useArchiveOrganizationUnitMutation,
   useCreateOrganizationUnitMutation,
@@ -197,10 +200,16 @@ function OrganizationUnitDrawer({
   const { showToast } = useToast();
   const [createUnit, createState] = useCreateOrganizationUnitMutation();
   const [updateUnit, updateState] = useUpdateOrganizationUnitMutation();
+  const [createLocation, createLocationState] = useCreateOrganizationRecordMutation();
   const [formState, setFormState] = useState({
     typeId: "",
     parentOrganizationUnitId: "",
     primaryLocationId: "",
+    createPrimaryLocation: false,
+    primaryLocationName: "",
+    primaryLocationCountry: "US",
+    primaryLocationCity: "",
+    primaryLocationTimezone: "America/New_York",
     key: "",
     name: "",
     legalName: "",
@@ -223,6 +232,11 @@ function OrganizationUnitDrawer({
         typeId: "",
         parentOrganizationUnitId: "",
         primaryLocationId: "",
+        createPrimaryLocation: false,
+        primaryLocationName: "",
+        primaryLocationCountry: "US",
+        primaryLocationCity: "",
+        primaryLocationTimezone: "America/New_York",
         key: "",
         name: "",
         legalName: "",
@@ -237,6 +251,11 @@ function OrganizationUnitDrawer({
             typeId: drawer.record.typeId,
             parentOrganizationUnitId: drawer.record.parentOrganizationUnitId ?? "",
             primaryLocationId: drawer.record.primaryLocationId ?? "",
+            createPrimaryLocation: false,
+            primaryLocationName: "",
+            primaryLocationCountry: "US",
+            primaryLocationCity: "",
+            primaryLocationTimezone: "America/New_York",
             key: drawer.record.key ?? "",
             name: drawer.record.name,
             legalName: drawer.record.legalName ?? "",
@@ -246,6 +265,11 @@ function OrganizationUnitDrawer({
             typeId: activeTypes[0]?.id ?? "",
             parentOrganizationUnitId: "",
             primaryLocationId: "",
+            createPrimaryLocation: false,
+            primaryLocationName: "",
+            primaryLocationCountry: "US",
+            primaryLocationCity: "",
+            primaryLocationTimezone: "America/New_York",
             key: "",
             name: "",
             legalName: "",
@@ -255,26 +279,51 @@ function OrganizationUnitDrawer({
     setFormError(null);
   }, [drawer, activeTypes]);
 
-  const isSaving = createState.isLoading || updateState.isLoading;
+  const isSaving = createState.isLoading || updateState.isLoading || createLocationState.isLoading;
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const payload: OrganizationUnitPayload = {
-      typeId: formState.typeId,
-      parentOrganizationUnitId: formState.parentOrganizationUnitId || null,
-      primaryLocationId: formState.primaryLocationId || null,
-      key: formState.key.trim() || null,
-      name: formState.name.trim(),
-      legalName: formState.legalName.trim() || null,
-      code: formState.code.trim() || null
-    };
-
-    if (!payload.typeId || !payload.name) {
+    let primaryLocationId = formState.primaryLocationId || null;
+    if (!formState.typeId || !formState.name.trim()) {
       setFormError("Type and name are required.");
       return;
     }
 
     try {
+      if (formState.createPrimaryLocation) {
+        if (
+          !formState.primaryLocationName.trim() ||
+          !formState.primaryLocationCountry.trim() ||
+          !formState.primaryLocationCity.trim() ||
+          !formState.primaryLocationTimezone.trim()
+        ) {
+          setFormError("New location name, country, city, and timezone are required.");
+          return;
+        }
+
+        const location = await createLocation({
+          kind: "location",
+          tenantSlug,
+          payload: {
+            name: formState.primaryLocationName.trim(),
+            country: formState.primaryLocationCountry.trim(),
+            city: formState.primaryLocationCity.trim(),
+            timezone: formState.primaryLocationTimezone.trim()
+          }
+        }).unwrap();
+        primaryLocationId = location.id;
+      }
+
+      const payload: OrganizationUnitPayload = {
+        typeId: formState.typeId,
+        parentOrganizationUnitId: formState.parentOrganizationUnitId || null,
+        primaryLocationId,
+        key: formState.key.trim() || null,
+        name: formState.name.trim(),
+        legalName: formState.legalName.trim() || null,
+        code: formState.code.trim() || null
+      };
+
       if (drawer?.mode === "edit") {
         await updateUnit({ tenantSlug, unitId: drawer.record.id, payload }).unwrap();
         showToast({ title: "Organization unit updated", tone: "success" });
@@ -337,21 +386,89 @@ function OrganizationUnitDrawer({
             ))}
           </select>
         </label>
-        <label className="block">
-          <span className="text-sm font-medium">Primary location</span>
-          <select
-            className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            onChange={(event) => setFormState((current) => ({ ...current, primaryLocationId: event.target.value }))}
-            value={formState.primaryLocationId}
-          >
-            <option value="">No primary location</option>
-            {activeLocations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              checked={formState.createPrimaryLocation}
+              className="h-4 w-4 rounded border-input"
+              onChange={(event) =>
+                setFormState((current) => ({
+                  ...current,
+                  createPrimaryLocation: event.target.checked,
+                  primaryLocationId: event.target.checked ? "" : current.primaryLocationId
+                }))
+              }
+              type="checkbox"
+            />
+            Create primary location
+          </label>
+          {formState.createPrimaryLocation ? (
+            <div className="grid gap-3 rounded-md border border-border p-3">
+              <label className="block">
+                <span className="text-sm font-medium">Location name</span>
+                <Input
+                  className="mt-1"
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, primaryLocationName: event.target.value }))
+                  }
+                  placeholder="New York HQ"
+                  value={formState.primaryLocationName}
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium">Country</span>
+                  <Input
+                    className="mt-1"
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, primaryLocationCountry: event.target.value }))
+                    }
+                    placeholder="US"
+                    value={formState.primaryLocationCountry}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium">City</span>
+                  <Input
+                    className="mt-1"
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, primaryLocationCity: event.target.value }))
+                    }
+                    placeholder="New York"
+                    value={formState.primaryLocationCity}
+                  />
+                </label>
+              </div>
+              <label className="block">
+                <span className="text-sm font-medium">Timezone</span>
+                <Input
+                  className="mt-1"
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, primaryLocationTimezone: event.target.value }))
+                  }
+                  placeholder="America/New_York"
+                  value={formState.primaryLocationTimezone}
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="block">
+              <span className="text-sm font-medium">Primary location</span>
+              <select
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                onChange={(event) => setFormState((current) => ({ ...current, primaryLocationId: event.target.value }))}
+                value={formState.primaryLocationId}
+              >
+                <option value="">No primary location</option>
+                {activeLocations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
         <label className="block">
           <span className="text-sm font-medium">Key</span>
           <Input
