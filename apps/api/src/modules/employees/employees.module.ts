@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuditModule } from "../audit/audit.module";
+import { OrganizationModule } from "../organization/organization.module";
 import { AddCompensationRecordUseCase } from "./application/use-cases/add-compensation-record.use-case";
 import { AddEmployeeJobAssignmentUseCase } from "./application/use-cases/add-employee-job-assignment.use-case";
 import { AddManagerRelationshipUseCase } from "./application/use-cases/add-manager-relationship.use-case";
@@ -20,7 +21,7 @@ import { PrismaEmployeesRepository } from "./infrastructure/persistence/prisma-e
 import { EmployeesController } from "./presentation/controllers/employees.controller";
 
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, OrganizationModule],
   controllers: [EmployeesController],
   providers: [
     EmployeeCsvService,

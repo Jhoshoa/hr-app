@@ -105,6 +105,8 @@ model Tenant {
   clientProjects         ClientProject[]
   employees              Employee[]
   features               TenantFeature[]
+  organizationUnitTypes  OrganizationUnitType[]
+  organizationUnits      OrganizationUnit[]
   approvedCompanySignups CompanySignupRequest[] @relation("CompanySignupApprovedTenant")
 
   @@index([status])
@@ -347,9 +349,56 @@ model Location {
   updatedAt      DateTime                @updatedAt
   tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   jobAssignments EmployeeJobAssignment[]
+  organizationUnits OrganizationUnit[]
 
   @@unique([tenantId, name])
   @@index([tenantId, status])
+}
+
+model OrganizationUnitType {
+  id        String             @id @default(uuid()) @db.Uuid
+  tenantId  String             @db.Uuid
+  key       String
+  name      String
+  sortOrder Int                @default(0)
+  status    RecordStatus       @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  units     OrganizationUnit[]
+
+  @@unique([tenantId, key])
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model OrganizationUnit {
+  id                       String                  @id @default(uuid()) @db.Uuid
+  tenantId                 String                  @db.Uuid
+  parentOrganizationUnitId String?                 @db.Uuid
+  typeId                   String                  @db.Uuid
+  primaryLocationId        String?                 @db.Uuid
+  key                      String?
+  name                     String
+  legalName                String?
+  code                     String?
+  status                   RecordStatus            @default(ACTIVE)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  tenant                   Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type                     OrganizationUnitType    @relation(fields: [typeId], references: [id])
+  parentOrganizationUnit   OrganizationUnit?       @relation("OrganizationUnitHierarchy", fields: [parentOrganizationUnitId], references: [id])
+  childOrganizationUnits   OrganizationUnit[]      @relation("OrganizationUnitHierarchy")
+  primaryLocation          Location?               @relation(fields: [primaryLocationId], references: [id])
+  jobAssignments           EmployeeJobAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+  @@index([tenantId, typeId])
+  @@index([tenantId, parentOrganizationUnitId])
+  @@index([tenantId, primaryLocationId])
+  @@index([tenantId, key])
+  @@index([tenantId, code])
 }
 
 model JobTitle {
@@ -462,6 +511,7 @@ model EmployeeJobAssignment {
   departmentId     String?         @db.Uuid
   jobTitleId       String?         @db.Uuid
   locationId       String?         @db.Uuid
+  organizationUnitId String?       @db.Uuid
   employmentTypeId String?         @db.Uuid
   workModeId       String?         @db.Uuid
   effectiveFrom    DateTime
@@ -472,12 +522,14 @@ model EmployeeJobAssignment {
   department       Department?     @relation(fields: [departmentId], references: [id])
   jobTitle         JobTitle?       @relation(fields: [jobTitleId], references: [id])
   location         Location?       @relation(fields: [locationId], references: [id])
+  organizationUnit OrganizationUnit? @relation(fields: [organizationUnitId], references: [id])
   employmentType   EmploymentType? @relation(fields: [employmentTypeId], references: [id])
   workMode         WorkMode?       @relation(fields: [workModeId], references: [id])
 
   @@index([tenantId, employeeId, effectiveFrom])
   @@index([tenantId, departmentId])
   @@index([tenantId, jobTitleId])
+  @@index([tenantId, organizationUnitId])
 }
 
 model ManagerRelationship {

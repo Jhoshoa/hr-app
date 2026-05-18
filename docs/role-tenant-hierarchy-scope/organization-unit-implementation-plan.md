@@ -2,6 +2,8 @@
 
 Fecha: 2026-05-17
 
+Ultima actualizacion de implementacion: 2026-05-18
+
 ## Objetivo
 
 Planificar la implementacion de `OrganizationUnit` como entidad principal para
@@ -1188,3 +1190,125 @@ UI para asignar scopes a tenant users
 ```
 
 No adelantar eso en esta fase para evitar una falsa sensacion de seguridad.
+
+## Estado Implementado 2026-05-18
+
+La fase base de `OrganizationUnit` quedo implementada sin introducir todavia
+seguridad por scope:
+
+```txt
+DB:
+  OrganizationUnitType agregado.
+  OrganizationUnit agregado.
+  Tenant.organizationUnitTypes agregado.
+  Tenant.organizationUnits agregado.
+  Location.organizationUnits agregado para primaryLocationId.
+  EmployeeJobAssignment.organizationUnitId agregado como nullable.
+  Migracion 20260518133000_organization_units aplicada en DB local.
+
+Decisiones de schema:
+  OrganizationUnitType mantiene unique tenantId + key y tenantId + name.
+  OrganizationUnit mantiene unique tenantId + name.
+  OrganizationUnit.key y OrganizationUnit.code son nullable sin unique DB en v1.
+  Duplicados de key/code con valor se validan en backend.
+```
+
+```txt
+Seed:
+  packages/database/src/organization-unit-type-catalog.ts agregado.
+  Seed local crea tipos iniciales por tenant:
+    branch
+    office
+    subsidiary
+    business_unit
+  No se crean OrganizationUnits automaticamente.
+```
+
+```txt
+Backend:
+  Subdominio especifico dentro de OrganizationModule.
+  Endpoints:
+    /organization-unit-types
+    /organization-units
+  Permisos reutilizados:
+    organization.read
+    organization.manage
+  Repositorio especifico:
+    PrismaOrganizationUnitsRepository
+  Use cases especificos para:
+    list/get/create/update/archive/reactivate types
+    list/get/create/update/archive/reactivate units
+  Validaciones implementadas:
+    tenant isolation en queries
+    type ACTIVE requerido
+    parent ACTIVE requerido
+    primaryLocation ACTIVE y same-tenant requerida si se envia
+    parent self rechazado
+    ciclos rechazados
+    name duplicado rechazado
+    key/code duplicado con valor rechazado
+    archive de type bloqueado si hay units ACTIVE
+    archive de unit bloqueado si hay children ACTIVE
+    archive de unit bloqueado si hay current EmployeeJobAssignment
+```
+
+```txt
+Employees integration:
+  AddEmployeeJobAssignmentDto.organizationUnitId agregado.
+  AddEmployeeJobAssignmentInput.organizationUnitId agregado.
+  EmployeeJobAssignmentEntity.organizationUnitId agregado.
+  EmployeeListFilters.organizationUnitId agregado.
+  GET /employees acepta organizationUnitId.
+  GET /employees/export.csv acepta organizationUnitId.
+  PrismaEmployeesRepository filtra por current job assignment organizationUnitId.
+  addJobAssignment guarda organizationUnitId.
+  AddEmployeeJobAssignmentUseCase valida que organizationUnitId exista,
+  pertenezca al tenant y este ACTIVE.
+```
+
+```txt
+Frontend:
+  Organization settings mantiene Locations como catalogo separado.
+  Agregados tabs:
+    Organization unit types
+    Organization units
+  Agregados archivos:
+    organization-units-types.ts
+    organization-units-api.ts
+    organization-unit-types-panel.tsx
+    organization-units-panel.tsx
+  OrganizationUnit UI permite:
+    crear/editar/archive/reactivate types
+    crear/editar/archive/reactivate units
+    seleccionar type activo
+    seleccionar parent activo
+    seleccionar primary location activa opcional
+  Employees list muestra organizationUnit cuando existe.
+```
+
+Validacion ejecutada:
+
+```txt
+corepack pnpm --filter @hr-app/database db:generate
+corepack pnpm --filter @hr-app/database db:migrate
+corepack pnpm --filter @hr-app/database db:seed
+corepack pnpm --filter @hr-app/database typecheck
+corepack pnpm --filter @hr-app/api typecheck
+corepack pnpm --filter @hr-app/api lint
+corepack pnpm --filter @hr-app/api test
+corepack pnpm --filter @hr-app/api test:e2e
+corepack pnpm --filter @hr-app/web typecheck
+corepack pnpm --filter @hr-app/web lint
+corepack pnpm --filter @hr-app/web test
+```
+
+Siguiente fase:
+
+```txt
+MembershipAccessScope:
+  AccessScopeType
+  MembershipAccessScope
+  TenantContext.membershipId/accessScopes
+  Access settings UI para scopes
+  Employee read/manage scope enforcement
+```

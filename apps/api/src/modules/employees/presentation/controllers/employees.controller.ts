@@ -57,13 +57,15 @@ export class EmployeesController {
     @Query("status") status?: EmployeeStatus,
     @Query("search") search?: string,
     @Query("departmentId") departmentId?: string,
-    @Query("locationId") locationId?: string
+    @Query("locationId") locationId?: string,
+    @Query("organizationUnitId") organizationUnitId?: string
   ) {
     return this.listEmployeesUseCase.execute(tenant.id, {
       status,
       search,
       departmentId,
-      locationId
+      locationId,
+      organizationUnitId
     }, {
       userId: user.id,
       permissions: tenant.permissions
@@ -78,13 +80,15 @@ export class EmployeesController {
     @Query("status") status?: EmployeeStatus,
     @Query("search") search?: string,
     @Query("departmentId") departmentId?: string,
-    @Query("locationId") locationId?: string
+    @Query("locationId") locationId?: string,
+    @Query("organizationUnitId") organizationUnitId?: string
   ) {
     return this.exportEmployeesCsvUseCase.execute(tenant.id, {
       status,
       search,
       departmentId,
-      locationId
+      locationId,
+      organizationUnitId
     });
   }
 

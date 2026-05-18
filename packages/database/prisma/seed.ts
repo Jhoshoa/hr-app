@@ -1,6 +1,10 @@
 /// <reference types="node" />
 
 import { PrismaClient, type Role, type Tenant, type User } from "@prisma/client";
+import {
+  organizationUnitTypeCatalog,
+  type OrganizationUnitTypeCatalogEntry
+} from "../src/organization-unit-type-catalog";
 import { permissionCatalog, type PermissionKey } from "../src/permission-catalog";
 import { tenantFeatureCatalog, type TenantFeatureKey } from "../src/tenant-feature-catalog";
 import { devSeedUsers } from "./dev-seed-data";
@@ -89,6 +93,7 @@ const seed = async (): Promise<void> => {
   await assignAllPermissions(primaryOwnerRole.id);
   await seedRoleTemplates(primaryTenant.id);
   await seedTenantFeatures(primaryTenant.id, tenantFeatureCatalog);
+  await seedOrganizationUnitTypes(primaryTenant.id, organizationUnitTypeCatalog);
 
   await seedPlatformOwner(devSeedUsers.platformOwner.email, devSeedUsers.platformOwner.name);
   await seedTenantAdmin({
@@ -109,6 +114,7 @@ const seed = async (): Promise<void> => {
   await assignAllPermissions(secondaryOwnerRole.id);
   await seedRoleTemplates(secondaryTenant.id);
   await seedTenantFeatures(secondaryTenant.id, tenantFeatureCatalog);
+  await seedOrganizationUnitTypes(secondaryTenant.id, organizationUnitTypeCatalog);
 
   await seedTenantAdmin({
     tenantId: secondaryTenant.id,
@@ -123,6 +129,8 @@ const seed = async (): Promise<void> => {
 
 const seedPermissions = async (): Promise<void> => {
   for (const permission of permissionCatalog) {
+    const isCritical = "isCritical" in permission ? permission.isCritical : false;
+
     await prisma.permission.upsert({
       where: { key: permission.key },
       update: {
@@ -130,7 +138,7 @@ const seedPermissions = async (): Promise<void> => {
         module: permission.module,
         action: permission.action,
         sortOrder: permission.sortOrder,
-        isCritical: permission.isCritical ?? false
+        isCritical
       },
       create: {
         key: permission.key,
@@ -138,7 +146,7 @@ const seedPermissions = async (): Promise<void> => {
         module: permission.module,
         action: permission.action,
         sortOrder: permission.sortOrder,
-        isCritical: permission.isCritical ?? false
+        isCritical
       }
     });
   }
@@ -290,6 +298,34 @@ const seedTenantFeatures = async (
         key,
         enabled: true,
         source: "seed"
+      }
+    });
+  }
+};
+
+const seedOrganizationUnitTypes = async (
+  tenantId: string,
+  unitTypes: readonly OrganizationUnitTypeCatalogEntry[]
+): Promise<void> => {
+  for (const unitType of unitTypes) {
+    await prisma.organizationUnitType.upsert({
+      where: {
+        tenantId_key: {
+          tenantId,
+          key: unitType.key
+        }
+      },
+      update: {
+        name: unitType.name,
+        sortOrder: unitType.sortOrder,
+        status: "ACTIVE"
+      },
+      create: {
+        tenantId,
+        key: unitType.key,
+        name: unitType.name,
+        sortOrder: unitType.sortOrder,
+        status: "ACTIVE"
       }
     });
   }

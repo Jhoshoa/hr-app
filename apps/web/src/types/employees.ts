@@ -8,6 +8,8 @@ export interface EmployeeListItem {
   readonly department: string;
   readonly jobTitle: string;
   readonly location: string;
+  readonly organizationUnit?: string;
+  readonly organizationUnitId?: string | null;
   readonly manager: string;
   readonly status: EmployeeStatus;
   readonly startDate: string;

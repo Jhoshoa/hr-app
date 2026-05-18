@@ -158,6 +158,11 @@ export class AddEmployeeJobAssignmentDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
+  organizationUnitId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
   employmentTypeId?: string;
 
   @ApiPropertyOptional()

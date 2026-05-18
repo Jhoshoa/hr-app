@@ -135,12 +135,13 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
         some: {
           departmentId: filters.departmentId,
           locationId: filters.locationId,
+          organizationUnitId: filters.organizationUnitId,
           effectiveTo: null
         }
       }
     };
 
-    if (!filters.departmentId && !filters.locationId) {
+    if (!filters.departmentId && !filters.locationId && !filters.organizationUnitId) {
       delete where.jobAssignments;
     }
 
@@ -195,11 +196,12 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
       }
     };
 
-    if (filters.departmentId || filters.locationId) {
+    if (filters.departmentId || filters.locationId || filters.organizationUnitId) {
       where.jobAssignments = {
         some: {
           departmentId: filters.departmentId,
           locationId: filters.locationId,
+          organizationUnitId: filters.organizationUnitId,
           effectiveTo: null
         }
       };
@@ -262,6 +264,7 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
         departmentId: input.departmentId,
         jobTitleId: input.jobTitleId,
         locationId: input.locationId,
+        organizationUnitId: input.organizationUnitId,
         employmentTypeId: input.employmentTypeId,
         workModeId: input.workModeId,
         effectiveFrom: input.effectiveFrom,

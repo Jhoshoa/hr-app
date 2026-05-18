@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Archive, Edit3, Plus, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ErrorState } from "@/components/data-display/error-state";
@@ -21,6 +21,8 @@ import {
 } from "../organization-api";
 import { organizationCatalogs } from "../organization-config";
 import { getOrganizationRecordDetail, ORGANIZATION_PAGE_SIZE, paginateRecords } from "../organization-utils";
+import { OrganizationUnitTypesPanel } from "./organization-unit-types-panel";
+import { OrganizationUnitsPanel } from "./organization-units-panel";
 import type {
   OrganizationCatalogConfig,
   OrganizationRecord,
@@ -29,6 +31,19 @@ import type {
 } from "../organization-types";
 
 const defaultCatalog = organizationCatalogs[0] as OrganizationCatalogConfig;
+
+type OrganizationSettingsTab = OrganizationRecordKind | "organizationUnitTypes" | "organizationUnits";
+
+const organizationUnitTabs = [
+  {
+    key: "organizationUnitTypes",
+    label: "Organization unit types"
+  },
+  {
+    key: "organizationUnits",
+    label: "Organization units"
+  }
+] as const;
 
 type DrawerState =
   | { readonly mode: "create"; readonly record?: undefined }
@@ -40,8 +55,9 @@ interface PendingAction {
 }
 
 export function OrganizationSettingsPage() {
-  const [activeKind, setActiveKind] = useState<OrganizationRecordKind>(defaultCatalog.kind);
-  const activeCatalog = organizationCatalogs.find((catalog) => catalog.kind === activeKind) ?? defaultCatalog;
+  const [activeTab, setActiveTab] = useState<OrganizationSettingsTab>(defaultCatalog.kind);
+  const activeCatalog =
+    organizationCatalogs.find((catalog) => catalog.kind === activeTab) ?? defaultCatalog;
 
   return (
     <>
@@ -59,21 +75,40 @@ export function OrganizationSettingsPage() {
           <button
             className={cn(
               "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              activeKind === catalog.kind
+              activeTab === catalog.kind
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
             key={catalog.kind}
-            onClick={() => setActiveKind(catalog.kind)}
+            onClick={() => setActiveTab(catalog.kind)}
             type="button"
           >
             {catalog.label}
           </button>
         ))}
+        {organizationUnitTabs.map((tab) => (
+          <button
+            className={cn(
+              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              activeTab === tab.key
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div className="mt-5">
-        <OrganizationCatalogPanel catalog={activeCatalog} />
+        {activeTab === "organizationUnitTypes" ? <OrganizationUnitTypesPanel /> : null}
+        {activeTab === "organizationUnits" ? <OrganizationUnitsPanel /> : null}
+        {activeTab !== "organizationUnitTypes" && activeTab !== "organizationUnits" ? (
+          <OrganizationCatalogPanel catalog={activeCatalog} />
+        ) : null}
       </div>
     </>
   );

@@ -59,6 +59,7 @@ export interface EmployeeListFilters {
   readonly search?: string;
   readonly departmentId?: string;
   readonly locationId?: string;
+  readonly organizationUnitId?: string;
 }
 
 export interface AddEmployeeJobAssignmentInput {
@@ -67,6 +68,7 @@ export interface AddEmployeeJobAssignmentInput {
   readonly departmentId?: string;
   readonly jobTitleId?: string;
   readonly locationId?: string;
+  readonly organizationUnitId?: string;
   readonly employmentTypeId?: string;
   readonly workModeId?: string;
   readonly effectiveFrom: Date;

@@ -24,7 +24,14 @@ export default function EmployeesPage() {
     }
 
     return data.filter((employee) =>
-      [employee.name, employee.workEmail, employee.department, employee.jobTitle, employee.location]
+      [
+        employee.name,
+        employee.workEmail,
+        employee.department,
+        employee.jobTitle,
+        employee.location,
+        employee.organizationUnit
+      ]
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch)
@@ -73,6 +80,7 @@ export default function EmployeesPage() {
                 <tr>
                   <th className="px-4 py-3 font-semibold">Employee</th>
                   <th className="px-4 py-3 font-semibold">Job</th>
+                  <th className="px-4 py-3 font-semibold">Organization</th>
                   <th className="px-4 py-3 font-semibold">Location</th>
                   <th className="px-4 py-3 font-semibold">Manager</th>
                   <th className="px-4 py-3 font-semibold">Start date</th>
@@ -92,6 +100,7 @@ export default function EmployeesPage() {
                       <p>{employee.jobTitle}</p>
                       <p className="text-xs text-muted-foreground">{employee.department}</p>
                     </td>
+                    <td className="px-4 py-3">{employee.organizationUnit ?? "Not assigned"}</td>
                     <td className="px-4 py-3">{employee.location}</td>
                     <td className="px-4 py-3">{employee.manager}</td>
                     <td className="px-4 py-3">{formatShortDate(employee.startDate)}</td>
