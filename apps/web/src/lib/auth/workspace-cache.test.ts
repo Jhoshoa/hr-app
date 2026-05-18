@@ -20,6 +20,7 @@ describe("workspace-cache", () => {
       },
       tenants: [
         {
+          features: [],
           tenantId: "tenant-1",
           tenantSlug: "demo",
           tenantName: "Demo",
@@ -39,6 +40,7 @@ describe("workspace-cache", () => {
       },
       tenants: [
         {
+          features: [],
           tenantId: "tenant-1",
           tenantSlug: "demo",
           tenantName: "Demo",
@@ -74,6 +76,7 @@ describe("workspace-cache", () => {
       },
       tenants: [
         {
+          features: [],
           tenantId: "tenant-1",
           tenantSlug: "demo",
           tenantName: "Demo",
@@ -81,6 +84,7 @@ describe("workspace-cache", () => {
           permissions: ["tenant.read"]
         },
         {
+          features: [],
           tenantId: "tenant-2",
           tenantSlug: "acme",
           tenantName: "Acme",

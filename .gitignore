@@ -9,3 +9,5 @@ coverage/
 *.log
 *.tsbuildinfo
 docker/postgres-data/
+.agents/
+skills-lock.json

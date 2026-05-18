@@ -22,6 +22,7 @@ export interface TenantContext {
     readonly isSystemRole: boolean;
   }[];
   readonly permissions: string[];
+  readonly features: string[];
 }
 
 export interface RequestContext {

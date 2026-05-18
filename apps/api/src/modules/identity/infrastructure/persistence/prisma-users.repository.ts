@@ -8,7 +8,6 @@ import { PrismaService } from "../../../../database/prisma/prisma.service";
 
 type MembershipWithTenantRolePermissions = Prisma.TenantMembershipGetPayload<{
   include: {
-    tenant: true;
     role: {
       include: {
         permissions: {
@@ -29,6 +28,11 @@ type MembershipWithTenantRolePermissions = Prisma.TenantMembershipGetPayload<{
             };
           };
         };
+      };
+    };
+    tenant: {
+      include: {
+        features: true;
       };
     };
   };
@@ -127,7 +131,11 @@ export class PrismaUsersRepository implements UsersRepository {
         tenant: { status: "ACTIVE" }
       },
       include: {
-        tenant: true,
+        tenant: {
+          include: {
+            features: true
+          }
+        },
         role: {
           include: {
             permissions: {
@@ -180,7 +188,11 @@ export class PrismaUsersRepository implements UsersRepository {
         }
       },
       include: {
-        tenant: true,
+        tenant: {
+          include: {
+            features: true
+          }
+        },
         role: {
           include: {
             permissions: {
@@ -244,7 +256,11 @@ export class PrismaUsersRepository implements UsersRepository {
         name: role.name,
         isSystemRole: role.isSystemRole
       })),
-      permissions: [...permissions].sort()
+      permissions: [...permissions].sort(),
+      features: membership.tenant.features
+        .filter((feature) => feature.enabled)
+        .map((feature) => feature.key)
+        .sort()
     };
   };
 

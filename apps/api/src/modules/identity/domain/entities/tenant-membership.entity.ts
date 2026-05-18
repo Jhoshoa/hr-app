@@ -10,4 +10,5 @@ export interface TenantMembershipContext {
     readonly isSystemRole: boolean;
   }[];
   readonly permissions: string[];
+  readonly features: string[];
 }

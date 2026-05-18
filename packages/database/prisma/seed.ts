@@ -2,6 +2,7 @@
 
 import { PrismaClient, type Role, type Tenant, type User } from "@prisma/client";
 import { permissionCatalog, type PermissionKey } from "../src/permission-catalog";
+import { tenantFeatureCatalog, type TenantFeatureKey } from "../src/tenant-feature-catalog";
 import { devSeedUsers } from "./dev-seed-data";
 
 const prisma = new PrismaClient();
@@ -87,6 +88,7 @@ const seed = async (): Promise<void> => {
   const primaryOwnerRole = await upsertOwnerRole(primaryTenant.id);
   await assignAllPermissions(primaryOwnerRole.id);
   await seedRoleTemplates(primaryTenant.id);
+  await seedTenantFeatures(primaryTenant.id, tenantFeatureCatalog);
 
   await seedPlatformOwner(devSeedUsers.platformOwner.email, devSeedUsers.platformOwner.name);
   await seedTenantAdmin({
@@ -106,6 +108,7 @@ const seed = async (): Promise<void> => {
   const secondaryOwnerRole = await upsertOwnerRole(secondaryTenant.id);
   await assignAllPermissions(secondaryOwnerRole.id);
   await seedRoleTemplates(secondaryTenant.id);
+  await seedTenantFeatures(secondaryTenant.id, tenantFeatureCatalog);
 
   await seedTenantAdmin({
     tenantId: secondaryTenant.id,
@@ -263,6 +266,32 @@ const seedRoleTemplates = async (tenantId: string): Promise<void> => {
     });
 
     await syncRolePermissions(role.id, permissionIds);
+  }
+};
+
+const seedTenantFeatures = async (
+  tenantId: string,
+  featureKeys: readonly TenantFeatureKey[]
+): Promise<void> => {
+  for (const key of featureKeys) {
+    await prisma.tenantFeature.upsert({
+      where: {
+        tenantId_key: {
+          tenantId,
+          key
+        }
+      },
+      update: {
+        enabled: true,
+        source: "seed"
+      },
+      create: {
+        tenantId,
+        key,
+        enabled: true,
+        source: "seed"
+      }
+    });
   }
 };
 

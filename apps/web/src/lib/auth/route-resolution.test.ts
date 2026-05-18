@@ -15,6 +15,7 @@ const tenantMe: MeResponse = {
   ...baseMe,
   tenants: [
     {
+      features: [],
       permissions: ["tenant.read"],
       roleKey: "owner",
       tenantId: "tenant-1",
