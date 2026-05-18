@@ -15,6 +15,7 @@ import {
   useCreateOrganizationRecordMutation,
   useListOrganizationRecordsQuery
 } from "../organization-api";
+import { ORGANIZATION_PAGE_SIZE, paginateRecords } from "../organization-utils";
 import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./organization-loading";
 import {
   useArchiveOrganizationUnitMutation,
@@ -45,6 +46,7 @@ export function OrganizationUnitsPanel() {
   const { showToast } = useToast();
   const currentTenant = useCurrentTenant();
   const tenantSlug = currentTenant.tenantSlug;
+  const [page, setPage] = useState(1);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const { data = [], isError, isFetching, isLoading } = useListOrganizationUnitsQuery({ tenantSlug }, { skip: !tenantSlug });
@@ -58,6 +60,7 @@ export function OrganizationUnitsPanel() {
   const [reactivateUnit, reactivateState] = useReactivateOrganizationUnitMutation();
 
   const sortedUnits = useMemo(() => [...data].sort((first, second) => first.name.localeCompare(second.name)), [data]);
+  const paginated = paginateRecords(sortedUnits, page, ORGANIZATION_PAGE_SIZE);
   const showTableSkeleton = isLoading || (isFetching && sortedUnits.length === 0);
   const isDrawerOptionsLoading =
     isTypesLoading ||
@@ -65,6 +68,10 @@ export function OrganizationUnitsPanel() {
     isLocationsLoading ||
     isLocationsFetching ||
     showTableSkeleton;
+
+  useEffect(() => {
+    setPage(1);
+  }, [tenantSlug, sortedUnits.length]);
 
   const onConfirmAction = async () => {
     if (!pendingAction) {
@@ -119,7 +126,7 @@ export function OrganizationUnitsPanel() {
             <OrganizationTableSkeleton columns={6} />
           ) : (
             <tbody className="divide-y divide-border">
-              {sortedUnits.map((record) => (
+              {paginated.items.map((record) => (
                 <tr key={record.id}>
                   <td className="px-5 py-4">
                     <div className="font-medium">{record.name}</div>
@@ -187,6 +194,30 @@ export function OrganizationUnitsPanel() {
         <div className="border-t border-border px-5 py-10 text-center">
           <p className="font-medium">No organization units exist.</p>
         </div>
+      ) : null}
+
+      {sortedUnits.length > ORGANIZATION_PAGE_SIZE ? (
+        <footer className="flex items-center justify-between border-t border-border px-5 py-3 text-sm">
+          <span className="text-muted-foreground">
+            Page {paginated.page} of {paginated.totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              disabled={paginated.page === 1}
+              onClick={() => setPage((current) => current - 1)}
+              variant="secondary"
+            >
+              Previous
+            </Button>
+            <Button
+              disabled={paginated.page === paginated.totalPages}
+              onClick={() => setPage((current) => current + 1)}
+              variant="secondary"
+            >
+              Next
+            </Button>
+          </div>
+        </footer>
       ) : null}
 
       <OrganizationUnitDrawer

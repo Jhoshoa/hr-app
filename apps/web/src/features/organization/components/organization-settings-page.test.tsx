@@ -3,6 +3,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
 import { OrganizationSettingsPage } from "./organization-settings-page";
+import type { OrganizationUnit } from "../organization-units-types";
 
 const mutationState = { isLoading: false };
 const archiveOrganizationUnitMock = vi.fn();
@@ -11,6 +12,48 @@ const createOrganizationUnitTypeMock = vi.fn();
 const deleteOrganizationUnitMock = vi.fn();
 const deleteOrganizationUnitTypeMock = vi.fn();
 const reorderOrganizationUnitTypesMock = vi.fn();
+const defaultOrganizationUnitsData: OrganizationUnit[] = [
+  {
+    id: "unit-1",
+    tenantId: "tenant-1",
+    typeId: "type-1",
+    type: { id: "type-1", key: "branch", name: "Branch" },
+    parentOrganizationUnitId: null,
+    parent: null,
+    primaryLocationId: "location-1",
+    primaryLocation: {
+      id: "location-1",
+      name: "Cochabamba HQ",
+      city: "Cochabamba",
+      country: "BO"
+    },
+    key: "cochabamba",
+    name: "Cochabamba",
+    legalName: null,
+    code: "CBB",
+    status: "ACTIVE",
+    createdAt: "2026-05-18T00:00:00.000Z",
+    updatedAt: "2026-05-18T00:00:00.000Z"
+  },
+  {
+    id: "unit-2",
+    tenantId: "tenant-1",
+    typeId: "type-1",
+    type: { id: "type-1", key: "branch", name: "Branch" },
+    parentOrganizationUnitId: null,
+    parent: null,
+    primaryLocationId: null,
+    primaryLocation: null,
+    key: "archived_unit",
+    name: "Archived Unit",
+    legalName: null,
+    code: "ARC",
+    status: "ARCHIVED",
+    createdAt: "2026-05-18T00:00:00.000Z",
+    updatedAt: "2026-05-18T00:00:00.000Z"
+  }
+];
+const organizationUnitsData: OrganizationUnit[] = [...defaultOrganizationUnitsData];
 
 vi.mock("@/hooks/use-current-tenant", () => ({
   useCurrentTenant: () => ({
@@ -90,47 +133,7 @@ vi.mock("../organization-units-api", () => ({
     isLoading: false
   }),
   useListOrganizationUnitsQuery: () => ({
-    data: [
-      {
-        id: "unit-1",
-        tenantId: "tenant-1",
-        typeId: "type-1",
-        type: { id: "type-1", key: "branch", name: "Branch" },
-        parentOrganizationUnitId: null,
-        parent: null,
-        primaryLocationId: "location-1",
-        primaryLocation: {
-          id: "location-1",
-          name: "Cochabamba HQ",
-          city: "Cochabamba",
-          country: "BO"
-        },
-        key: "cochabamba",
-        name: "Cochabamba",
-        legalName: null,
-        code: "CBB",
-        status: "ACTIVE",
-        createdAt: "2026-05-18T00:00:00.000Z",
-        updatedAt: "2026-05-18T00:00:00.000Z"
-      },
-      {
-        id: "unit-2",
-        tenantId: "tenant-1",
-        typeId: "type-1",
-        type: { id: "type-1", key: "branch", name: "Branch" },
-        parentOrganizationUnitId: null,
-        parent: null,
-        primaryLocationId: null,
-        primaryLocation: null,
-        key: "archived_unit",
-        name: "Archived Unit",
-        legalName: null,
-        code: "ARC",
-        status: "ARCHIVED",
-        createdAt: "2026-05-18T00:00:00.000Z",
-        updatedAt: "2026-05-18T00:00:00.000Z"
-      }
-    ],
+    data: organizationUnitsData,
     isError: false,
     isFetching: false,
     isLoading: false
@@ -144,6 +147,11 @@ vi.mock("../organization-units-api", () => ({
 
 describe("OrganizationSettingsPage", () => {
   beforeEach(() => {
+    organizationUnitsData.splice(
+      0,
+      organizationUnitsData.length,
+      ...defaultOrganizationUnitsData
+    );
     archiveOrganizationUnitMock.mockReset();
     archiveOrganizationUnitMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
     archiveOrganizationUnitTypeMock.mockReset();
@@ -369,5 +377,47 @@ describe("OrganizationSettingsPage", () => {
 
     expect(screen.getByRole("heading", { name: "Organization units" })).toBeInTheDocument();
     expect(screen.getByText("Cochabamba HQ")).toBeInTheDocument();
+  });
+
+  it("paginates organization units after ten rows", () => {
+    organizationUnitsData.splice(
+      0,
+      organizationUnitsData.length,
+      ...Array.from({ length: 11 }, (_, index) => ({
+        id: `unit-${index + 1}`,
+        tenantId: "tenant-1",
+        typeId: "type-1",
+        type: { id: "type-1", key: "branch", name: "Branch" },
+        parentOrganizationUnitId: null,
+        parent: null,
+        primaryLocationId: null,
+        primaryLocation: null,
+        key: `unit_${String(index + 1).padStart(2, "0")}`,
+        name: `Unit ${String(index + 1).padStart(2, "0")}`,
+        legalName: null,
+        code: null,
+        status: "ACTIVE",
+        createdAt: "2026-05-18T00:00:00.000Z",
+        updatedAt: "2026-05-18T00:00:00.000Z"
+      }))
+    );
+
+    render(
+      <ToastProvider>
+        <OrganizationSettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Organization units" }));
+
+    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("Unit 10")).toBeInTheDocument();
+    expect(screen.queryByText("Unit 11")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(screen.getByText("Unit 11")).toBeInTheDocument();
+    expect(screen.queryByText("Unit 01")).not.toBeInTheDocument();
   });
 });
