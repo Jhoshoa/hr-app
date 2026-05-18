@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
+import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./organization-loading";
 import {
   useArchiveOrganizationUnitTypeMutation,
   useCreateOrganizationUnitTypeMutation,
@@ -34,7 +35,7 @@ export function OrganizationUnitTypesPanel() {
   const tenantSlug = currentTenant.tenantSlug;
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-  const { data = [], isError } = useListOrganizationUnitTypesQuery(
+  const { data = [], isError, isFetching, isLoading } = useListOrganizationUnitTypesQuery(
     { tenantSlug },
     { skip: !tenantSlug }
   );
@@ -45,6 +46,7 @@ export function OrganizationUnitTypesPanel() {
     () => [...data].sort((first, second) => first.sortOrder - second.sortOrder || first.name.localeCompare(second.name)),
     [data]
   );
+  const showTableSkeleton = isLoading || (isFetching && sortedTypes.length === 0);
 
   const onConfirmAction = async () => {
     if (!pendingAction) {
@@ -91,56 +93,60 @@ export function OrganizationUnitTypesPanel() {
               <th className="px-5 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {sortedTypes.map((record) => (
-              <tr key={record.id}>
-                <td className="px-5 py-4 font-medium">{record.name}</td>
-                <td className="px-5 py-4 text-muted-foreground">{record.key}</td>
-                <td className="px-5 py-4 text-muted-foreground">{record.sortOrder}</td>
-                <td className="px-5 py-4">
-                  <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
-                </td>
-                <td className="px-5 py-4">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      aria-label={`Edit ${record.name}`}
-                      className="h-8 w-8 px-0"
-                      onClick={() => setDrawer({ mode: "edit", record })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      <Edit3 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    {record.status === "ARCHIVED" ? (
+          {showTableSkeleton ? (
+            <OrganizationTableSkeleton columns={5} />
+          ) : (
+            <tbody className="divide-y divide-border">
+              {sortedTypes.map((record) => (
+                <tr key={record.id}>
+                  <td className="px-5 py-4 font-medium">{record.name}</td>
+                  <td className="px-5 py-4 text-muted-foreground">{record.key}</td>
+                  <td className="px-5 py-4 text-muted-foreground">{record.sortOrder}</td>
+                  <td className="px-5 py-4">
+                    <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-end gap-2">
                       <Button
-                        aria-label={`Reactivate ${record.name}`}
+                        aria-label={`Edit ${record.name}`}
                         className="h-8 w-8 px-0"
-                        onClick={() => setPendingAction({ action: "reactivate", record })}
+                        onClick={() => setDrawer({ mode: "edit", record })}
                         type="button"
                         variant="secondary"
                       >
-                        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        <Edit3 className="h-4 w-4" aria-hidden="true" />
                       </Button>
-                    ) : (
-                      <Button
-                        aria-label={`Archive ${record.name}`}
-                        className="h-8 w-8 px-0"
-                        onClick={() => setPendingAction({ action: "archive", record })}
-                        type="button"
-                        variant="secondary"
-                      >
-                        <Archive className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+                      {record.status === "ARCHIVED" ? (
+                        <Button
+                          aria-label={`Reactivate ${record.name}`}
+                          className="h-8 w-8 px-0"
+                          onClick={() => setPendingAction({ action: "reactivate", record })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      ) : (
+                        <Button
+                          aria-label={`Archive ${record.name}`}
+                          className="h-8 w-8 px-0"
+                          onClick={() => setPendingAction({ action: "archive", record })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <Archive className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          )}
         </table>
       </div>
 
-      {sortedTypes.length === 0 ? (
+      {!showTableSkeleton && sortedTypes.length === 0 ? (
         <div className="border-t border-border px-5 py-10 text-center">
           <p className="font-medium">No organization unit types exist.</p>
         </div>
@@ -178,27 +184,43 @@ function OrganizationUnitTypeDrawer({
   const [createType, createState] = useCreateOrganizationUnitTypeMutation();
   const [updateType, updateState] = useUpdateOrganizationUnitTypeMutation();
   const [formState, setFormState] = useState({ key: "", name: "", sortOrder: "0" });
+  const [initialFormState, setInitialFormState] = useState({ key: "", name: "", sortOrder: "0" });
+  const [formReadyKey, setFormReadyKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const drawerKey = drawer ? `${drawer.mode}:${drawer.mode === "edit" ? drawer.record.id : "new"}` : null;
 
   useEffect(() => {
     if (!drawer) {
-      setFormState({ key: "", name: "", sortOrder: "0" });
+      const emptyState = { key: "", name: "", sortOrder: "0" };
+      setFormState(emptyState);
+      setInitialFormState(emptyState);
+      setFormReadyKey(null);
       return;
     }
 
-    setFormState(
+    const nextState =
       drawer.mode === "edit"
         ? {
             key: drawer.record.key,
             name: drawer.record.name,
             sortOrder: String(drawer.record.sortOrder)
           }
-        : { key: "", name: "", sortOrder: "0" }
-    );
+        : { key: "", name: "", sortOrder: "0" };
+    setFormState(nextState);
+    setInitialFormState(nextState);
+    setFormReadyKey(drawerKey);
     setFormError(null);
-  }, [drawer]);
+  }, [drawer, drawerKey]);
 
   const isSaving = createState.isLoading || updateState.isLoading;
+  const isFormReady = Boolean(drawerKey && formReadyKey === drawerKey);
+  const isFormValid = Boolean(formState.key.trim() && formState.name.trim());
+  const isDirty = JSON.stringify(formState) !== JSON.stringify(initialFormState);
+  const canSave =
+    !isSaving &&
+    isFormReady &&
+    isFormValid &&
+    (drawer?.mode === "edit" ? isDirty : true);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -233,46 +255,53 @@ function OrganizationUnitTypeDrawer({
       isOpen={Boolean(drawer)}
       onClose={onClose}
       title={drawer?.mode === "edit" ? "Edit organization unit type" : "Add organization unit type"}
-    >
-      <form className="space-y-4" onSubmit={submit}>
-        <label className="block">
-          <span className="text-sm font-medium">Key</span>
-          <Input
-            className="mt-1"
-            onChange={(event) => setFormState((current) => ({ ...current, key: event.target.value }))}
-            placeholder="branch"
-            value={formState.key}
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium">Name</span>
-          <Input
-            className="mt-1"
-            onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
-            placeholder="Branch"
-            value={formState.name}
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium">Sort order</span>
-          <Input
-            className="mt-1"
-            onChange={(event) => setFormState((current) => ({ ...current, sortOrder: event.target.value }))}
-            type="number"
-            value={formState.sortOrder}
-          />
-        </label>
-
-        {formError ? <p className="text-sm text-rose-600">{formError}</p> : null}
-
-        <div className="flex justify-end gap-2 pt-2">
+      footer={
+        <>
           <Button disabled={isSaving} onClick={onClose} type="button" variant="secondary">
             Cancel
           </Button>
-          <Button disabled={isSaving} type="submit">
+          <Button disabled={!canSave} form="organization-unit-type-form" type="submit">
             {isSaving ? "Saving..." : "Save"}
           </Button>
-        </div>
+        </>
+      }
+    >
+      <form className="space-y-4" id="organization-unit-type-form" onSubmit={submit}>
+        {!isFormReady ? (
+          <DrawerFormSkeleton fields={3} />
+        ) : (
+          <>
+            <label className="block">
+              <RequiredLabel required>Key</RequiredLabel>
+              <Input
+                className="mt-1"
+                onChange={(event) => setFormState((current) => ({ ...current, key: event.target.value }))}
+                placeholder="branch"
+                value={formState.key}
+              />
+            </label>
+            <label className="block">
+              <RequiredLabel required>Name</RequiredLabel>
+              <Input
+                className="mt-1"
+                onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Branch"
+                value={formState.name}
+              />
+            </label>
+            <label className="block">
+              <RequiredLabel>Sort order</RequiredLabel>
+              <Input
+                className="mt-1"
+                onChange={(event) => setFormState((current) => ({ ...current, sortOrder: event.target.value }))}
+                type="number"
+                value={formState.sortOrder}
+              />
+            </label>
+          </>
+        )}
+
+        {formError ? <p className="text-sm text-rose-600">{formError}</p> : null}
       </form>
     </SideDrawer>
   );

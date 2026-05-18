@@ -14,6 +14,7 @@ import {
   useCreateOrganizationRecordMutation,
   useListOrganizationRecordsQuery
 } from "../organization-api";
+import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./organization-loading";
 import {
   useArchiveOrganizationUnitMutation,
   useCreateOrganizationUnitMutation,
@@ -44,9 +45,9 @@ export function OrganizationUnitsPanel() {
   const tenantSlug = currentTenant.tenantSlug;
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-  const { data = [], isError } = useListOrganizationUnitsQuery({ tenantSlug }, { skip: !tenantSlug });
-  const { data: types = [] } = useListOrganizationUnitTypesQuery({ tenantSlug }, { skip: !tenantSlug });
-  const { data: locations = [] } = useListOrganizationRecordsQuery(
+  const { data = [], isError, isFetching, isLoading } = useListOrganizationUnitsQuery({ tenantSlug }, { skip: !tenantSlug });
+  const { data: types = [], isFetching: isTypesFetching, isLoading: isTypesLoading } = useListOrganizationUnitTypesQuery({ tenantSlug }, { skip: !tenantSlug });
+  const { data: locations = [], isFetching: isLocationsFetching, isLoading: isLocationsLoading } = useListOrganizationRecordsQuery(
     { kind: "location", tenantSlug },
     { skip: !tenantSlug }
   );
@@ -54,6 +55,13 @@ export function OrganizationUnitsPanel() {
   const [reactivateUnit, reactivateState] = useReactivateOrganizationUnitMutation();
 
   const sortedUnits = useMemo(() => [...data].sort((first, second) => first.name.localeCompare(second.name)), [data]);
+  const showTableSkeleton = isLoading || (isFetching && sortedUnits.length === 0);
+  const isDrawerOptionsLoading =
+    isTypesLoading ||
+    isTypesFetching ||
+    isLocationsLoading ||
+    isLocationsFetching ||
+    showTableSkeleton;
 
   const onConfirmAction = async () => {
     if (!pendingAction) {
@@ -101,60 +109,64 @@ export function OrganizationUnitsPanel() {
               <th className="px-5 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {sortedUnits.map((record) => (
-              <tr key={record.id}>
-                <td className="px-5 py-4">
-                  <div className="font-medium">{record.name}</div>
-                  <div className="text-xs text-muted-foreground">{[record.key, record.code].filter(Boolean).join(" | ")}</div>
-                </td>
-                <td className="px-5 py-4 text-muted-foreground">{record.type?.name ?? record.typeId}</td>
-                <td className="px-5 py-4 text-muted-foreground">{record.parent?.name ?? "None"}</td>
-                <td className="px-5 py-4 text-muted-foreground">{record.primaryLocation?.name ?? "None"}</td>
-                <td className="px-5 py-4">
-                  <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
-                </td>
-                <td className="px-5 py-4">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      aria-label={`Edit ${record.name}`}
-                      className="h-8 w-8 px-0"
-                      onClick={() => setDrawer({ mode: "edit", record })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      <Edit3 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    {record.status === "ARCHIVED" ? (
+          {showTableSkeleton ? (
+            <OrganizationTableSkeleton columns={6} />
+          ) : (
+            <tbody className="divide-y divide-border">
+              {sortedUnits.map((record) => (
+                <tr key={record.id}>
+                  <td className="px-5 py-4">
+                    <div className="font-medium">{record.name}</div>
+                    <div className="text-xs text-muted-foreground">{[record.key, record.code].filter(Boolean).join(" | ")}</div>
+                  </td>
+                  <td className="px-5 py-4 text-muted-foreground">{record.type?.name ?? record.typeId}</td>
+                  <td className="px-5 py-4 text-muted-foreground">{record.parent?.name ?? "None"}</td>
+                  <td className="px-5 py-4 text-muted-foreground">{record.primaryLocation?.name ?? "None"}</td>
+                  <td className="px-5 py-4">
+                    <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-end gap-2">
                       <Button
-                        aria-label={`Reactivate ${record.name}`}
+                        aria-label={`Edit ${record.name}`}
                         className="h-8 w-8 px-0"
-                        onClick={() => setPendingAction({ action: "reactivate", record })}
+                        onClick={() => setDrawer({ mode: "edit", record })}
                         type="button"
                         variant="secondary"
                       >
-                        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        <Edit3 className="h-4 w-4" aria-hidden="true" />
                       </Button>
-                    ) : (
-                      <Button
-                        aria-label={`Archive ${record.name}`}
-                        className="h-8 w-8 px-0"
-                        onClick={() => setPendingAction({ action: "archive", record })}
-                        type="button"
-                        variant="secondary"
-                      >
-                        <Archive className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+                      {record.status === "ARCHIVED" ? (
+                        <Button
+                          aria-label={`Reactivate ${record.name}`}
+                          className="h-8 w-8 px-0"
+                          onClick={() => setPendingAction({ action: "reactivate", record })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      ) : (
+                        <Button
+                          aria-label={`Archive ${record.name}`}
+                          className="h-8 w-8 px-0"
+                          onClick={() => setPendingAction({ action: "archive", record })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <Archive className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          )}
         </table>
       </div>
 
-      {sortedUnits.length === 0 ? (
+      {!showTableSkeleton && sortedUnits.length === 0 ? (
         <div className="border-t border-border px-5 py-10 text-center">
           <p className="font-medium">No organization units exist.</p>
         </div>
@@ -163,6 +175,7 @@ export function OrganizationUnitsPanel() {
       <OrganizationUnitDrawer
         drawer={drawer}
         locations={locations}
+        isOptionsLoading={isDrawerOptionsLoading}
         onClose={() => setDrawer(null)}
         tenantSlug={tenantSlug}
         types={types}
@@ -184,6 +197,7 @@ export function OrganizationUnitsPanel() {
 
 function OrganizationUnitDrawer({
   drawer,
+  isOptionsLoading,
   locations,
   onClose,
   tenantSlug,
@@ -191,6 +205,7 @@ function OrganizationUnitDrawer({
   units
 }: Readonly<{
   drawer: DrawerState | null;
+  isOptionsLoading: boolean;
   locations: readonly OrganizationRecord[];
   onClose: () => void;
   tenantSlug: string;
@@ -215,7 +230,10 @@ function OrganizationUnitDrawer({
     legalName: "",
     code: ""
   });
+  const [initialFormState, setInitialFormState] = useState(formState);
+  const [formReadyKey, setFormReadyKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const drawerKey = drawer ? `${drawer.mode}:${drawer.mode === "edit" ? drawer.record.id : "new"}` : null;
   const activeTypes = useMemo(() => types.filter((type) => type.status === "ACTIVE"), [types]);
   const activeUnits = useMemo(
     () => units.filter((unit) => unit.status === "ACTIVE" && unit.id !== drawer?.record?.id),
@@ -228,7 +246,7 @@ function OrganizationUnitDrawer({
 
   useEffect(() => {
     if (!drawer) {
-      setFormState({
+      const emptyState = {
         typeId: "",
         parentOrganizationUnitId: "",
         primaryLocationId: "",
@@ -241,11 +259,14 @@ function OrganizationUnitDrawer({
         name: "",
         legalName: "",
         code: ""
-      });
+      };
+      setFormState(emptyState);
+      setInitialFormState(emptyState);
+      setFormReadyKey(null);
       return;
     }
 
-    setFormState(
+    const nextState =
       drawer.mode === "edit"
         ? {
             typeId: drawer.record.typeId,
@@ -274,12 +295,31 @@ function OrganizationUnitDrawer({
             name: "",
             legalName: "",
             code: ""
-          }
-    );
+          };
+    setFormState(nextState);
+    setInitialFormState(nextState);
+    setFormReadyKey(drawerKey);
     setFormError(null);
-  }, [drawer, activeTypes]);
+  }, [drawer, drawerKey, activeTypes]);
 
   const isSaving = createState.isLoading || updateState.isLoading || createLocationState.isLoading;
+  const isFormReady = Boolean(drawerKey && formReadyKey === drawerKey && !isOptionsLoading);
+  const isBaseValid = Boolean(formState.typeId && formState.name.trim());
+  const isNewLocationValid =
+    !formState.createPrimaryLocation ||
+    Boolean(
+      formState.primaryLocationName.trim() &&
+        formState.primaryLocationCountry.trim() &&
+        formState.primaryLocationCity.trim() &&
+        formState.primaryLocationTimezone.trim()
+    );
+  const isFormValid = isBaseValid && isNewLocationValid;
+  const isDirty = JSON.stringify(formState) !== JSON.stringify(initialFormState);
+  const canSave =
+    !isSaving &&
+    isFormReady &&
+    isFormValid &&
+    (drawer?.mode === "edit" ? isDirty : true);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -343,10 +383,24 @@ function OrganizationUnitDrawer({
       isOpen={Boolean(drawer)}
       onClose={onClose}
       title={drawer?.mode === "edit" ? "Edit organization unit" : "Add organization unit"}
+      footer={
+        <>
+          <Button disabled={isSaving} onClick={onClose} type="button" variant="secondary">
+            Cancel
+          </Button>
+          <Button disabled={!canSave} form="organization-unit-form" type="submit">
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </>
+      }
     >
-      <form className="space-y-4" onSubmit={submit}>
+      <form className="space-y-4" id="organization-unit-form" onSubmit={submit}>
+        {!isFormReady ? (
+          <DrawerFormSkeleton fields={7} />
+        ) : (
+          <>
         <label className="block">
-          <span className="text-sm font-medium">Type</span>
+          <RequiredLabel required>Type</RequiredLabel>
           <select
             className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             onChange={(event) => setFormState((current) => ({ ...current, typeId: event.target.value }))}
@@ -361,7 +415,7 @@ function OrganizationUnitDrawer({
           </select>
         </label>
         <label className="block">
-          <span className="text-sm font-medium">Name</span>
+          <RequiredLabel required>Name</RequiredLabel>
           <Input
             className="mt-1"
             onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
@@ -405,7 +459,7 @@ function OrganizationUnitDrawer({
           {formState.createPrimaryLocation ? (
             <div className="grid gap-3 rounded-md border border-border p-3">
               <label className="block">
-                <span className="text-sm font-medium">Location name</span>
+                <RequiredLabel required>Location name</RequiredLabel>
                 <Input
                   className="mt-1"
                   onChange={(event) =>
@@ -417,7 +471,7 @@ function OrganizationUnitDrawer({
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="text-sm font-medium">Country</span>
+                  <RequiredLabel required>Country</RequiredLabel>
                   <Input
                     className="mt-1"
                     onChange={(event) =>
@@ -428,7 +482,7 @@ function OrganizationUnitDrawer({
                   />
                 </label>
                 <label className="block">
-                  <span className="text-sm font-medium">City</span>
+                  <RequiredLabel required>City</RequiredLabel>
                   <Input
                     className="mt-1"
                     onChange={(event) =>
@@ -440,7 +494,7 @@ function OrganizationUnitDrawer({
                 </label>
               </div>
               <label className="block">
-                <span className="text-sm font-medium">Timezone</span>
+                <RequiredLabel required>Timezone</RequiredLabel>
                 <Input
                   className="mt-1"
                   onChange={(event) =>
@@ -495,17 +549,10 @@ function OrganizationUnitDrawer({
             value={formState.code}
           />
         </label>
+          </>
+        )}
 
         {formError ? <p className="text-sm text-rose-600">{formError}</p> : null}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button disabled={isSaving} onClick={onClose} type="button" variant="secondary">
-            Cancel
-          </Button>
-          <Button disabled={isSaving} type="submit">
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-        </div>
       </form>
     </SideDrawer>
   );
