@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentTenant } from "../../../../common/decorators/current-tenant.decorator";
 import { CurrentUser } from "../../../../common/decorators/current-user.decorator";
@@ -17,11 +17,13 @@ import { ListOrganizationUnitTypesUseCase } from "../../application/use-cases/li
 import { ListOrganizationUnitsUseCase } from "../../application/use-cases/list-organization-units.use-case";
 import { ReactivateOrganizationUnitTypeUseCase } from "../../application/use-cases/reactivate-organization-unit-type.use-case";
 import { ReactivateOrganizationUnitUseCase } from "../../application/use-cases/reactivate-organization-unit.use-case";
+import { ReorderOrganizationUnitTypesUseCase } from "../../application/use-cases/reorder-organization-unit-types.use-case";
 import { UpdateOrganizationUnitTypeUseCase } from "../../application/use-cases/update-organization-unit-type.use-case";
 import { UpdateOrganizationUnitUseCase } from "../../application/use-cases/update-organization-unit.use-case";
 import {
   CreateOrganizationUnitDto,
   CreateOrganizationUnitTypeDto,
+  ReorderOrganizationUnitTypesDto,
   UpdateOrganizationUnitDto,
   UpdateOrganizationUnitTypeDto
 } from "../dto/organization-unit.dto";
@@ -37,6 +39,7 @@ export class OrganizationUnitsController {
     private readonly updateOrganizationUnitTypeUseCase: UpdateOrganizationUnitTypeUseCase,
     private readonly archiveOrganizationUnitTypeUseCase: ArchiveOrganizationUnitTypeUseCase,
     private readonly reactivateOrganizationUnitTypeUseCase: ReactivateOrganizationUnitTypeUseCase,
+    private readonly reorderOrganizationUnitTypesUseCase: ReorderOrganizationUnitTypesUseCase,
     private readonly listOrganizationUnitsUseCase: ListOrganizationUnitsUseCase,
     private readonly getOrganizationUnitUseCase: GetOrganizationUnitUseCase,
     private readonly createOrganizationUnitUseCase: CreateOrganizationUnitUseCase,
@@ -69,6 +72,20 @@ export class OrganizationUnitsController {
   @Permissions("organization.read")
   async getType(@CurrentTenant() tenant: TenantContext, @Param("typeId") typeId: string) {
     return this.getOrganizationUnitTypeUseCase.execute(tenant.id, typeId);
+  }
+
+  @Put("organization-unit-types/order")
+  @Permissions("organization.manage")
+  async reorderTypes(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Body() body: ReorderOrganizationUnitTypesDto
+  ) {
+    return this.reorderOrganizationUnitTypesUseCase.execute({
+      tenantId: tenant.id,
+      actorUserId: user.id,
+      typeIds: body.typeIds
+    });
   }
 
   @Patch("organization-unit-types/:typeId")

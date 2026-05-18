@@ -22,6 +22,15 @@ export class PrismaOrganizationUnitsRepository implements OrganizationUnitsRepos
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
     });
 
+  getMaxTypeSortOrder = async (tenantId: string): Promise<number | null> => {
+    const result = await this.prisma.organizationUnitType.aggregate({
+      where: { tenantId },
+      _max: { sortOrder: true }
+    });
+
+    return result._max.sortOrder;
+  };
+
   findTypeById = async (
     tenantId: string,
     typeId: string
@@ -62,6 +71,26 @@ export class PrismaOrganizationUnitsRepository implements OrganizationUnitsRepos
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {})
       }
+    });
+
+  reorderTypes = async (
+    tenantId: string,
+    typeIds: readonly string[]
+  ): Promise<OrganizationUnitTypeEntity[]> =>
+    this.prisma.$transaction(async (tx) => {
+      await Promise.all(
+        typeIds.map((typeId, index) =>
+          tx.organizationUnitType.update({
+            where: { id: typeId, tenantId },
+            data: { sortOrder: index }
+          })
+        )
+      );
+
+      return tx.organizationUnitType.findMany({
+        where: { tenantId },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
+      });
     });
 
   setTypeStatus = async (

@@ -17,6 +17,7 @@ import { ListOrganizationUnitsUseCase } from "./application/use-cases/list-organ
 import { OrganizationUnitsPolicyService } from "./application/services/organization-units-policy.service";
 import { ReactivateOrganizationUnitTypeUseCase } from "./application/use-cases/reactivate-organization-unit-type.use-case";
 import { ReactivateOrganizationUnitUseCase } from "./application/use-cases/reactivate-organization-unit.use-case";
+import { ReorderOrganizationUnitTypesUseCase } from "./application/use-cases/reorder-organization-unit-types.use-case";
 import { UpdateOrganizationUnitTypeUseCase } from "./application/use-cases/update-organization-unit-type.use-case";
 import { UpdateOrganizationUnitUseCase } from "./application/use-cases/update-organization-unit.use-case";
 import { ORGANIZATION_REPOSITORY } from "./domain/ports/organization.repository.port";
@@ -43,6 +44,7 @@ import { OrganizationUnitsController } from "./presentation/controllers/organiza
     UpdateOrganizationUnitTypeUseCase,
     ArchiveOrganizationUnitTypeUseCase,
     ReactivateOrganizationUnitTypeUseCase,
+    ReorderOrganizationUnitTypesUseCase,
     ListOrganizationUnitsUseCase,
     GetOrganizationUnitUseCase,
     CreateOrganizationUnitUseCase,

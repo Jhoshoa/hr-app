@@ -38,7 +38,10 @@ export class CreateOrganizationUnitTypeUseCase {
     );
 
     const { actorUserId, ...createInput } = input;
-    const type = await this.organizationUnitsRepository.createType(createInput);
+    const type = await this.organizationUnitsRepository.createType({
+      ...createInput,
+      sortOrder: createInput.sortOrder ?? (await this.getNextSortOrder(input.tenantId))
+    });
 
     await this.createAuditEventUseCase.execute({
       tenantId: input.tenantId,
@@ -50,5 +53,11 @@ export class CreateOrganizationUnitTypeUseCase {
     });
 
     return type;
+  };
+
+  private readonly getNextSortOrder = async (tenantId: string): Promise<number> => {
+    const maxSortOrder = await this.organizationUnitsRepository.getMaxTypeSortOrder(tenantId);
+
+    return maxSortOrder === null ? 0 : maxSortOrder + 1;
   };
 }

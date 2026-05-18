@@ -1,7 +1,9 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
+  ArrayMinSize,
   IsInt,
+  IsArray,
   IsOptional,
   IsString,
   IsUUID,
@@ -44,6 +46,14 @@ export class CreateOrganizationUnitTypeDto {
 }
 
 export class UpdateOrganizationUnitTypeDto extends PartialType(CreateOrganizationUnitTypeDto) {}
+
+export class ReorderOrganizationUnitTypesDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID("4", { each: true })
+  typeIds!: string[];
+}
 
 export class CreateOrganizationUnitDto {
   @ApiProperty()

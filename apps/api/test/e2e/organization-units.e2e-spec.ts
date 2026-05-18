@@ -156,6 +156,31 @@ describe("Organization units API", () => {
       .expect(201);
 
     const typeId = typeResponse.body.id as string;
+    const secondTypeResponse = await authed(tenantA.slug)(
+      request(app.getHttpServer()).post("/api/v1/organization-unit-types")
+    )
+      .send({ key: "region", name: "Region", sortOrder: 20 })
+      .expect(201);
+    const secondTypeId = secondTypeResponse.body.id as string;
+
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).put("/api/v1/organization-unit-types/order")
+    )
+      .send({ typeIds: [secondTypeId, secondTypeId] })
+      .expect(400);
+
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).put("/api/v1/organization-unit-types/order")
+    )
+      .send({ typeIds: [secondTypeId, typeId] })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.map((type: { id: string; sortOrder: number }) => type.id)).toEqual([
+          secondTypeId,
+          typeId
+        ]);
+        expect(body.map((type: { sortOrder: number }) => type.sortOrder)).toEqual([0, 1]);
+      });
 
     await authed(tenantA.slug)(request(app.getHttpServer()).post("/api/v1/organization-units"))
       .send({
@@ -329,6 +354,7 @@ describe("Organization units API", () => {
             "organization_unit.updated",
             "organization_unit.archived",
             "organization_unit.reactivated",
+            "organization_unit_type.reordered",
             "employee.job_assignment.created",
             "employee.job_assignment.organization_unit_set"
           ]
@@ -342,6 +368,7 @@ describe("Organization units API", () => {
         "organization_unit.updated",
         "organization_unit.archived",
         "organization_unit.reactivated",
+        "organization_unit_type.reordered",
         "employee.job_assignment.created",
         "employee.job_assignment.organization_unit_set"
       ])

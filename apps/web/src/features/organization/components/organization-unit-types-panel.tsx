@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Archive, Edit3, Plus, RotateCcw } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Archive, Edit3, GripVertical, Plus, RotateCcw, Save } from "lucide-react";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,13 @@ import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
+import { normalizeApiError } from "@/lib/api/api-error";
 import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./organization-loading";
 import {
   useArchiveOrganizationUnitTypeMutation,
   useCreateOrganizationUnitTypeMutation,
   useListOrganizationUnitTypesQuery,
+  useReorderOrganizationUnitTypesMutation,
   useReactivateOrganizationUnitTypeMutation,
   useUpdateOrganizationUnitTypeMutation
 } from "../organization-units-api";
@@ -35,18 +37,111 @@ export function OrganizationUnitTypesPanel() {
   const tenantSlug = currentTenant.tenantSlug;
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [isReorderConfirmOpen, setIsReorderConfirmOpen] = useState(false);
+  const [orderedTypeIds, setOrderedTypeIds] = useState<string[]>([]);
+  const [draggingTypeId, setDraggingTypeId] = useState<string | null>(null);
+  const serverTypeIdsRef = useRef<string[]>([]);
   const { data = [], isError, isFetching, isLoading } = useListOrganizationUnitTypesQuery(
     { tenantSlug },
     { skip: !tenantSlug }
   );
   const [archiveType, archiveState] = useArchiveOrganizationUnitTypeMutation();
   const [reactivateType, reactivateState] = useReactivateOrganizationUnitTypeMutation();
+  const [reorderTypes, reorderState] = useReorderOrganizationUnitTypesMutation();
 
   const sortedTypes = useMemo(
     () => [...data].sort((first, second) => first.sortOrder - second.sortOrder || first.name.localeCompare(second.name)),
     [data]
   );
+  const sortedTypeIds = useMemo(() => sortedTypes.map((type) => type.id), [sortedTypes]);
+  const visibleTypes = useMemo(() => {
+    const typeById = new Map(sortedTypes.map((type) => [type.id, type]));
+    const orderedTypes = orderedTypeIds.flatMap((typeId) => {
+      const type = typeById.get(typeId);
+      return type ? [type] : [];
+    });
+
+    return orderedTypes.length === sortedTypes.length ? orderedTypes : sortedTypes;
+  }, [orderedTypeIds, sortedTypes]);
+  const hasOrderChanges =
+    orderedTypeIds.length === sortedTypeIds.length &&
+    orderedTypeIds.some((typeId, index) => typeId !== sortedTypeIds[index]);
   const showTableSkeleton = isLoading || (isFetching && sortedTypes.length === 0);
+
+  useEffect(() => {
+    const hasServerOrderChanged =
+      serverTypeIdsRef.current.length !== sortedTypeIds.length ||
+      serverTypeIdsRef.current.some((typeId, index) => typeId !== sortedTypeIds[index]);
+
+    if (!hasServerOrderChanged) {
+      return;
+    }
+
+    serverTypeIdsRef.current = sortedTypeIds;
+    setOrderedTypeIds(sortedTypeIds);
+  }, [sortedTypeIds]);
+
+  const moveType = (sourceTypeId: string, targetTypeId: string) => {
+    if (sourceTypeId === targetTypeId) {
+      return;
+    }
+
+    setOrderedTypeIds((current) => {
+      const nextOrder = current.length === sortedTypeIds.length ? [...current] : [...sortedTypeIds];
+      const sourceIndex = nextOrder.indexOf(sourceTypeId);
+      const targetIndex = nextOrder.indexOf(targetTypeId);
+
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return current;
+      }
+
+      const [movedTypeId] = nextOrder.splice(sourceIndex, 1);
+      if (!movedTypeId) {
+        return current;
+      }
+      nextOrder.splice(targetIndex, 0, movedTypeId);
+
+      return nextOrder;
+    });
+  };
+
+  const moveTypeByOffset = (sourceTypeId: string, offset: -1 | 1) => {
+    setOrderedTypeIds((current) => {
+      const nextOrder = current.length === sortedTypeIds.length ? [...current] : [...sortedTypeIds];
+      const sourceIndex = nextOrder.indexOf(sourceTypeId);
+      const targetIndex = sourceIndex + offset;
+
+      if (sourceIndex === -1 || targetIndex < 0 || targetIndex >= nextOrder.length) {
+        return current;
+      }
+
+      const [movedTypeId] = nextOrder.splice(sourceIndex, 1);
+      if (!movedTypeId) {
+        return current;
+      }
+      nextOrder.splice(targetIndex, 0, movedTypeId);
+
+      return nextOrder;
+    });
+  };
+
+  const saveOrder = async () => {
+    const uniqueTypeIds = new Set(orderedTypeIds);
+
+    if (uniqueTypeIds.size !== orderedTypeIds.length || orderedTypeIds.length !== sortedTypes.length) {
+      setIsReorderConfirmOpen(false);
+      showToast({ title: "Order is invalid", description: "Reload the page and try again.", tone: "error" });
+      return;
+    }
+
+    try {
+      await reorderTypes({ tenantSlug, typeIds: orderedTypeIds }).unwrap();
+      setIsReorderConfirmOpen(false);
+      showToast({ title: "Organization unit type order saved", tone: "success" });
+    } catch {
+      showToast({ title: "Save order failed", description: "The type order could not be updated.", tone: "error" });
+    }
+  };
 
   const onConfirmAction = async () => {
     if (!pendingAction) {
@@ -74,10 +169,21 @@ export function OrganizationUnitTypesPanel() {
           <h2 className="text-base font-semibold">Organization unit types</h2>
           <p className="mt-1 text-sm text-muted-foreground">Configurable labels for company hierarchy levels.</p>
         </div>
-        <Button onClick={() => setDrawer({ mode: "create" })} type="button">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Add type
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!hasOrderChanges || reorderState.isLoading}
+            onClick={() => setIsReorderConfirmOpen(true)}
+            type="button"
+            variant="secondary"
+          >
+            <Save className="h-4 w-4" aria-hidden="true" />
+            {reorderState.isLoading ? "Saving..." : "Save order"}
+          </Button>
+          <Button onClick={() => setDrawer({ mode: "create" })} type="button">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add type
+          </Button>
+        </div>
       </header>
 
       {isError ? <ErrorState title="Organization unit types could not load" /> : null}
@@ -86,9 +192,9 @@ export function OrganizationUnitTypesPanel() {
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
+              <th className="w-12 px-5 py-3 font-semibold" aria-label="Reorder" />
               <th className="px-5 py-3 font-semibold">Name</th>
               <th className="px-5 py-3 font-semibold">Key</th>
-              <th className="px-5 py-3 font-semibold">Sort</th>
               <th className="px-5 py-3 font-semibold">Status</th>
               <th className="px-5 py-3 text-right font-semibold">Actions</th>
             </tr>
@@ -97,11 +203,44 @@ export function OrganizationUnitTypesPanel() {
             <OrganizationTableSkeleton columns={5} />
           ) : (
             <tbody className="divide-y divide-border">
-              {sortedTypes.map((record) => (
-                <tr key={record.id}>
+              {visibleTypes.map((record) => (
+                <tr
+                  draggable
+                  key={record.id}
+                  onDragEnd={() => setDraggingTypeId(null)}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (draggingTypeId) {
+                      moveType(draggingTypeId, record.id);
+                    }
+                  }}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", record.id);
+                    setDraggingTypeId(record.id);
+                  }}
+                >
+                  <td className="px-5 py-4">
+                    <button
+                      aria-label={`Reorder ${record.name}`}
+                      className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                      onKeyDown={(event) => {
+                        if (event.key === "ArrowUp") {
+                          event.preventDefault();
+                          moveTypeByOffset(record.id, -1);
+                        }
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault();
+                          moveTypeByOffset(record.id, 1);
+                        }
+                      }}
+                      type="button"
+                    >
+                      <GripVertical className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </td>
                   <td className="px-5 py-4 font-medium">{record.name}</td>
                   <td className="px-5 py-4 text-muted-foreground">{record.key}</td>
-                  <td className="px-5 py-4 text-muted-foreground">{record.sortOrder}</td>
                   <td className="px-5 py-4">
                     <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
                   </td>
@@ -167,6 +306,15 @@ export function OrganizationUnitTypesPanel() {
         onConfirm={onConfirmAction}
         title={pendingAction?.action === "archive" ? "Archive type" : "Reactivate type"}
       />
+      <ConfirmDialog
+        confirmLabel="Save order"
+        description="This will update the order of organization unit types for this tenant."
+        isOpen={isReorderConfirmOpen}
+        isWorking={reorderState.isLoading}
+        onCancel={() => setIsReorderConfirmOpen(false)}
+        onConfirm={saveOrder}
+        title="Save type order"
+      />
     </section>
   );
 }
@@ -183,15 +331,15 @@ function OrganizationUnitTypeDrawer({
   const { showToast } = useToast();
   const [createType, createState] = useCreateOrganizationUnitTypeMutation();
   const [updateType, updateState] = useUpdateOrganizationUnitTypeMutation();
-  const [formState, setFormState] = useState({ key: "", name: "", sortOrder: "0" });
-  const [initialFormState, setInitialFormState] = useState({ key: "", name: "", sortOrder: "0" });
+  const [formState, setFormState] = useState({ key: "", name: "" });
+  const [initialFormState, setInitialFormState] = useState({ key: "", name: "" });
   const [formReadyKey, setFormReadyKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const drawerKey = drawer ? `${drawer.mode}:${drawer.mode === "edit" ? drawer.record.id : "new"}` : null;
 
   useEffect(() => {
     if (!drawer) {
-      const emptyState = { key: "", name: "", sortOrder: "0" };
+      const emptyState = { key: "", name: "" };
       setFormState(emptyState);
       setInitialFormState(emptyState);
       setFormReadyKey(null);
@@ -202,10 +350,9 @@ function OrganizationUnitTypeDrawer({
       drawer.mode === "edit"
         ? {
             key: drawer.record.key,
-            name: drawer.record.name,
-            sortOrder: String(drawer.record.sortOrder)
+            name: drawer.record.name
           }
-        : { key: "", name: "", sortOrder: "0" };
+        : { key: "", name: "" };
     setFormState(nextState);
     setInitialFormState(nextState);
     setFormReadyKey(drawerKey);
@@ -226,8 +373,7 @@ function OrganizationUnitTypeDrawer({
     event.preventDefault();
     const payload: OrganizationUnitTypePayload = {
       key: formState.key.trim(),
-      name: formState.name.trim(),
-      sortOrder: Number(formState.sortOrder || 0)
+      name: formState.name.trim()
     };
 
     if (!payload.key || !payload.name) {
@@ -244,8 +390,8 @@ function OrganizationUnitTypeDrawer({
         showToast({ title: "Organization unit type created", tone: "success" });
       }
       onClose();
-    } catch {
-      showToast({ title: "Save failed", description: "Review the type values and try again.", tone: "error" });
+    } catch (error) {
+      showToast({ title: "Save failed", description: normalizeApiError(error).message, tone: "error" });
     }
   };
 
@@ -268,7 +414,7 @@ function OrganizationUnitTypeDrawer({
     >
       <form className="space-y-4" id="organization-unit-type-form" onSubmit={submit}>
         {!isFormReady ? (
-          <DrawerFormSkeleton fields={3} />
+          <DrawerFormSkeleton fields={2} />
         ) : (
           <>
             <label className="block">
@@ -287,15 +433,6 @@ function OrganizationUnitTypeDrawer({
                 onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
                 placeholder="Branch"
                 value={formState.name}
-              />
-            </label>
-            <label className="block">
-              <RequiredLabel>Sort order</RequiredLabel>
-              <Input
-                className="mt-1"
-                onChange={(event) => setFormState((current) => ({ ...current, sortOrder: event.target.value }))}
-                type="number"
-                value={formState.sortOrder}
               />
             </label>
           </>

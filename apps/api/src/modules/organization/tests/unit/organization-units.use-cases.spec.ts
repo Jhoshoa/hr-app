@@ -3,6 +3,7 @@ import { ArchiveOrganizationUnitTypeUseCase } from "../../application/use-cases/
 import { ArchiveOrganizationUnitUseCase } from "../../application/use-cases/archive-organization-unit.use-case";
 import { CreateOrganizationUnitTypeUseCase } from "../../application/use-cases/create-organization-unit-type.use-case";
 import { CreateOrganizationUnitUseCase } from "../../application/use-cases/create-organization-unit.use-case";
+import { ReorderOrganizationUnitTypesUseCase } from "../../application/use-cases/reorder-organization-unit-types.use-case";
 import { UpdateOrganizationUnitUseCase } from "../../application/use-cases/update-organization-unit.use-case";
 import { OrganizationUnitsPolicyService } from "../../application/services/organization-units-policy.service";
 import type { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
@@ -55,8 +56,10 @@ const createRepository = (): jest.Mocked<OrganizationUnitsRepository> => ({
   findUnitById: jest.fn(),
   findUnitByKey: jest.fn(),
   findUnitByName: jest.fn(),
+  getMaxTypeSortOrder: jest.fn(),
   listTypes: jest.fn(),
   listUnits: jest.fn(),
+  reorderTypes: jest.fn(),
   setTypeStatus: jest.fn(),
   setUnitStatus: jest.fn(),
   updateType: jest.fn(),
@@ -101,6 +104,53 @@ describe("OrganizationUnit use cases", () => {
         resourceId: "type-1"
       })
     );
+  });
+
+  it("places new organization unit types after the current tenant order when no order is provided", async () => {
+    const repository = createRepository();
+    repository.findTypeByKey.mockResolvedValue(null);
+    repository.findTypeByName.mockResolvedValue(null);
+    repository.getMaxTypeSortOrder.mockResolvedValue(1);
+    repository.createType.mockResolvedValue(typeEntity({ id: "type-3", key: "team", name: "Team", sortOrder: 2 }));
+
+    const useCase = new CreateOrganizationUnitTypeUseCase(repository, policy, createAudit());
+    const result = await useCase.execute({
+      tenantId: "tenant-1",
+      actorUserId: "user-1",
+      key: "team",
+      name: "Team"
+    });
+
+    expect(result.sortOrder).toBe(2);
+    expect(repository.createType).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      key: "team",
+      name: "Team",
+      sortOrder: 2
+    });
+  });
+
+  it("uses zero as the first organization unit type order", async () => {
+    const repository = createRepository();
+    repository.findTypeByKey.mockResolvedValue(null);
+    repository.findTypeByName.mockResolvedValue(null);
+    repository.getMaxTypeSortOrder.mockResolvedValue(null);
+    repository.createType.mockResolvedValue(typeEntity({ sortOrder: 0 }));
+
+    const useCase = new CreateOrganizationUnitTypeUseCase(repository, policy, createAudit());
+    await useCase.execute({
+      tenantId: "tenant-1",
+      actorUserId: "user-1",
+      key: "branch",
+      name: "Branch"
+    });
+
+    expect(repository.createType).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      key: "branch",
+      name: "Branch",
+      sortOrder: 0
+    });
   });
 
   it("rejects duplicate organization unit type keys", async () => {
@@ -225,5 +275,74 @@ describe("OrganizationUnit use cases", () => {
 
     await expect(useCase.execute("tenant-1", "unit-1", "user-1")).rejects.toBeInstanceOf(ConflictException);
     expect(repository.setUnitStatus).not.toHaveBeenCalled();
+  });
+
+  it("reorders organization unit types transactionally and audits once", async () => {
+    const repository = createRepository();
+    const audit = createAudit();
+    const reorderedTypes = [
+      typeEntity({ id: "type-2", key: "office", name: "Office", sortOrder: 0 }),
+      typeEntity({ id: "type-1", key: "branch", name: "Branch", sortOrder: 1 })
+    ];
+
+    repository.listTypes.mockResolvedValue([
+      typeEntity({ id: "type-1", sortOrder: 0 }),
+      typeEntity({ id: "type-2", key: "office", name: "Office", sortOrder: 1 })
+    ]);
+    repository.reorderTypes.mockResolvedValue(reorderedTypes);
+
+    const useCase = new ReorderOrganizationUnitTypesUseCase(repository, audit);
+    const result = await useCase.execute({
+      tenantId: "tenant-1",
+      actorUserId: "user-1",
+      typeIds: ["type-2", "type-1"]
+    });
+
+    expect(result).toBe(reorderedTypes);
+    expect(repository.reorderTypes).toHaveBeenCalledWith("tenant-1", ["type-2", "type-1"]);
+    expect(audit.execute).toHaveBeenCalledTimes(1);
+    expect(audit.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "organization_unit_type.reordered",
+        actorUserId: "user-1",
+        metadata: {
+          previousTypeIds: ["type-1", "type-2"],
+          typeIds: ["type-2", "type-1"]
+        }
+      })
+    );
+  });
+
+  it("rejects duplicate ids when reordering organization unit types", async () => {
+    const repository = createRepository();
+    const useCase = new ReorderOrganizationUnitTypesUseCase(repository, createAudit());
+
+    await expect(
+      useCase.execute({
+        tenantId: "tenant-1",
+        actorUserId: "user-1",
+        typeIds: ["type-1", "type-1"]
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.reorderTypes).not.toHaveBeenCalled();
+  });
+
+  it("rejects incomplete or cross-tenant organization unit type orders", async () => {
+    const repository = createRepository();
+    repository.listTypes.mockResolvedValue([
+      typeEntity({ id: "type-1" }),
+      typeEntity({ id: "type-2", key: "office", name: "Office" })
+    ]);
+
+    const useCase = new ReorderOrganizationUnitTypesUseCase(repository, createAudit());
+
+    await expect(
+      useCase.execute({
+        tenantId: "tenant-1",
+        actorUserId: "user-1",
+        typeIds: ["type-1", "type-other"]
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.reorderTypes).not.toHaveBeenCalled();
   });
 });

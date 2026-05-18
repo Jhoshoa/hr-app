@@ -18,6 +18,10 @@ interface TypeMutationRequest extends TenantScopedRequest {
   readonly payload: OrganizationUnitTypePayload;
 }
 
+interface TypeOrderRequest extends TenantScopedRequest {
+  readonly typeIds: readonly string[];
+}
+
 interface TypeUpdateRequest extends TypeByIdRequest {
   readonly payload: OrganizationUnitTypePayload;
 }
@@ -80,6 +84,16 @@ export const organizationUnitsApi = baseApi.injectEndpoints({
         { type: "OrganizationUnitType", id: tenantSlug }
       ]
     }),
+    reorderOrganizationUnitTypes: builder.mutation<OrganizationUnitType[], TypeOrderRequest>({
+      query: ({ typeIds }) => ({
+        url: "organization-unit-types/order",
+        method: "PUT",
+        body: { typeIds }
+      }),
+      invalidatesTags: (_result, _error, { tenantSlug }) => [
+        { type: "OrganizationUnitType", id: tenantSlug }
+      ]
+    }),
     listOrganizationUnits: builder.query<OrganizationUnit[], TenantScopedRequest>({
       query: () => "organization-units",
       providesTags: (_result, _error, { tenantSlug }) => [
@@ -134,6 +148,7 @@ export const {
   useCreateOrganizationUnitTypeMutation,
   useListOrganizationUnitsQuery,
   useListOrganizationUnitTypesQuery,
+  useReorderOrganizationUnitTypesMutation,
   useReactivateOrganizationUnitMutation,
   useReactivateOrganizationUnitTypeMutation,
   useUpdateOrganizationUnitMutation,

@@ -13,11 +13,13 @@ export const ORGANIZATION_UNITS_REPOSITORY = Symbol("ORGANIZATION_UNITS_REPOSITO
 
 export interface OrganizationUnitsRepository {
   listTypes(tenantId: string): Promise<OrganizationUnitTypeEntity[]>;
+  getMaxTypeSortOrder(tenantId: string): Promise<number | null>;
   findTypeById(tenantId: string, typeId: string): Promise<OrganizationUnitTypeEntity | null>;
   findTypeByKey(tenantId: string, key: string): Promise<OrganizationUnitTypeEntity | null>;
   findTypeByName(tenantId: string, name: string): Promise<OrganizationUnitTypeEntity | null>;
   createType(input: CreateOrganizationUnitTypeInput): Promise<OrganizationUnitTypeEntity>;
   updateType(input: UpdateOrganizationUnitTypeInput): Promise<OrganizationUnitTypeEntity>;
+  reorderTypes(tenantId: string, typeIds: readonly string[]): Promise<OrganizationUnitTypeEntity[]>;
   setTypeStatus(
     tenantId: string,
     typeId: string,
