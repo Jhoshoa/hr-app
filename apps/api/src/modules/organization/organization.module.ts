@@ -10,6 +10,8 @@ import { ArchiveOrganizationUnitTypeUseCase } from "./application/use-cases/arch
 import { ArchiveOrganizationUnitUseCase } from "./application/use-cases/archive-organization-unit.use-case";
 import { CreateOrganizationUnitTypeUseCase } from "./application/use-cases/create-organization-unit-type.use-case";
 import { CreateOrganizationUnitUseCase } from "./application/use-cases/create-organization-unit.use-case";
+import { DeleteOrganizationUnitTypeUseCase } from "./application/use-cases/delete-organization-unit-type.use-case";
+import { DeleteOrganizationUnitUseCase } from "./application/use-cases/delete-organization-unit.use-case";
 import { GetOrganizationUnitTypeUseCase } from "./application/use-cases/get-organization-unit-type.use-case";
 import { GetOrganizationUnitUseCase } from "./application/use-cases/get-organization-unit.use-case";
 import { ListOrganizationUnitTypesUseCase } from "./application/use-cases/list-organization-unit-types.use-case";
@@ -44,6 +46,7 @@ import { OrganizationUnitsController } from "./presentation/controllers/organiza
     UpdateOrganizationUnitTypeUseCase,
     ArchiveOrganizationUnitTypeUseCase,
     ReactivateOrganizationUnitTypeUseCase,
+    DeleteOrganizationUnitTypeUseCase,
     ReorderOrganizationUnitTypesUseCase,
     ListOrganizationUnitsUseCase,
     GetOrganizationUnitUseCase,
@@ -51,6 +54,7 @@ import { OrganizationUnitsController } from "./presentation/controllers/organiza
     UpdateOrganizationUnitUseCase,
     ArchiveOrganizationUnitUseCase,
     ReactivateOrganizationUnitUseCase,
+    DeleteOrganizationUnitUseCase,
     {
       provide: ORGANIZATION_REPOSITORY,
       useClass: PrismaOrganizationRepository

@@ -33,6 +33,18 @@ export class OrganizationUnitsPolicyService {
     }
   };
 
+  assertTypeIsArchived = (type: OrganizationUnitTypeEntity): void => {
+    if (type.status !== "ARCHIVED") {
+      throw new BadRequestException("Organization unit type must be archived before it can be deleted.");
+    }
+  };
+
+  assertUnitIsArchived = (unit: OrganizationUnitEntity): void => {
+    if (unit.status !== "ARCHIVED") {
+      throw new BadRequestException("Organization unit must be archived before it can be deleted.");
+    }
+  };
+
   assertTypeKeyAvailable = async (
     repository: OrganizationUnitsRepository,
     tenantId: string,
@@ -118,6 +130,33 @@ export class OrganizationUnitsPolicyService {
     }
   };
 
+  assertTypeCanBeDeleted = async (
+    repository: OrganizationUnitsRepository,
+    tenantId: string,
+    typeId: string
+  ): Promise<void> => {
+    const units = await repository.countUnitsByType(tenantId, typeId);
+
+    if (units > 0) {
+      throw new ConflictException("Organization unit type cannot be deleted while organization units use it.");
+    }
+
+    const blockingAuditEvents = await repository.countBlockingAuditEvents(
+      tenantId,
+      "organization_unit_type",
+      typeId,
+      [
+        "organization_unit_type.created",
+        "organization_unit_type.archived",
+        "organization_unit_type.reactivated"
+      ]
+    );
+
+    if (blockingAuditEvents > 0) {
+      throw new ConflictException("Organization unit type cannot be deleted because it has operational history.");
+    }
+  };
+
   assertUnitCanBeArchived = async (
     repository: OrganizationUnitsRepository,
     tenantId: string,
@@ -133,6 +172,39 @@ export class OrganizationUnitsPolicyService {
 
     if (currentAssignments > 0) {
       throw new ConflictException("Organization unit cannot be archived while current job assignments use it.");
+    }
+  };
+
+  assertUnitCanBeDeleted = async (
+    repository: OrganizationUnitsRepository,
+    tenantId: string,
+    unitId: string
+  ): Promise<void> => {
+    const children = await repository.countChildren(tenantId, unitId);
+
+    if (children > 0) {
+      throw new ConflictException("Organization unit cannot be deleted while it has child units.");
+    }
+
+    const jobAssignments = await repository.countJobAssignmentsByUnit(tenantId, unitId);
+
+    if (jobAssignments > 0) {
+      throw new ConflictException("Organization unit cannot be deleted while job assignments use it.");
+    }
+
+    const blockingAuditEvents = await repository.countBlockingAuditEvents(
+      tenantId,
+      "organization_unit",
+      unitId,
+      [
+        "organization_unit.created",
+        "organization_unit.archived",
+        "organization_unit.reactivated"
+      ]
+    );
+
+    if (blockingAuditEvents > 0) {
+      throw new ConflictException("Organization unit cannot be deleted because it has operational history.");
     }
   };
 

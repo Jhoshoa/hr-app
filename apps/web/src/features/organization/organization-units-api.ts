@@ -84,6 +84,15 @@ export const organizationUnitsApi = baseApi.injectEndpoints({
         { type: "OrganizationUnitType", id: tenantSlug }
       ]
     }),
+    deleteOrganizationUnitType: builder.mutation<OrganizationUnitType, TypeByIdRequest>({
+      query: ({ typeId }) => ({
+        url: `organization-unit-types/${typeId}`,
+        method: "DELETE"
+      }),
+      invalidatesTags: (_result, _error, { tenantSlug }) => [
+        { type: "OrganizationUnitType", id: tenantSlug }
+      ]
+    }),
     reorderOrganizationUnitTypes: builder.mutation<OrganizationUnitType[], TypeOrderRequest>({
       query: ({ typeIds }) => ({
         url: "organization-unit-types/order",
@@ -137,6 +146,15 @@ export const organizationUnitsApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { tenantSlug }) => [
         { type: "OrganizationUnit", id: tenantSlug }
       ]
+    }),
+    deleteOrganizationUnit: builder.mutation<OrganizationUnit, UnitByIdRequest>({
+      query: ({ unitId }) => ({
+        url: `organization-units/${unitId}`,
+        method: "DELETE"
+      }),
+      invalidatesTags: (_result, _error, { tenantSlug }) => [
+        { type: "OrganizationUnit", id: tenantSlug }
+      ]
     })
   })
 });
@@ -146,6 +164,8 @@ export const {
   useArchiveOrganizationUnitTypeMutation,
   useCreateOrganizationUnitMutation,
   useCreateOrganizationUnitTypeMutation,
+  useDeleteOrganizationUnitMutation,
+  useDeleteOrganizationUnitTypeMutation,
   useListOrganizationUnitsQuery,
   useListOrganizationUnitTypesQuery,
   useReorderOrganizationUnitTypesMutation,

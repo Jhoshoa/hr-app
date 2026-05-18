@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, Edit3, GripVertical, Plus, RotateCcw, Save } from "lucide-react";
+import { Archive, Edit3, GripVertical, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./
 import {
   useArchiveOrganizationUnitTypeMutation,
   useCreateOrganizationUnitTypeMutation,
+  useDeleteOrganizationUnitTypeMutation,
   useListOrganizationUnitTypesQuery,
   useReorderOrganizationUnitTypesMutation,
   useReactivateOrganizationUnitTypeMutation,
@@ -27,7 +28,7 @@ type DrawerState =
   | { readonly mode: "edit"; readonly record: OrganizationUnitType };
 
 interface PendingAction {
-  readonly action: "archive" | "reactivate";
+  readonly action: "archive" | "delete" | "reactivate";
   readonly record: OrganizationUnitType;
 }
 
@@ -46,6 +47,7 @@ export function OrganizationUnitTypesPanel() {
     { skip: !tenantSlug }
   );
   const [archiveType, archiveState] = useArchiveOrganizationUnitTypeMutation();
+  const [deleteType, deleteState] = useDeleteOrganizationUnitTypeMutation();
   const [reactivateType, reactivateState] = useReactivateOrganizationUnitTypeMutation();
   const [reorderTypes, reorderState] = useReorderOrganizationUnitTypesMutation();
 
@@ -152,13 +154,16 @@ export function OrganizationUnitTypesPanel() {
       if (pendingAction.action === "archive") {
         await archiveType({ tenantSlug, typeId: pendingAction.record.id }).unwrap();
         showToast({ title: "Organization unit type archived", tone: "success" });
-      } else {
+      } else if (pendingAction.action === "reactivate") {
         await reactivateType({ tenantSlug, typeId: pendingAction.record.id }).unwrap();
         showToast({ title: "Organization unit type reactivated", tone: "success" });
+      } else {
+        await deleteType({ tenantSlug, typeId: pendingAction.record.id }).unwrap();
+        showToast({ title: "Organization unit type deleted", tone: "success" });
       }
       setPendingAction(null);
-    } catch {
-      showToast({ title: "Action failed", description: "The type could not be updated.", tone: "error" });
+    } catch (error) {
+      showToast({ title: "Action failed", description: normalizeApiError(error).message, tone: "error" });
     }
   };
 
@@ -256,15 +261,26 @@ export function OrganizationUnitTypesPanel() {
                         <Edit3 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       {record.status === "ARCHIVED" ? (
-                        <Button
-                          aria-label={`Reactivate ${record.name}`}
-                          className="h-8 w-8 px-0"
-                          onClick={() => setPendingAction({ action: "reactivate", record })}
-                          type="button"
-                          variant="secondary"
-                        >
-                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-                        </Button>
+                        <>
+                          <Button
+                            aria-label={`Reactivate ${record.name}`}
+                            className="h-8 w-8 px-0"
+                            onClick={() => setPendingAction({ action: "reactivate", record })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            aria-label={`Delete ${record.name}`}
+                            className="h-8 w-8 px-0"
+                            onClick={() => setPendingAction({ action: "delete", record })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        </>
                       ) : (
                         <Button
                           aria-label={`Archive ${record.name}`}
@@ -298,13 +314,29 @@ export function OrganizationUnitTypesPanel() {
       />
 
       <ConfirmDialog
-        confirmLabel={pendingAction?.action === "archive" ? "Archive" : "Reactivate"}
-        description="This updates whether the type is available for active organization units."
+        confirmLabel={
+          pendingAction?.action === "archive"
+            ? "Archive"
+            : pendingAction?.action === "delete"
+              ? "Delete permanently"
+              : "Reactivate"
+        }
+        description={
+          pendingAction?.action === "delete"
+            ? "This permanently deletes the archived type. It is only allowed when no organization units or operational history use it."
+            : "This updates whether the type is available for active organization units."
+        }
         isOpen={Boolean(pendingAction)}
-        isWorking={archiveState.isLoading || reactivateState.isLoading}
+        isWorking={archiveState.isLoading || deleteState.isLoading || reactivateState.isLoading}
         onCancel={() => setPendingAction(null)}
         onConfirm={onConfirmAction}
-        title={pendingAction?.action === "archive" ? "Archive type" : "Reactivate type"}
+        title={
+          pendingAction?.action === "archive"
+            ? "Archive type"
+            : pendingAction?.action === "delete"
+              ? "Delete type permanently"
+              : "Reactivate type"
+        }
       />
       <ConfirmDialog
         confirmLabel="Save order"

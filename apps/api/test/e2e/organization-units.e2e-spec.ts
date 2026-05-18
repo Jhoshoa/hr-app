@@ -267,6 +267,46 @@ describe("Organization units API", () => {
       request(app.getHttpServer()).post(`/api/v1/organization-units/${disposableResponse.body.id}/reactivate`)
     ).expect(201);
 
+    const deletableTypeResponse = await authed(tenantA.slug)(
+      request(app.getHttpServer()).post("/api/v1/organization-unit-types")
+    )
+      .send({ key: "temporary_type", name: "Temporary Type" })
+      .expect(201);
+    const deletableTypeId = deletableTypeResponse.body.id as string;
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).delete(`/api/v1/organization-unit-types/${deletableTypeId}`)
+    )
+      .expect(400)
+      .expect((response) => {
+        expect(response.text).toContain("must be archived");
+      });
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).post(`/api/v1/organization-unit-types/${deletableTypeId}/archive`)
+    ).expect(201);
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).delete(`/api/v1/organization-unit-types/${deletableTypeId}`)
+    ).expect(200);
+
+    const deletableUnitResponse = await authed(tenantA.slug)(
+      request(app.getHttpServer()).post("/api/v1/organization-units")
+    )
+      .send({ typeId, key: "delete_candidate", name: "Delete Candidate" })
+      .expect(201);
+    const deletableUnitId = deletableUnitResponse.body.id as string;
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).delete(`/api/v1/organization-units/${deletableUnitId}`)
+    )
+      .expect(400)
+      .expect((response) => {
+        expect(response.text).toContain("must be archived");
+      });
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).post(`/api/v1/organization-units/${deletableUnitId}/archive`)
+    ).expect(201);
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).delete(`/api/v1/organization-units/${deletableUnitId}`)
+    ).expect(200);
+
     const tenantBType = await prisma.organizationUnitType.create({
       data: {
         tenantId: tenantB.id,
@@ -344,6 +384,10 @@ describe("Organization units API", () => {
       request(app.getHttpServer()).post(`/api/v1/organization-units/${childId}/archive`)
     ).expect(409);
 
+    await authed(tenantA.slug)(
+      request(app.getHttpServer()).delete(`/api/v1/organization-units/${disposableResponse.body.id}`)
+    ).expect(400);
+
     const auditEvents = await prisma.auditEvent.findMany({
       where: {
         tenantId: tenantA.id,
@@ -354,7 +398,9 @@ describe("Organization units API", () => {
             "organization_unit.updated",
             "organization_unit.archived",
             "organization_unit.reactivated",
+            "organization_unit.deleted",
             "organization_unit_type.reordered",
+            "organization_unit_type.deleted",
             "employee.job_assignment.created",
             "employee.job_assignment.organization_unit_set"
           ]
@@ -368,7 +414,9 @@ describe("Organization units API", () => {
         "organization_unit.updated",
         "organization_unit.archived",
         "organization_unit.reactivated",
+        "organization_unit.deleted",
         "organization_unit_type.reordered",
+        "organization_unit_type.deleted",
         "employee.job_assignment.created",
         "employee.job_assignment.organization_unit_set"
       ])

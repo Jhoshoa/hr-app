@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentTenant } from "../../../../common/decorators/current-tenant.decorator";
 import { CurrentUser } from "../../../../common/decorators/current-user.decorator";
@@ -11,6 +11,8 @@ import { ArchiveOrganizationUnitTypeUseCase } from "../../application/use-cases/
 import { ArchiveOrganizationUnitUseCase } from "../../application/use-cases/archive-organization-unit.use-case";
 import { CreateOrganizationUnitTypeUseCase } from "../../application/use-cases/create-organization-unit-type.use-case";
 import { CreateOrganizationUnitUseCase } from "../../application/use-cases/create-organization-unit.use-case";
+import { DeleteOrganizationUnitTypeUseCase } from "../../application/use-cases/delete-organization-unit-type.use-case";
+import { DeleteOrganizationUnitUseCase } from "../../application/use-cases/delete-organization-unit.use-case";
 import { GetOrganizationUnitTypeUseCase } from "../../application/use-cases/get-organization-unit-type.use-case";
 import { GetOrganizationUnitUseCase } from "../../application/use-cases/get-organization-unit.use-case";
 import { ListOrganizationUnitTypesUseCase } from "../../application/use-cases/list-organization-unit-types.use-case";
@@ -39,13 +41,15 @@ export class OrganizationUnitsController {
     private readonly updateOrganizationUnitTypeUseCase: UpdateOrganizationUnitTypeUseCase,
     private readonly archiveOrganizationUnitTypeUseCase: ArchiveOrganizationUnitTypeUseCase,
     private readonly reactivateOrganizationUnitTypeUseCase: ReactivateOrganizationUnitTypeUseCase,
+    private readonly deleteOrganizationUnitTypeUseCase: DeleteOrganizationUnitTypeUseCase,
     private readonly reorderOrganizationUnitTypesUseCase: ReorderOrganizationUnitTypesUseCase,
     private readonly listOrganizationUnitsUseCase: ListOrganizationUnitsUseCase,
     private readonly getOrganizationUnitUseCase: GetOrganizationUnitUseCase,
     private readonly createOrganizationUnitUseCase: CreateOrganizationUnitUseCase,
     private readonly updateOrganizationUnitUseCase: UpdateOrganizationUnitUseCase,
     private readonly archiveOrganizationUnitUseCase: ArchiveOrganizationUnitUseCase,
-    private readonly reactivateOrganizationUnitUseCase: ReactivateOrganizationUnitUseCase
+    private readonly reactivateOrganizationUnitUseCase: ReactivateOrganizationUnitUseCase,
+    private readonly deleteOrganizationUnitUseCase: DeleteOrganizationUnitUseCase
   ) {}
 
   @Get("organization-unit-types")
@@ -124,6 +128,16 @@ export class OrganizationUnitsController {
     return this.reactivateOrganizationUnitTypeUseCase.execute(tenant.id, typeId, user.id);
   }
 
+  @Delete("organization-unit-types/:typeId")
+  @Permissions("organization.manage")
+  async deleteType(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Param("typeId") typeId: string
+  ) {
+    return this.deleteOrganizationUnitTypeUseCase.execute(tenant.id, typeId, user.id);
+  }
+
   @Get("organization-units")
   @Permissions("organization.read")
   async listUnits(@CurrentTenant() tenant: TenantContext) {
@@ -184,5 +198,15 @@ export class OrganizationUnitsController {
     @Param("unitId") unitId: string
   ) {
     return this.reactivateOrganizationUnitUseCase.execute(tenant.id, unitId, user.id);
+  }
+
+  @Delete("organization-units/:unitId")
+  @Permissions("organization.manage")
+  async deleteUnit(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Param("unitId") unitId: string
+  ) {
+    return this.deleteOrganizationUnitUseCase.execute(tenant.id, unitId, user.id);
   }
 }

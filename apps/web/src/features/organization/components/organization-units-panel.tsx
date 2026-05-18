@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Archive, Edit3, Plus, RotateCcw } from "lucide-react";
+import { Archive, Edit3, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
+import { normalizeApiError } from "@/lib/api/api-error";
 import {
   useCreateOrganizationRecordMutation,
   useListOrganizationRecordsQuery
@@ -18,6 +19,7 @@ import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./
 import {
   useArchiveOrganizationUnitMutation,
   useCreateOrganizationUnitMutation,
+  useDeleteOrganizationUnitMutation,
   useListOrganizationUnitsQuery,
   useListOrganizationUnitTypesQuery,
   useReactivateOrganizationUnitMutation,
@@ -35,7 +37,7 @@ type DrawerState =
   | { readonly mode: "edit"; readonly record: OrganizationUnit };
 
 interface PendingAction {
-  readonly action: "archive" | "reactivate";
+  readonly action: "archive" | "delete" | "reactivate";
   readonly record: OrganizationUnit;
 }
 
@@ -52,6 +54,7 @@ export function OrganizationUnitsPanel() {
     { skip: !tenantSlug }
   );
   const [archiveUnit, archiveState] = useArchiveOrganizationUnitMutation();
+  const [deleteUnit, deleteState] = useDeleteOrganizationUnitMutation();
   const [reactivateUnit, reactivateState] = useReactivateOrganizationUnitMutation();
 
   const sortedUnits = useMemo(() => [...data].sort((first, second) => first.name.localeCompare(second.name)), [data]);
@@ -72,13 +75,16 @@ export function OrganizationUnitsPanel() {
       if (pendingAction.action === "archive") {
         await archiveUnit({ tenantSlug, unitId: pendingAction.record.id }).unwrap();
         showToast({ title: "Organization unit archived", tone: "success" });
-      } else {
+      } else if (pendingAction.action === "reactivate") {
         await reactivateUnit({ tenantSlug, unitId: pendingAction.record.id }).unwrap();
         showToast({ title: "Organization unit reactivated", tone: "success" });
+      } else {
+        await deleteUnit({ tenantSlug, unitId: pendingAction.record.id }).unwrap();
+        showToast({ title: "Organization unit deleted", tone: "success" });
       }
       setPendingAction(null);
-    } catch {
-      showToast({ title: "Action failed", description: "The organization unit could not be updated.", tone: "error" });
+    } catch (error) {
+      showToast({ title: "Action failed", description: normalizeApiError(error).message, tone: "error" });
     }
   };
 
@@ -137,15 +143,26 @@ export function OrganizationUnitsPanel() {
                         <Edit3 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       {record.status === "ARCHIVED" ? (
-                        <Button
-                          aria-label={`Reactivate ${record.name}`}
-                          className="h-8 w-8 px-0"
-                          onClick={() => setPendingAction({ action: "reactivate", record })}
-                          type="button"
-                          variant="secondary"
-                        >
-                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-                        </Button>
+                        <>
+                          <Button
+                            aria-label={`Reactivate ${record.name}`}
+                            className="h-8 w-8 px-0"
+                            onClick={() => setPendingAction({ action: "reactivate", record })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            aria-label={`Delete ${record.name}`}
+                            className="h-8 w-8 px-0"
+                            onClick={() => setPendingAction({ action: "delete", record })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        </>
                       ) : (
                         <Button
                           aria-label={`Archive ${record.name}`}
@@ -183,13 +200,29 @@ export function OrganizationUnitsPanel() {
       />
 
       <ConfirmDialog
-        confirmLabel={pendingAction?.action === "archive" ? "Archive" : "Reactivate"}
-        description="Archive is blocked when the unit has active children or current job assignments."
+        confirmLabel={
+          pendingAction?.action === "archive"
+            ? "Archive"
+            : pendingAction?.action === "delete"
+              ? "Delete permanently"
+              : "Reactivate"
+        }
+        description={
+          pendingAction?.action === "delete"
+            ? "This permanently deletes the archived unit. It is only allowed when no child units, job assignments, or operational history use it."
+            : "Archive is blocked when the unit has active children or current job assignments."
+        }
         isOpen={Boolean(pendingAction)}
-        isWorking={archiveState.isLoading || reactivateState.isLoading}
+        isWorking={archiveState.isLoading || deleteState.isLoading || reactivateState.isLoading}
         onCancel={() => setPendingAction(null)}
         onConfirm={onConfirmAction}
-        title={pendingAction?.action === "archive" ? "Archive organization unit" : "Reactivate organization unit"}
+        title={
+          pendingAction?.action === "archive"
+            ? "Archive organization unit"
+            : pendingAction?.action === "delete"
+              ? "Delete organization unit permanently"
+              : "Reactivate organization unit"
+        }
       />
     </section>
   );
@@ -372,8 +405,8 @@ function OrganizationUnitDrawer({
         showToast({ title: "Organization unit created", tone: "success" });
       }
       onClose();
-    } catch {
-      showToast({ title: "Save failed", description: "Review the hierarchy values and try again.", tone: "error" });
+    } catch (error) {
+      showToast({ title: "Save failed", description: normalizeApiError(error).message, tone: "error" });
     }
   };
 

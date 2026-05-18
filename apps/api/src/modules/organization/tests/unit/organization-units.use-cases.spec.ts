@@ -3,6 +3,8 @@ import { ArchiveOrganizationUnitTypeUseCase } from "../../application/use-cases/
 import { ArchiveOrganizationUnitUseCase } from "../../application/use-cases/archive-organization-unit.use-case";
 import { CreateOrganizationUnitTypeUseCase } from "../../application/use-cases/create-organization-unit-type.use-case";
 import { CreateOrganizationUnitUseCase } from "../../application/use-cases/create-organization-unit.use-case";
+import { DeleteOrganizationUnitTypeUseCase } from "../../application/use-cases/delete-organization-unit-type.use-case";
+import { DeleteOrganizationUnitUseCase } from "../../application/use-cases/delete-organization-unit.use-case";
 import { ReorderOrganizationUnitTypesUseCase } from "../../application/use-cases/reorder-organization-unit-types.use-case";
 import { UpdateOrganizationUnitUseCase } from "../../application/use-cases/update-organization-unit.use-case";
 import { OrganizationUnitsPolicyService } from "../../application/services/organization-units-policy.service";
@@ -45,7 +47,13 @@ const createRepository = (): jest.Mocked<OrganizationUnitsRepository> => ({
   activeLocationExists: jest.fn(),
   countActiveChildren: jest.fn(),
   countActiveUnitsByType: jest.fn(),
+  countBlockingAuditEvents: jest.fn(),
+  countChildren: jest.fn(),
   countCurrentJobAssignments: jest.fn(),
+  countJobAssignmentsByUnit: jest.fn(),
+  countUnitsByType: jest.fn(),
+  deleteType: jest.fn(),
+  deleteUnit: jest.fn(),
   createType: jest.fn(),
   createUnit: jest.fn(),
   findAncestorIds: jest.fn(),
@@ -181,6 +189,61 @@ describe("OrganizationUnit use cases", () => {
     expect(repository.setTypeStatus).not.toHaveBeenCalled();
   });
 
+  it("deletes archived organization unit types only when they have no dependencies or operational history", async () => {
+    const repository = createRepository();
+    const audit = createAudit();
+    repository.findTypeById.mockResolvedValue(typeEntity({ status: "ARCHIVED" }));
+    repository.countUnitsByType.mockResolvedValue(0);
+    repository.countBlockingAuditEvents.mockResolvedValue(0);
+    repository.deleteType.mockResolvedValue(typeEntity({ status: "ARCHIVED" }));
+
+    const useCase = new DeleteOrganizationUnitTypeUseCase(repository, policy, audit);
+    const result = await useCase.execute("tenant-1", "type-1", "user-1");
+
+    expect(result.id).toBe("type-1");
+    expect(repository.deleteType).toHaveBeenCalledWith("tenant-1", "type-1");
+    expect(audit.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "organization_unit_type.deleted",
+        actorUserId: "user-1",
+        resourceId: "type-1"
+      })
+    );
+  });
+
+  it("rejects deleting active organization unit types", async () => {
+    const repository = createRepository();
+    repository.findTypeById.mockResolvedValue(typeEntity({ status: "ACTIVE" }));
+
+    const useCase = new DeleteOrganizationUnitTypeUseCase(repository, policy, createAudit());
+
+    await expect(useCase.execute("tenant-1", "type-1", "user-1")).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.deleteType).not.toHaveBeenCalled();
+  });
+
+  it("rejects deleting organization unit types used by any organization unit", async () => {
+    const repository = createRepository();
+    repository.findTypeById.mockResolvedValue(typeEntity({ status: "ARCHIVED" }));
+    repository.countUnitsByType.mockResolvedValue(1);
+
+    const useCase = new DeleteOrganizationUnitTypeUseCase(repository, policy, createAudit());
+
+    await expect(useCase.execute("tenant-1", "type-1", "user-1")).rejects.toBeInstanceOf(ConflictException);
+    expect(repository.deleteType).not.toHaveBeenCalled();
+  });
+
+  it("rejects deleting organization unit types with operational history", async () => {
+    const repository = createRepository();
+    repository.findTypeById.mockResolvedValue(typeEntity({ status: "ARCHIVED" }));
+    repository.countUnitsByType.mockResolvedValue(0);
+    repository.countBlockingAuditEvents.mockResolvedValue(1);
+
+    const useCase = new DeleteOrganizationUnitTypeUseCase(repository, policy, createAudit());
+
+    await expect(useCase.execute("tenant-1", "type-1", "user-1")).rejects.toBeInstanceOf(ConflictException);
+    expect(repository.deleteType).not.toHaveBeenCalled();
+  });
+
   it("creates organization units with active type, parent, and primary location", async () => {
     const repository = createRepository();
     repository.findTypeById.mockResolvedValue(typeEntity());
@@ -275,6 +338,75 @@ describe("OrganizationUnit use cases", () => {
 
     await expect(useCase.execute("tenant-1", "unit-1", "user-1")).rejects.toBeInstanceOf(ConflictException);
     expect(repository.setUnitStatus).not.toHaveBeenCalled();
+  });
+
+  it("deletes archived organization units only when they have no dependencies or operational history", async () => {
+    const repository = createRepository();
+    const audit = createAudit();
+    repository.findUnitById.mockResolvedValue(unitEntity({ status: "ARCHIVED" }));
+    repository.countChildren.mockResolvedValue(0);
+    repository.countJobAssignmentsByUnit.mockResolvedValue(0);
+    repository.countBlockingAuditEvents.mockResolvedValue(0);
+    repository.deleteUnit.mockResolvedValue(unitEntity({ status: "ARCHIVED" }));
+
+    const useCase = new DeleteOrganizationUnitUseCase(repository, policy, audit);
+    const result = await useCase.execute("tenant-1", "unit-1", "user-1");
+
+    expect(result.id).toBe("unit-1");
+    expect(repository.deleteUnit).toHaveBeenCalledWith("tenant-1", "unit-1");
+    expect(audit.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "organization_unit.deleted",
+        actorUserId: "user-1",
+        resourceId: "unit-1"
+      })
+    );
+  });
+
+  it("rejects deleting active organization units", async () => {
+    const repository = createRepository();
+    repository.findUnitById.mockResolvedValue(unitEntity({ status: "ACTIVE" }));
+
+    const useCase = new DeleteOrganizationUnitUseCase(repository, policy, createAudit());
+
+    await expect(useCase.execute("tenant-1", "unit-1", "user-1")).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.deleteUnit).not.toHaveBeenCalled();
+  });
+
+  it("rejects deleting organization units with children or job assignment history", async () => {
+    const repository = createRepository();
+    repository.findUnitById.mockResolvedValue(unitEntity({ status: "ARCHIVED" }));
+    repository.countChildren.mockResolvedValue(1);
+
+    const useCase = new DeleteOrganizationUnitUseCase(repository, policy, createAudit());
+
+    await expect(useCase.execute("tenant-1", "unit-1", "user-1")).rejects.toBeInstanceOf(ConflictException);
+    expect(repository.deleteUnit).not.toHaveBeenCalled();
+  });
+
+  it("rejects deleting organization units with job assignments", async () => {
+    const repository = createRepository();
+    repository.findUnitById.mockResolvedValue(unitEntity({ status: "ARCHIVED" }));
+    repository.countChildren.mockResolvedValue(0);
+    repository.countJobAssignmentsByUnit.mockResolvedValue(1);
+
+    const useCase = new DeleteOrganizationUnitUseCase(repository, policy, createAudit());
+
+    await expect(useCase.execute("tenant-1", "unit-1", "user-1")).rejects.toBeInstanceOf(ConflictException);
+    expect(repository.deleteUnit).not.toHaveBeenCalled();
+  });
+
+  it("rejects deleting organization units with operational history", async () => {
+    const repository = createRepository();
+    repository.findUnitById.mockResolvedValue(unitEntity({ status: "ARCHIVED" }));
+    repository.countChildren.mockResolvedValue(0);
+    repository.countJobAssignmentsByUnit.mockResolvedValue(0);
+    repository.countBlockingAuditEvents.mockResolvedValue(1);
+
+    const useCase = new DeleteOrganizationUnitUseCase(repository, policy, createAudit());
+
+    await expect(useCase.execute("tenant-1", "unit-1", "user-1")).rejects.toBeInstanceOf(ConflictException);
+    expect(repository.deleteUnit).not.toHaveBeenCalled();
   });
 
   it("reorders organization unit types transactionally and audits once", async () => {

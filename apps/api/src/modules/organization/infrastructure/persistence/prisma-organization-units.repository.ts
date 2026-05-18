@@ -93,6 +93,15 @@ export class PrismaOrganizationUnitsRepository implements OrganizationUnitsRepos
       });
     });
 
+  deleteType = async (
+    tenantId: string,
+    typeId: string
+  ): Promise<OrganizationUnitTypeEntity> => {
+    await this.findTypeById(tenantId, typeId);
+
+    return this.prisma.organizationUnitType.delete({ where: { id: typeId } });
+  };
+
   setTypeStatus = async (
     tenantId: string,
     typeId: string,
@@ -102,6 +111,9 @@ export class PrismaOrganizationUnitsRepository implements OrganizationUnitsRepos
 
     return this.prisma.organizationUnitType.update({ where: { id: typeId }, data: { status } });
   };
+
+  countUnitsByType = async (tenantId: string, typeId: string): Promise<number> =>
+    this.prisma.organizationUnit.count({ where: { tenantId, typeId } });
 
   countActiveUnitsByType = async (tenantId: string, typeId: string): Promise<number> =>
     this.prisma.organizationUnit.count({ where: { tenantId, typeId, status: "ACTIVE" } });
@@ -205,14 +217,49 @@ export class PrismaOrganizationUnitsRepository implements OrganizationUnitsRepos
     return this.toUnitEntity(unit);
   };
 
+  deleteUnit = async (tenantId: string, unitId: string): Promise<OrganizationUnitEntity> => {
+    await this.findUnitById(tenantId, unitId);
+    const unit = await this.prisma.organizationUnit.delete({
+      where: { id: unitId },
+      include: this.unitInclude
+    });
+
+    return this.toUnitEntity(unit);
+  };
+
+  countChildren = async (tenantId: string, unitId: string): Promise<number> =>
+    this.prisma.organizationUnit.count({
+      where: { tenantId, parentOrganizationUnitId: unitId }
+    });
+
   countActiveChildren = async (tenantId: string, unitId: string): Promise<number> =>
     this.prisma.organizationUnit.count({
       where: { tenantId, parentOrganizationUnitId: unitId, status: "ACTIVE" }
     });
 
+  countJobAssignmentsByUnit = async (tenantId: string, unitId: string): Promise<number> =>
+    this.prisma.employeeJobAssignment.count({
+      where: { tenantId, organizationUnitId: unitId }
+    });
+
   countCurrentJobAssignments = async (tenantId: string, unitId: string): Promise<number> =>
     this.prisma.employeeJobAssignment.count({
       where: { tenantId, organizationUnitId: unitId, effectiveTo: null }
+    });
+
+  countBlockingAuditEvents = async (
+    tenantId: string,
+    resourceType: "organization_unit" | "organization_unit_type",
+    resourceId: string,
+    ignoredActions: readonly string[]
+  ): Promise<number> =>
+    this.prisma.auditEvent.count({
+      where: {
+        tenantId,
+        resourceType,
+        resourceId,
+        action: { notIn: [...ignoredActions] }
+      }
     });
 
   findAncestorIds = async (tenantId: string, unitId: string): Promise<string[]> => {
