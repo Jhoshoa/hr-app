@@ -1,8 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentTenant } from "../../../../common/decorators/current-tenant.decorator";
+import { CurrentUser } from "../../../../common/decorators/current-user.decorator";
 import { Permissions } from "../../../../common/decorators/permissions.decorator";
-import type { TenantContext } from "../../../../common/types/request-context";
+import type {
+  AuthenticatedUserContext,
+  TenantContext
+} from "../../../../common/types/request-context";
 import { ArchiveOrganizationRecordUseCase } from "../../application/use-cases/archive-organization-record.use-case";
 import { CreateOrganizationRecordUseCase } from "../../application/use-cases/create-organization-record.use-case";
 import { GetOrganizationRecordUseCase } from "../../application/use-cases/get-organization-record.use-case";
@@ -47,10 +51,12 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async createDepartment(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Body() body: CreateDepartmentDto
   ) {
     return this.createOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "department",
       ...body
     });
@@ -69,11 +75,13 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async updateDepartment(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("departmentId") departmentId: string,
     @Body() body: UpdateDepartmentDto
   ) {
     return this.updateOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "department",
       id: departmentId,
       ...body
@@ -84,18 +92,20 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async archiveDepartment(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("departmentId") departmentId: string
   ) {
-    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "department", departmentId);
+    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "department", departmentId, user.id);
   }
 
   @Post("departments/:departmentId/reactivate")
   @Permissions("organization.manage")
   async reactivateDepartment(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("departmentId") departmentId: string
   ) {
-    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "department", departmentId);
+    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "department", departmentId, user.id);
   }
 
   @Get("locations")
@@ -106,8 +116,12 @@ export class OrganizationController {
 
   @Post("locations")
   @Permissions("organization.manage")
-  async createLocation(@CurrentTenant() tenant: TenantContext, @Body() body: CreateLocationDto) {
-    return this.createOrganizationRecordUseCase.execute({ tenantId: tenant.id, kind: "location", ...body });
+  async createLocation(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Body() body: CreateLocationDto
+  ) {
+    return this.createOrganizationRecordUseCase.execute({ tenantId: tenant.id, actorUserId: user.id, kind: "location", ...body });
   }
 
   @Get("locations/:locationId")
@@ -120,11 +134,13 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async updateLocation(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("locationId") locationId: string,
     @Body() body: UpdateLocationDto
   ) {
     return this.updateOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "location",
       id: locationId,
       ...body
@@ -135,18 +151,20 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async archiveLocation(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("locationId") locationId: string
   ) {
-    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "location", locationId);
+    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "location", locationId, user.id);
   }
 
   @Post("locations/:locationId/reactivate")
   @Permissions("organization.manage")
   async reactivateLocation(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("locationId") locationId: string
   ) {
-    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "location", locationId);
+    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "location", locationId, user.id);
   }
 
   @Get("job-titles")
@@ -159,9 +177,10 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async createJobTitle(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Body() body: CreateJobTitleDto
   ) {
-    return this.createOrganizationRecordUseCase.execute({ tenantId: tenant.id, kind: "jobTitle", ...body });
+    return this.createOrganizationRecordUseCase.execute({ tenantId: tenant.id, actorUserId: user.id, kind: "jobTitle", ...body });
   }
 
   @Get("job-titles/:jobTitleId")
@@ -177,11 +196,13 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async updateJobTitle(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("jobTitleId") jobTitleId: string,
     @Body() body: UpdateJobTitleDto
   ) {
     return this.updateOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "jobTitle",
       id: jobTitleId,
       ...body
@@ -192,18 +213,20 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async archiveJobTitle(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("jobTitleId") jobTitleId: string
   ) {
-    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "jobTitle", jobTitleId);
+    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "jobTitle", jobTitleId, user.id);
   }
 
   @Post("job-titles/:jobTitleId/reactivate")
   @Permissions("organization.manage")
   async reactivateJobTitle(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("jobTitleId") jobTitleId: string
   ) {
-    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "jobTitle", jobTitleId);
+    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "jobTitle", jobTitleId, user.id);
   }
 
   @Get("employment-types")
@@ -216,10 +239,12 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async createEmploymentType(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Body() body: CreateEmploymentTypeDto
   ) {
     return this.createOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "employmentType",
       ...body
     });
@@ -238,11 +263,13 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async updateEmploymentType(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("employmentTypeId") employmentTypeId: string,
     @Body() body: UpdateEmploymentTypeDto
   ) {
     return this.updateOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "employmentType",
       id: employmentTypeId,
       ...body
@@ -253,18 +280,20 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async archiveEmploymentType(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("employmentTypeId") employmentTypeId: string
   ) {
-    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "employmentType", employmentTypeId);
+    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "employmentType", employmentTypeId, user.id);
   }
 
   @Post("employment-types/:employmentTypeId/reactivate")
   @Permissions("organization.manage")
   async reactivateEmploymentType(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("employmentTypeId") employmentTypeId: string
   ) {
-    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "employmentType", employmentTypeId);
+    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "employmentType", employmentTypeId, user.id);
   }
 
   @Get("work-modes")
@@ -275,8 +304,12 @@ export class OrganizationController {
 
   @Post("work-modes")
   @Permissions("organization.manage")
-  async createWorkMode(@CurrentTenant() tenant: TenantContext, @Body() body: CreateWorkModeDto) {
-    return this.createOrganizationRecordUseCase.execute({ tenantId: tenant.id, kind: "workMode", ...body });
+  async createWorkMode(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Body() body: CreateWorkModeDto
+  ) {
+    return this.createOrganizationRecordUseCase.execute({ tenantId: tenant.id, actorUserId: user.id, kind: "workMode", ...body });
   }
 
   @Get("work-modes/:workModeId")
@@ -289,11 +322,13 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async updateWorkMode(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("workModeId") workModeId: string,
     @Body() body: UpdateWorkModeDto
   ) {
     return this.updateOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "workMode",
       id: workModeId,
       ...body
@@ -304,18 +339,20 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async archiveWorkMode(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("workModeId") workModeId: string
   ) {
-    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "workMode", workModeId);
+    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "workMode", workModeId, user.id);
   }
 
   @Post("work-modes/:workModeId/reactivate")
   @Permissions("organization.manage")
   async reactivateWorkMode(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("workModeId") workModeId: string
   ) {
-    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "workMode", workModeId);
+    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "workMode", workModeId, user.id);
   }
 
   @Get("client-projects")
@@ -328,10 +365,12 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async createClientProject(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Body() body: CreateClientProjectDto
   ) {
     return this.createOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "clientProject",
       ...body
     });
@@ -350,11 +389,13 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async updateClientProject(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("clientProjectId") clientProjectId: string,
     @Body() body: UpdateClientProjectDto
   ) {
     return this.updateOrganizationRecordUseCase.execute({
       tenantId: tenant.id,
+      actorUserId: user.id,
       kind: "clientProject",
       id: clientProjectId,
       ...body
@@ -365,17 +406,19 @@ export class OrganizationController {
   @Permissions("organization.manage")
   async archiveClientProject(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("clientProjectId") clientProjectId: string
   ) {
-    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "clientProject", clientProjectId);
+    return this.archiveOrganizationRecordUseCase.execute(tenant.id, "clientProject", clientProjectId, user.id);
   }
 
   @Post("client-projects/:clientProjectId/reactivate")
   @Permissions("organization.manage")
   async reactivateClientProject(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Param("clientProjectId") clientProjectId: string
   ) {
-    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "clientProject", clientProjectId);
+    return this.reactivateOrganizationRecordUseCase.execute(tenant.id, "clientProject", clientProjectId, user.id);
   }
 }

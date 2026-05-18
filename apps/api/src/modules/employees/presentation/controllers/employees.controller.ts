@@ -77,18 +77,23 @@ export class EmployeesController {
   @Header("Content-Type", "text/csv")
   async exportEmployeesCsv(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Query("status") status?: EmployeeStatus,
     @Query("search") search?: string,
     @Query("departmentId") departmentId?: string,
     @Query("locationId") locationId?: string,
     @Query("organizationUnitId") organizationUnitId?: string
   ) {
-    return this.exportEmployeesCsvUseCase.execute(tenant.id, {
-      status,
-      search,
-      departmentId,
-      locationId,
-      organizationUnitId
+    return this.exportEmployeesCsvUseCase.execute({
+      tenantId: tenant.id,
+      actorUserId: user.id,
+      filters: {
+        status,
+        search,
+        departmentId,
+        locationId,
+        organizationUnitId
+      }
     });
   }
 

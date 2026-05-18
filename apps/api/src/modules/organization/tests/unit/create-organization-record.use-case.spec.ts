@@ -24,9 +24,11 @@ describe("CreateOrganizationRecordUseCase", () => {
       updatedAt: createdAt
     });
 
-    const useCase = new CreateOrganizationRecordUseCase(repository);
+    const createAuditEventUseCase = { execute: jest.fn() };
+    const useCase = new CreateOrganizationRecordUseCase(repository, createAuditEventUseCase as never);
     const result = await useCase.execute({
       tenantId: "tenant-1",
+      actorUserId: "user-1",
       kind: "department",
       name: "Engineering"
     });
@@ -37,5 +39,12 @@ describe("CreateOrganizationRecordUseCase", () => {
       kind: "department",
       name: "Engineering"
     });
+    expect(createAuditEventUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "organization.department.created",
+        actorUserId: "user-1",
+        resourceId: "department-1"
+      })
+    );
   });
 });

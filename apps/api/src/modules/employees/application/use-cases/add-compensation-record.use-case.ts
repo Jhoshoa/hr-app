@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import type { CompensationRecordEntity } from "../../domain/entities/employee.entity";
 import {
   EMPLOYEES_REPOSITORY,
@@ -20,6 +20,10 @@ export class AddCompensationRecordUseCase {
   ) {}
 
   execute = async (input: AddCompensationRecordCommand): Promise<CompensationRecordEntity> => {
+    if (!(await this.employeesRepository.existsById(input.tenantId, input.employeeId))) {
+      throw new BadRequestException("Employee must belong to the tenant.");
+    }
+
     const compensation = await this.employeesRepository.addCompensationRecord(input);
 
     await this.createAuditEventUseCase.execute({

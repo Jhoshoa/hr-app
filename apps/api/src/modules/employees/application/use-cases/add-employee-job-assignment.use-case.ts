@@ -6,10 +6,6 @@ import {
   type EmployeesRepository
 } from "../../domain/ports/employees.repository.port";
 import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
-import {
-  ORGANIZATION_UNITS_REPOSITORY,
-  type OrganizationUnitsRepository
-} from "../../../organization/domain/ports/organization-units.repository.port";
 
 export interface AddEmployeeJobAssignmentCommand extends AddEmployeeJobAssignmentInput {
   readonly actorUserId: string;
@@ -20,23 +16,18 @@ export class AddEmployeeJobAssignmentUseCase {
   constructor(
     @Inject(EMPLOYEES_REPOSITORY)
     private readonly employeesRepository: EmployeesRepository,
-    @Inject(ORGANIZATION_UNITS_REPOSITORY)
-    private readonly organizationUnitsRepository: OrganizationUnitsRepository,
     private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
   execute = async (
     input: AddEmployeeJobAssignmentCommand
   ): Promise<EmployeeJobAssignmentEntity> => {
-    if (input.organizationUnitId) {
-      const organizationUnit = await this.organizationUnitsRepository.findUnitById(
-        input.tenantId,
-        input.organizationUnitId
-      );
+    const invalidReferences = await this.employeesRepository.findInvalidJobAssignmentReferences(input);
 
-      if (!organizationUnit || organizationUnit.status !== "ACTIVE") {
-        throw new BadRequestException("Organization unit must be active and belong to the tenant.");
-      }
+    if (invalidReferences.length > 0) {
+      throw new BadRequestException(
+        `Job assignment references must be active and belong to the tenant: ${invalidReferences.join(", ")}.`
+      );
     }
 
     const assignment = await this.employeesRepository.addJobAssignment(input);

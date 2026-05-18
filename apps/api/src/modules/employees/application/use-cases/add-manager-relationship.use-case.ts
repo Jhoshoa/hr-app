@@ -24,6 +24,15 @@ export class AddManagerRelationshipUseCase {
       throw new BadRequestException("Employee cannot be their own manager.");
     }
 
+    const [employeeExists, managerExists] = await Promise.all([
+      this.employeesRepository.existsById(input.tenantId, input.employeeId),
+      this.employeesRepository.existsById(input.tenantId, input.managerEmployeeId)
+    ]);
+
+    if (!employeeExists || !managerExists) {
+      throw new BadRequestException("Employee and manager must belong to the tenant.");
+    }
+
     const relationship = await this.employeesRepository.addManagerRelationship(input);
 
     await this.createAuditEventUseCase.execute({

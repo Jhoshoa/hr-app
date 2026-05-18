@@ -31,9 +31,11 @@ describe("UpdateCurrentTenantUseCase", () => {
       timezone: "America/New_York"
     });
 
-    const useCase = new UpdateCurrentTenantUseCase(repository);
+    const createAuditEventUseCase = { execute: jest.fn() };
+    const useCase = new UpdateCurrentTenantUseCase(repository, createAuditEventUseCase as never);
     const result = await useCase.execute({
       tenantId: "tenant-1",
+      actorUserId: "user-1",
       name: "AssureSoft Bolivia",
       defaultLanguage: "en",
       defaultCurrency: "USD",
@@ -48,17 +50,26 @@ describe("UpdateCurrentTenantUseCase", () => {
       defaultCurrency: "USD",
       timezone: "America/New_York"
     });
+    expect(createAuditEventUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "tenant.settings.updated",
+        actorUserId: "user-1",
+        resourceId: "tenant-1"
+      })
+    );
   });
 
   it("throws when the tenant does not exist", async () => {
     const repository = createRepository();
     repository.findById.mockResolvedValue(null);
 
-    const useCase = new UpdateCurrentTenantUseCase(repository);
+    const createAuditEventUseCase = { execute: jest.fn() };
+    const useCase = new UpdateCurrentTenantUseCase(repository, createAuditEventUseCase as never);
 
-    await expect(useCase.execute({ tenantId: "missing-tenant", name: "Missing" })).rejects.toThrow(
-      NotFoundException
-    );
+    await expect(
+      useCase.execute({ tenantId: "missing-tenant", actorUserId: "user-1", name: "Missing" })
+    ).rejects.toThrow(NotFoundException);
     expect(repository.updateSettings).not.toHaveBeenCalled();
+    expect(createAuditEventUseCase.execute).not.toHaveBeenCalled();
   });
 });
