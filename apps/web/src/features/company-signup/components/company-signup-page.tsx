@@ -5,6 +5,7 @@ import type { ReactNode, SelectHTMLAttributes } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getCountryDefaultTimeZone, getCountryTimeZones } from "@hr-app/geo";
 import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { PhoneInput } from "@/features/geo/components/phone-input";
 import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useToast } from "@/components/ui/toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { loginPath } from "@/lib/auth/auth-redirects";
 import {
   useCreateCompanySignupRequestMutation,
   useLazyCheckCompanySignupAdminEmailAvailabilityQuery,
@@ -43,7 +45,23 @@ const companySizeOptions = [
   { label: "1000+", value: "1000+" }
 ] as const;
 
+const companySignupDefaultValues: CompanySignupFormValues = {
+  adminEmail: "",
+  adminFirstName: "",
+  adminLastName: "",
+  companyName: "",
+  companySize: "",
+  companyWebsite: "",
+  country: "",
+  desiredTenantSlug: "",
+  message: "",
+  phone: "",
+  preferredLanguage: "en",
+  timezone: ""
+};
+
 export function CompanySignupPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const submitInFlightRef = useRef(false);
   const lastTenantSlugCheckRef = useRef("");
@@ -60,23 +78,11 @@ export function CompanySignupPage() {
     control,
     handleSubmit,
     register,
+    reset,
     setValue,
     watch
   } = useForm<CompanySignupFormValues, unknown, CompanySignupRequestPayload>({
-    defaultValues: {
-      adminEmail: "",
-      adminFirstName: "",
-      adminLastName: "",
-      companyName: "",
-      companySize: "",
-      companyWebsite: "",
-      country: "",
-      desiredTenantSlug: "",
-      message: "",
-      phone: "",
-      preferredLanguage: "en",
-      timezone: ""
-    },
+    defaultValues: companySignupDefaultValues,
     mode: "onChange",
     resolver: zodResolver(companySignupSchema)
   });
@@ -176,6 +182,10 @@ export function CompanySignupPage() {
     try {
       const request = await createCompanySignupRequest(values).unwrap();
       setSubmittedRequest(request);
+      reset(companySignupDefaultValues);
+      lastTenantSlugCheckRef.current = "";
+      lastAdminEmailCheckRef.current = "";
+      lastWebsiteCheckRef.current = "";
       showToast({
         title: "Signup request sent",
         description: "Your request is pending approval.",
@@ -353,7 +363,61 @@ export function CompanySignupPage() {
           </aside>
         </form>
       </div>
+
+      <SignupSuccessDialog
+        isOpen={Boolean(submittedRequest)}
+        request={submittedRequest}
+        onContinue={() => router.replace(loginPath)}
+      />
     </main>
+  );
+}
+
+function SignupSuccessDialog({
+  isOpen,
+  onContinue,
+  request
+}: Readonly<{
+  isOpen: boolean;
+  onContinue: () => void;
+  request: CompanySignupRequestResponse | null;
+}>) {
+  if (!isOpen || !request) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4">
+      <div
+        aria-labelledby="company-signup-success-title"
+        aria-modal="true"
+        className="w-full max-w-md rounded-lg border border-emerald-200 bg-surface p-5 shadow-xl"
+        role="dialog"
+      >
+        <div className="flex gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-emerald-900" id="company-signup-success-title">
+              Request submitted
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your company workspace request was sent for approval. We will notify the admin email when access is ready.
+            </p>
+            <div className="mt-4 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <p className="font-medium">{request.companyName}</p>
+              <p className="mt-1 text-emerald-800">Workspace: {request.desiredTenantSlug}</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end">
+          <Button onClick={onContinue} type="button">
+            Continue
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
