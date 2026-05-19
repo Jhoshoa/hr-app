@@ -13,7 +13,7 @@ const validInput = {
   companyName: " Acme Operations ",
   companySize: "51-200",
   companyWebsite: " https://acme.example ",
-  country: "Bolivia",
+  country: "bo",
   desiredTenantSlug: " Acme Operations ",
   message: " Needs approval ",
   phone: "+591 70000000",
@@ -30,7 +30,7 @@ describe("companySignupSchema", () => {
       companyName: "Acme Operations",
       companySize: "51-200",
       companyWebsite: "https://acme.example",
-      country: "Bolivia",
+      country: "BO",
       desiredTenantSlug: "acme-operations",
       message: "Needs approval",
       phone: "+591 70000000",
@@ -60,6 +60,16 @@ describe("companySignupSchema", () => {
       companySize: "",
       preferredLanguage: "",
       timezone: ""
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unsupported country and timezone values", () => {
+    const result = companySignupSchema.safeParse({
+      ...validInput,
+      country: "ZZ",
+      timezone: "not-a-timezone"
     });
 
     expect(result.success).toBe(false);

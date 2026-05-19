@@ -23,4 +23,15 @@ describe("companySettingsSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("rejects unsupported timezone values", () => {
+    const result = companySettingsSchema.safeParse({
+      name: "AssureSoft Demo",
+      defaultLanguage: "es",
+      defaultCurrency: "BOB",
+      timezone: "not-a-timezone"
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

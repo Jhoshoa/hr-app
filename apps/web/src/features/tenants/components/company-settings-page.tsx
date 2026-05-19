@@ -15,6 +15,7 @@ import { OrganizationCatalogPanel } from "@/features/organization/components/org
 import { OrganizationUnitTypesPanel } from "@/features/organization/components/organization-unit-types-panel";
 import { OrganizationUnitsPanel } from "@/features/organization/components/organization-units-panel";
 import { organizationCatalogByKind } from "@/features/organization/organization-config";
+import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { cn } from "@/lib/utils";
 import { useAppDispatch } from "@/store/hooks";
@@ -30,16 +31,6 @@ const languageOptions = [
 const currencyOptions = [
   { label: "Boliviano (BOB)", value: "BOB" },
   { label: "US Dollar (USD)", value: "USD" }
-] as const;
-
-const timezoneOptions = [
-  "America/La_Paz",
-  "America/New_York",
-  "America/Los_Angeles",
-  "America/Mexico_City",
-  "America/Bogota",
-  "America/Lima",
-  "UTC"
 ] as const;
 
 const companySettingsTabs = [
@@ -224,17 +215,7 @@ export function CompanySettingsPage() {
 
                         <label className="block md:col-span-2">
                           <span className="text-sm font-medium">Timezone</span>
-                          <select
-                            className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                            disabled={!tenant}
-                            {...register("timezone")}
-                          >
-                            {timezoneOptions.map((timezone) => (
-                              <option key={timezone} value={timezone}>
-                                {timezone}
-                              </option>
-                            ))}
-                          </select>
+                          <TimezoneSelect disabled={!tenant} {...register("timezone")} />
                           {errors.timezone ? (
                             <span className="mt-1 block text-sm text-rose-600">{errors.timezone.message}</span>
                           ) : null}

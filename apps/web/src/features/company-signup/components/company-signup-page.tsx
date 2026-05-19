@@ -3,10 +3,13 @@
 import React, { forwardRef, useEffect, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { getCountryDefaultTimeZone, getCountryTimeZones } from "@hr-app/geo";
 import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CountrySelect } from "@/features/geo/components/country-select";
+import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useToast } from "@/components/ui/toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
@@ -39,28 +42,6 @@ const companySizeOptions = [
   { label: "1000+", value: "1000+" }
 ] as const;
 
-const countryOptions = [
-  { label: "Select country", value: "" },
-  { label: "Bolivia", value: "Bolivia" },
-  { label: "United States", value: "United States" },
-  { label: "Mexico", value: "Mexico" },
-  { label: "Colombia", value: "Colombia" },
-  { label: "Peru", value: "Peru" },
-  { label: "Argentina", value: "Argentina" },
-  { label: "Chile", value: "Chile" }
-] as const;
-
-const timezoneOptions = [
-  { label: "Select timezone", value: "" },
-  { label: "America/La_Paz", value: "America/La_Paz" },
-  { label: "America/New_York", value: "America/New_York" },
-  { label: "America/Los_Angeles", value: "America/Los_Angeles" },
-  { label: "America/Mexico_City", value: "America/Mexico_City" },
-  { label: "America/Bogota", value: "America/Bogota" },
-  { label: "America/Lima", value: "America/Lima" },
-  { label: "UTC", value: "UTC" }
-] as const;
-
 export function CompanySignupPage() {
   const { showToast } = useToast();
   const submitInFlightRef = useRef(false);
@@ -77,6 +58,7 @@ export function CompanySignupPage() {
     formState: { errors, isSubmitting, isValid },
     handleSubmit,
     register,
+    setValue,
     watch
   } = useForm<CompanySignupFormValues, unknown, CompanySignupRequestPayload>({
     defaultValues: {
@@ -100,6 +82,8 @@ export function CompanySignupPage() {
   const desiredTenantSlug = normalizeTenantSlugInput(watch("desiredTenantSlug") ?? "");
   const adminEmail = normalizeEmailInput(watch("adminEmail") ?? "");
   const companyWebsite = normalizeWebsiteInput(watch("companyWebsite") ?? "");
+  const selectedCountry = watch("country") ?? "";
+  const selectedTimezone = watch("timezone") ?? "";
   const debouncedTenantSlug = useDebouncedValue(desiredTenantSlug, 500);
   const debouncedAdminEmail = useDebouncedValue(adminEmail, 500);
   const debouncedCompanyWebsite = useDebouncedValue(companyWebsite, 500);
@@ -161,6 +145,24 @@ export function CompanySignupPage() {
     lastWebsiteCheckRef.current = debouncedCompanyWebsite;
     void checkWebsite(debouncedCompanyWebsite, true);
   }, [checkWebsite, debouncedCompanyWebsite]);
+
+  useEffect(() => {
+    if (!selectedCountry) {
+      return;
+    }
+
+    const countryTimeZones = getCountryTimeZones(selectedCountry);
+
+    if (selectedTimezone && countryTimeZones.some((timeZone) => timeZone === selectedTimezone)) {
+      return;
+    }
+
+    const defaultTimeZone = getCountryDefaultTimeZone(selectedCountry);
+
+    if (defaultTimeZone) {
+      setValue("timezone", defaultTimeZone, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [selectedCountry, selectedTimezone, setValue]);
 
   const onSubmit = async (values: CompanySignupRequestPayload) => {
     if (submitInFlightRef.current || createState.isLoading || submittedRequest) {
@@ -263,23 +265,11 @@ export function CompanySignupPage() {
                 </Field>
 
                 <Field label="Country" error={errors.country?.message}>
-                  <Select {...register("country")}>
-                    {countryOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <CountrySelect includeEmptyOption {...register("country")} />
                 </Field>
 
                 <Field label="Timezone" error={errors.timezone?.message} required>
-                  <Select required {...register("timezone")}>
-                    {timezoneOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <TimezoneSelect countryCode={selectedCountry} includeEmptyOption required {...register("timezone")} />
                 </Field>
               </div>
             </section>

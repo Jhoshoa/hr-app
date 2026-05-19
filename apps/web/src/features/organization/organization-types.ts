@@ -40,6 +40,7 @@ export interface OrganizationFieldConfig {
   readonly label: string;
   readonly placeholder?: string;
   readonly required?: boolean;
+  readonly control?: "text" | "country" | "timezone";
 }
 
 export interface OrganizationCatalogConfig {

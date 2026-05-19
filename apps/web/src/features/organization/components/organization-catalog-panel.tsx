@@ -9,7 +9,11 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
+import { CountrySelect } from "@/features/geo/components/country-select";
+import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
+import { DEFAULT_COUNTRY_CODE } from "@hr-app/geo";
+import { DEFAULT_TIME_ZONE } from "@hr-app/timezones";
 import {
   useArchiveOrganizationRecordMutation,
   useCreateOrganizationRecordMutation,
@@ -236,7 +240,12 @@ function OrganizationRecordDrawer({
       return;
     }
 
-    const nextState = drawer.mode === "edit" ? drawer.record : {};
+    const nextState =
+      drawer.mode === "edit"
+        ? drawer.record
+        : catalog.kind === "location"
+          ? { country: DEFAULT_COUNTRY_CODE, timezone: DEFAULT_TIME_ZONE }
+          : {};
     setFormState(nextState);
     setInitialFormState(nextState);
     setFormReadyKey(drawerKey);
@@ -323,11 +332,10 @@ function OrganizationRecordDrawer({
           catalog.fields.map((field) => (
             <label className="block" key={field.key}>
               <RequiredLabel required={field.required}>{field.label}</RequiredLabel>
-              <Input
-                className="mt-1"
-                onChange={(event) => updateField(field.key, event.target.value)}
-                placeholder={field.placeholder}
-                value={String(formState[field.key] ?? "")}
+              <OrganizationFieldControl
+                field={field}
+                formState={formState}
+                onChange={updateField}
               />
             </label>
           ))
@@ -337,4 +345,45 @@ function OrganizationRecordDrawer({
       </form>
     </SideDrawer>
   );
+}
+
+function OrganizationFieldControl({
+  field,
+  formState,
+  onChange
+}: Readonly<{
+  field: OrganizationCatalogConfig["fields"][number];
+  formState: OrganizationRecordPayload;
+  onChange: (key: keyof OrganizationRecordPayload, value: string) => void;
+}>) {
+  const value = String(formState[field.key] ?? "");
+
+  switch (field.control) {
+    case "country":
+      return (
+        <CountrySelect
+          className="mt-1"
+          onChange={(event) => onChange(field.key, event.target.value)}
+          value={value}
+        />
+      );
+    case "timezone":
+      return (
+        <TimezoneSelect
+          className="mt-1"
+          countryCode={String(formState.country ?? "")}
+          onChange={(event) => onChange(field.key, event.target.value)}
+          value={value}
+        />
+      );
+    default:
+      return (
+        <Input
+          className="mt-1"
+          onChange={(event) => onChange(field.key, event.target.value)}
+          placeholder={field.placeholder}
+          value={value}
+        />
+      );
+  }
 }

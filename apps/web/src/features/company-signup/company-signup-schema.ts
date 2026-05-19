@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isSupportedCountryCode, normalizeCountryCode } from "@hr-app/geo";
+import { isSupportedTimeZone } from "@hr-app/timezones";
 
 const tenantSlugPattern = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/;
 const optionalTrimmedString = (maxLength: number) =>
@@ -10,6 +12,15 @@ const optionalTrimmedString = (maxLength: number) =>
 
 const requiredTrimmedString = (message: string, maxLength: number) =>
   z.string().trim().min(1, message).max(maxLength);
+const optionalCountryCode = z
+  .string()
+  .trim()
+  .max(80)
+  .transform((value) => {
+    const countryCode = normalizeCountryCode(value);
+    return countryCode ? String(countryCode) : value === "" ? undefined : value;
+  })
+  .refine((value) => value === undefined || Boolean(isSupportedCountryCode(value)), "Select a supported country.");
 
 export const normalizeTenantSlugInput = (value: string) =>
   value.trim().toLowerCase().replace(/\s+/g, "-");
@@ -28,7 +39,7 @@ export const companySignupSchema = z.object({
     (value) => !value || value.includes("."),
     "Enter a valid company website."
   ),
-  country: optionalTrimmedString(80),
+  country: optionalCountryCode,
   desiredTenantSlug: z
     .string()
     .transform(normalizeTenantSlugInput)
@@ -42,7 +53,10 @@ export const companySignupSchema = z.object({
   message: optionalTrimmedString(1000),
   phone: optionalTrimmedString(40),
   preferredLanguage: z.enum(["es", "en"]),
-  timezone: requiredTrimmedString("Select a timezone.", 80)
+  timezone: requiredTrimmedString("Select a timezone.", 80).refine(
+    (value) => Boolean(isSupportedTimeZone(value)),
+    "Select a supported timezone."
+  )
 });
 
 export type CompanySignupFormValues = z.input<typeof companySignupSchema>;
