@@ -21,7 +21,7 @@ export class CreateLocationDto {
   @MaxLength(120)
   name!: string;
 
-  @ApiPropertyOptional({ default: "BO" })
+  @ApiPropertyOptional({ default: "US" })
   @IsOptional()
   @IsString()
   @Matches(/^[a-zA-Z]{2}$/)
@@ -40,7 +40,7 @@ export class CreateLocationDto {
   @MaxLength(80)
   city?: string;
 
-  @ApiPropertyOptional({ default: "America/La_Paz" })
+  @ApiPropertyOptional({ default: "America/New_York" })
   @IsOptional()
   @IsString()
   @IsTimeZone()

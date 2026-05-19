@@ -19,7 +19,7 @@ export class UpdateCurrentTenantDto {
   @IsIn(["BOB", "USD"])
   defaultCurrency?: string;
 
-  @ApiPropertyOptional({ example: "America/La_Paz" })
+  @ApiPropertyOptional({ example: "America/New_York" })
   @IsOptional()
   @IsString()
   @IsTimeZone()

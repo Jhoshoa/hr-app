@@ -4,6 +4,7 @@ import React, { forwardRef } from "react";
 import { useEffect, useState } from "react";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 import {
+  DEFAULT_COUNTRY_CODE,
   getCallingCodeOptions,
   getCountryDefaultCallingCode,
   normalizePhoneNumber,
@@ -39,7 +40,12 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(function
     }
 
     if (!hasManualCallingCode) {
-      setSelectedCallingCode(getCountryDefaultCallingCode(countryCode) ?? callingCodeOptions[0]?.value ?? "+591");
+      setSelectedCallingCode(
+        getCountryDefaultCallingCode(countryCode) ??
+          callingCodeOptions[0]?.value ??
+          getCountryDefaultCallingCode(DEFAULT_COUNTRY_CODE) ??
+          "+1"
+      );
     }
   }, [countryCode, currentValue, hasManualCallingCode]);
 
@@ -93,7 +99,8 @@ const getSelectedCallingCode = (value: string, countryCode: string | null | unde
   getValueCallingCode(value) ??
   getCountryDefaultCallingCode(countryCode) ??
   callingCodeOptions[0]?.value ??
-  "+591";
+  getCountryDefaultCallingCode(DEFAULT_COUNTRY_CODE) ??
+  "+1";
 
 const getValueCallingCode = (value: string): CallingCode | undefined =>
   callingCodeOptions.find((option) => value.startsWith(option.value))?.value;

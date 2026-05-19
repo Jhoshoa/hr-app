@@ -63,7 +63,8 @@ Tenant.timezone
 
 Estado:
   - Existe.
-  - Tiene default America/La_Paz.
+  - Tenia default America/La_Paz.
+  - Default actualizado para USA-first: America/New_York.
   - UpdateCurrentTenantDto usa @IsTimeZone().
 ```
 
@@ -75,7 +76,8 @@ Location.timezone
 
 Estado:
   - Existe.
-  - Tiene default America/La_Paz.
+  - Tenia default America/La_Paz.
+  - Default actualizado para USA-first: America/New_York.
   - DTO solo valida string/maxLength.
   - Repository crea location con input.timezone ?? "America/La_Paz".
 ```
@@ -233,7 +235,7 @@ El dominio trabaja con IanaTimeZone cuando ya fue validado.
 ### Constantes
 
 ```ts
-export const DEFAULT_TIME_ZONE = "America/La_Paz" as IanaTimeZone;
+export const DEFAULT_TIME_ZONE = "America/New_York" as IanaTimeZone;
 export const FALLBACK_TECHNICAL_TIME_ZONE = "UTC" as IanaTimeZone;
 export const SUPPORTED_TIME_ZONE_REGION = "America";
 ```

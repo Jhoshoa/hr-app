@@ -23,7 +23,7 @@ describe("@hr-app/geo", () => {
   });
 
   it("exposes country options and generated flag metadata", () => {
-    assert.deepEqual(getCountryOptions()[0], { value: "BO", label: "Bolivia" });
+    assert.deepEqual(getCountryOptions()[0], { value: "US", label: "United States" });
     assert.equal(getCountryByCode("BO")?.flagEmoji, "\u{1F1E7}\u{1F1F4}");
   });
 
@@ -42,7 +42,7 @@ describe("@hr-app/geo", () => {
   });
 
   it("returns calling code options with flag labels", () => {
-    assert.equal(getCallingCodeOptions()[0]?.label, "\u{1F1E7}\u{1F1F4} +591");
+    assert.equal(getCallingCodeOptions()[0]?.label, "\u{1F1FA}\u{1F1F8} +1");
   });
 
   it("resolves subdivision catalogs by country", () => {

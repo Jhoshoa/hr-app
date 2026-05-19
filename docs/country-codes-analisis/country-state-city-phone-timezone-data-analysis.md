@@ -164,7 +164,8 @@ Location.city:
   - UI: input text
 
 Location.timezone:
-  - DB: String @default("America/La_Paz")
+  - DB inicial: String @default("America/La_Paz")
+  - Default actualizado para USA-first: America/New_York
   - DTO actual no valida @IsTimeZone()
   - UI: input text
 ```
@@ -507,7 +508,7 @@ Estado actual:
 ```txt
 country String @default("BO")
 city String?
-timezone String @default("America/La_Paz")
+timezone String @default("America/New_York")
 ```
 
 Recomendacion:

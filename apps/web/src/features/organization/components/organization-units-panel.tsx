@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, Edit3, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Badge } from "@/components/ui/badge";
@@ -292,20 +292,23 @@ function OrganizationUnitDrawer({
   const [createUnit, createState] = useCreateOrganizationUnitMutation();
   const [updateUnit, updateState] = useUpdateOrganizationUnitMutation();
   const [createLocation, createLocationState] = useCreateOrganizationRecordMutation();
-  const buildEmptyFormState = () => ({
-    typeId: "",
-    parentOrganizationUnitId: "",
-    primaryLocationId: "",
-    createPrimaryLocation: false,
-    primaryLocationName: "",
-    primaryLocationCountry: defaultLocationCountry,
-    primaryLocationCity: "",
-    primaryLocationTimezone: defaultLocationTimezone,
-    key: "",
-    name: "",
-    legalName: "",
-    code: ""
-  });
+  const buildEmptyFormState = useCallback(
+    () => ({
+      typeId: "",
+      parentOrganizationUnitId: "",
+      primaryLocationId: "",
+      createPrimaryLocation: false,
+      primaryLocationName: "",
+      primaryLocationCountry: defaultLocationCountry,
+      primaryLocationCity: "",
+      primaryLocationTimezone: defaultLocationTimezone,
+      key: "",
+      name: "",
+      legalName: "",
+      code: ""
+    }),
+    [defaultLocationCountry, defaultLocationTimezone]
+  );
   const [formState, setFormState] = useState(buildEmptyFormState);
   const [initialFormState, setInitialFormState] = useState(formState);
   const [formReadyKey, setFormReadyKey] = useState<string | null>(null);
@@ -364,7 +367,7 @@ function OrganizationUnitDrawer({
     setInitialFormState(nextState);
     setFormReadyKey(drawerKey);
     setFormError(null);
-  }, [drawer, drawerKey, activeTypes, defaultLocationCountry, defaultLocationTimezone]);
+  }, [drawer, drawerKey, activeTypes, buildEmptyFormState, defaultLocationCountry, defaultLocationTimezone]);
 
   const isSaving = createState.isLoading || updateState.isLoading || createLocationState.isLoading;
   const isFormReady = Boolean(drawerKey && formReadyKey === drawerKey && !isOptionsLoading);

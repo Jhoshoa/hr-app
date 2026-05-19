@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { TimezoneModule } from "../../common/timezones/timezone.module";
 import { AuditModule } from "../audit/audit.module";
 import { TenantsModule } from "../tenants/tenants.module";
 import { CreateOrganizationRecordUseCase } from "./application/use-cases/create-organization-record.use-case";
@@ -31,7 +32,7 @@ import { OrganizationController } from "./presentation/controllers/organization.
 import { OrganizationUnitsController } from "./presentation/controllers/organization-units.controller";
 
 @Module({
-  imports: [AuditModule, TenantsModule],
+  imports: [AuditModule, TenantsModule, TimezoneModule],
   controllers: [OrganizationController, OrganizationUnitsController],
   providers: [
     CreateOrganizationRecordUseCase,

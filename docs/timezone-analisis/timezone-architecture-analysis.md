@@ -55,16 +55,18 @@ El estado actual tiene una mezcla peligrosa:
 ```txt
 Tenant.timezone
   - existe en Prisma
-  - default: America/La_Paz
+  - default inicial documentado: America/La_Paz
+  - default actualizado para USA-first: America/New_York
   - Company Settings lo edita con un dropdown hardcodeado
   - backend usa @IsTimeZone() en update tenant
 
 Location.timezone
   - existe en Prisma
-  - default: America/La_Paz
+  - default inicial documentado: America/La_Paz
+  - default actualizado para USA-first: America/New_York
   - UI lo renderiza como Input text normal
   - backend solo valida string/maxLength, no valida IANA timezone
-  - repository usa America/La_Paz como default aunque el tenant tenga otro
+  - repository tenia fallback America/La_Paz aunque el tenant tuviera otro
 ```
 
 Referencias locales:
@@ -779,11 +781,12 @@ validos. Si se usa, debe vivir en un modulo central y tener tests.
 ### Tenant
 
 ```txt
-Tenant.timezone default tecnico: America/La_Paz
+Tenant.timezone default tecnico USA-first: America/New_York
 ```
 
-Esto esta bien para seed/demo si el producto empieza en Bolivia. Para SaaS real,
-el signup debe pedir timezone o inferirlo de pais/ciudad con confirmacion.
+Esto es coherente para un producto SaaS orientado a Estados Unidos. Para otros
+mercados, el signup debe pedir timezone o inferirlo de pais/ciudad con
+confirmacion.
 
 ### Location
 

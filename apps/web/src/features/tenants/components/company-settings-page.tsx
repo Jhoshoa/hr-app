@@ -19,6 +19,7 @@ import { TimezoneSelect } from "@/features/timezones/components/timezone-select"
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { cn } from "@/lib/utils";
 import { useAppDispatch } from "@/store/hooks";
+import { DEFAULT_TIME_ZONE } from "@hr-app/timezones";
 import { companySettingsSchema, type CompanySettingsFormValues } from "../company-settings-schema";
 import { useGetCurrentTenantQuery, useUpdateCurrentTenantMutation } from "../tenants-api";
 import { updateCurrentTenantName } from "../tenant-slice";
@@ -64,7 +65,7 @@ export function CompanySettingsPage() {
       name: "",
       defaultLanguage: "es",
       defaultCurrency: "BOB",
-      timezone: "America/La_Paz"
+      timezone: DEFAULT_TIME_ZONE
     }
   });
 

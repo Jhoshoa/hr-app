@@ -1,7 +1,7 @@
 import type { IanaTimeZone } from "@hr-app/timezones";
 import type { CountryCode, CountryMetadata } from "./country-types";
 
-export const DEFAULT_COUNTRY_CODE = "BO" as CountryCode;
+export const DEFAULT_COUNTRY_CODE = "US" as CountryCode;
 
 const timeZone = (value: string) => value as IanaTimeZone;
 
@@ -26,10 +26,35 @@ export const AMERICA_COUNTRIES = [
     callingCodes: ["+1"],
     timeZones: [
       timeZone("America/New_York"),
+      timeZone("America/Detroit"),
+      timeZone("America/Kentucky/Louisville"),
+      timeZone("America/Kentucky/Monticello"),
+      timeZone("America/Indiana/Indianapolis"),
+      timeZone("America/Indiana/Vincennes"),
+      timeZone("America/Indiana/Winamac"),
+      timeZone("America/Indiana/Marengo"),
+      timeZone("America/Indiana/Petersburg"),
+      timeZone("America/Indiana/Vevay"),
       timeZone("America/Chicago"),
+      timeZone("America/Indiana/Tell_City"),
+      timeZone("America/Indiana/Knox"),
+      timeZone("America/Menominee"),
+      timeZone("America/North_Dakota/Center"),
+      timeZone("America/North_Dakota/New_Salem"),
+      timeZone("America/North_Dakota/Beulah"),
       timeZone("America/Denver"),
+      timeZone("America/Boise"),
       timeZone("America/Phoenix"),
-      timeZone("America/Los_Angeles")
+      timeZone("America/Los_Angeles"),
+      timeZone("America/Anchorage"),
+      timeZone("America/Juneau"),
+      timeZone("America/Sitka"),
+      timeZone("America/Metlakatla"),
+      timeZone("America/Yakutat"),
+      timeZone("America/Nome"),
+      timeZone("America/Adak"),
+      timeZone("Pacific/Honolulu"),
+      timeZone("America/Puerto_Rico")
     ],
     defaultTimeZone: timeZone("America/New_York")
   },

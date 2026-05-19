@@ -5,7 +5,8 @@ import {
   normalizeCountryCode,
   normalizeSubdivisionCode
 } from "@hr-app/geo";
-import { DEFAULT_TIME_ZONE, normalizeTimeZone } from "@hr-app/timezones";
+import { normalizeTimeZone } from "@hr-app/timezones";
+import { TimezoneResolutionService } from "../../../../common/timezones/timezone-resolution.service";
 import type {
   CreateOrganizationRecordInput,
   OrganizationRecordEntity
@@ -31,6 +32,7 @@ export class CreateOrganizationRecordUseCase {
     private readonly organizationRepository: OrganizationRepository,
     @Inject(TENANTS_REPOSITORY)
     private readonly tenantsRepository: TenantsRepository,
+    private readonly timezoneResolutionService: TimezoneResolutionService,
     private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
@@ -66,10 +68,11 @@ export class CreateOrganizationRecordUseCase {
     input: CreateOrganizationRecordInput
   ): Promise<CreateOrganizationRecordInput> => {
     const tenant = await this.tenantsRepository.findById(input.tenantId);
-    const timeZone =
-      this.normalizeLocationTimeZone(input.timezone) ??
-      normalizeTimeZone(tenant?.timezone) ??
-      DEFAULT_TIME_ZONE;
+    const requestedTimeZone = this.normalizeLocationTimeZone(input.timezone);
+    const timeZone = this.timezoneResolutionService.resolveLocationOperational({
+      tenant,
+      location: requestedTimeZone ? { timezone: requestedTimeZone } : null
+    });
     const country =
       this.normalizeCountry(input.country) ??
       getCountryCodeForTimeZone(timeZone) ??

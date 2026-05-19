@@ -434,6 +434,7 @@ describe("CompanySettingsPage structure settings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add location" }));
 
     fireEvent.change(await screen.findByPlaceholderText("Cochabamba HQ"), { target: { value: "Santa Cruz HQ" } });
+    fireEvent.change(screen.getByRole("combobox", { name: /Country/ }), { target: { value: "BO" } });
     fireEvent.change(screen.getByLabelText("State / department"), { target: { value: "BO-S" } });
     fireEvent.change(screen.getByLabelText("City"), { target: { value: "Santa Cruz" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));

@@ -1,4 +1,5 @@
 import { CreateOrganizationRecordUseCase } from "../../application/use-cases/create-organization-record.use-case";
+import { TimezoneResolutionService } from "../../../../common/timezones/timezone-resolution.service";
 import type { OrganizationRepository } from "../../domain/ports/organization.repository.port";
 import type { TenantsRepository } from "../../../tenants/domain/ports/tenants.repository.port";
 
@@ -27,6 +28,18 @@ const createTenant = (timezone = "America/La_Paz") => ({
   timezone
 });
 
+const createUseCase = (
+  repository = createRepository(),
+  tenantsRepository = createTenantsRepository(),
+  createAuditEventUseCase = { execute: jest.fn() }
+) =>
+  new CreateOrganizationRecordUseCase(
+    repository,
+    tenantsRepository,
+    new TimezoneResolutionService(),
+    createAuditEventUseCase as never
+  );
+
 describe("CreateOrganizationRecordUseCase", () => {
   it("creates tenant-scoped organization records through the repository", async () => {
     const repository = createRepository();
@@ -42,11 +55,7 @@ describe("CreateOrganizationRecordUseCase", () => {
     });
 
     const createAuditEventUseCase = { execute: jest.fn() };
-    const useCase = new CreateOrganizationRecordUseCase(
-      repository,
-      createTenantsRepository(),
-      createAuditEventUseCase as never
-    );
+    const useCase = createUseCase(repository, createTenantsRepository(), createAuditEventUseCase);
     const result = await useCase.execute({
       tenantId: "tenant-1",
       actorUserId: "user-1",
@@ -89,11 +98,7 @@ describe("CreateOrganizationRecordUseCase", () => {
     const createAuditEventUseCase = { execute: jest.fn() };
     const tenantsRepository = createTenantsRepository();
     tenantsRepository.findById.mockResolvedValue(createTenant());
-    const useCase = new CreateOrganizationRecordUseCase(
-      repository,
-      tenantsRepository,
-      createAuditEventUseCase as never
-    );
+    const useCase = createUseCase(repository, tenantsRepository, createAuditEventUseCase);
 
     await useCase.execute({
       tenantId: "tenant-1",
@@ -118,11 +123,7 @@ describe("CreateOrganizationRecordUseCase", () => {
   it("rejects unsupported location subdivision values", async () => {
     const tenantsRepository = createTenantsRepository();
     tenantsRepository.findById.mockResolvedValue(createTenant());
-    const useCase = new CreateOrganizationRecordUseCase(
-      createRepository(),
-      tenantsRepository,
-      { execute: jest.fn() } as never
-    );
+    const useCase = createUseCase(createRepository(), tenantsRepository);
 
     await expect(
       useCase.execute({
@@ -153,11 +154,7 @@ describe("CreateOrganizationRecordUseCase", () => {
       updatedAt: createdAt
     });
 
-    const useCase = new CreateOrganizationRecordUseCase(
-      repository,
-      tenantsRepository,
-      { execute: jest.fn() } as never
-    );
+    const useCase = createUseCase(repository, tenantsRepository);
 
     await useCase.execute({
       tenantId: "tenant-1",
@@ -174,7 +171,7 @@ describe("CreateOrganizationRecordUseCase", () => {
     );
   });
 
-  it("falls back to global location defaults when tenant timezone is unsupported", async () => {
+  it("falls back to USA-first global location defaults when tenant timezone is unsupported", async () => {
     const repository = createRepository();
     const tenantsRepository = createTenantsRepository();
     const createdAt = new Date("2026-05-12T10:00:00.000Z");
@@ -184,18 +181,14 @@ describe("CreateOrganizationRecordUseCase", () => {
       id: "location-1",
       tenantId: "tenant-1",
       name: "Default HQ",
-      country: "BO",
-      timezone: "America/La_Paz",
+      country: "US",
+      timezone: "America/New_York",
       status: "ACTIVE",
       createdAt,
       updatedAt: createdAt
     });
 
-    const useCase = new CreateOrganizationRecordUseCase(
-      repository,
-      tenantsRepository,
-      { execute: jest.fn() } as never
-    );
+    const useCase = createUseCase(repository, tenantsRepository);
 
     await useCase.execute({
       tenantId: "tenant-1",
@@ -206,8 +199,8 @@ describe("CreateOrganizationRecordUseCase", () => {
 
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        country: "BO",
-        timezone: "America/La_Paz"
+        country: "US",
+        timezone: "America/New_York"
       })
     );
   });
@@ -215,11 +208,7 @@ describe("CreateOrganizationRecordUseCase", () => {
   it("rejects unsupported location country and timezone values", async () => {
     const tenantsRepository = createTenantsRepository();
     tenantsRepository.findById.mockResolvedValue(createTenant());
-    const useCase = new CreateOrganizationRecordUseCase(
-      createRepository(),
-      tenantsRepository,
-      { execute: jest.fn() } as never
-    );
+    const useCase = createUseCase(createRepository(), tenantsRepository);
 
     await expect(
       useCase.execute({

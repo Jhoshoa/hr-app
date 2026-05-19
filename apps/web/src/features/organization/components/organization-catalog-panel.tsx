@@ -11,10 +11,11 @@ import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
 import { CountrySelect } from "@/features/geo/components/country-select";
 import { SubdivisionSelect } from "@/features/geo/components/subdivision-select";
+import { useGetCurrentTenantQuery } from "@/features/tenants/tenants-api";
 import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
-import { DEFAULT_COUNTRY_CODE } from "@hr-app/geo";
-import { DEFAULT_TIME_ZONE } from "@hr-app/timezones";
+import { DEFAULT_COUNTRY_CODE, getCountryCodeForTimeZone, getCountryDefaultTimeZone } from "@hr-app/geo";
+import { DEFAULT_TIME_ZONE, formatDateInTimeZone, normalizeTimeZone } from "@hr-app/timezones";
 import {
   useArchiveOrganizationRecordMutation,
   useCreateOrganizationRecordMutation,
@@ -46,6 +47,7 @@ export function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: Organi
   const [page, setPage] = useState(1);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const { data: tenantSettings } = useGetCurrentTenantQuery(tenantSlug, { skip: !tenantSlug });
 
   const { data = [], isError, isFetching, isLoading } = useListOrganizationRecordsQuery(
     { kind: catalog.kind, tenantSlug },
@@ -124,7 +126,10 @@ export function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: Organi
                     <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
                   </td>
                   <td className="px-5 py-4 text-muted-foreground">
-                    {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(record.updatedAt))}
+                    {formatDateInTimeZone(record.updatedAt, {
+                      locale: "en-US",
+                      timeZone: tenantSettings?.timezone ?? DEFAULT_TIME_ZONE
+                    })}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex justify-end gap-2">
@@ -225,6 +230,9 @@ function OrganizationRecordDrawer({
   tenantSlug: string;
 }>) {
   const { showToast } = useToast();
+  const { data: tenantSettings } = useGetCurrentTenantQuery(tenantSlug, {
+    skip: !tenantSlug || catalog.kind !== "location"
+  });
   const [createRecord, createState] = useCreateOrganizationRecordMutation();
   const [updateRecord, updateState] = useUpdateOrganizationRecordMutation();
   const [formState, setFormState] = useState<OrganizationRecordPayload>({});
@@ -245,13 +253,16 @@ function OrganizationRecordDrawer({
       drawer.mode === "edit"
         ? drawer.record
         : catalog.kind === "location"
-          ? { country: DEFAULT_COUNTRY_CODE, timezone: DEFAULT_TIME_ZONE }
+          ? {
+              country: getCountryCodeForTimeZone(tenantSettings?.timezone ?? "") ?? DEFAULT_COUNTRY_CODE,
+              timezone: normalizeTimeZone(tenantSettings?.timezone) ?? DEFAULT_TIME_ZONE
+            }
           : {};
     setFormState(nextState);
     setInitialFormState(nextState);
     setFormReadyKey(drawerKey);
     setFormError(null);
-  }, [drawer, drawerKey]);
+  }, [catalog.kind, drawer, drawerKey, tenantSettings?.timezone]);
 
   const isSaving = createState.isLoading || updateState.isLoading;
   const isFormReady = Boolean(drawerKey && formReadyKey === drawerKey);
@@ -261,7 +272,9 @@ function OrganizationRecordDrawer({
     setFormState((current) => ({
       ...current,
       [key]: value,
-      ...(key === "country" ? { subdivisionCode: "" } : {})
+      ...(key === "country"
+        ? { subdivisionCode: "", timezone: getCountryDefaultTimeZone(value) ?? current.timezone }
+        : {})
     }));
   };
 
