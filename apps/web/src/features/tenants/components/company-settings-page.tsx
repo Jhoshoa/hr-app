@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Globe2, Save } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { normalizeCountryCode, normalizePhoneNumber } from "@hr-app/geo";
+import { Building2, Globe2, Save, UserRound } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
+import type { SubmitHandler } from "react-hook-form";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Button } from "@/components/ui/button";
@@ -15,12 +17,17 @@ import { OrganizationCatalogPanel } from "@/features/organization/components/org
 import { OrganizationUnitTypesPanel } from "@/features/organization/components/organization-unit-types-panel";
 import { OrganizationUnitsPanel } from "@/features/organization/components/organization-units-panel";
 import { organizationCatalogByKind } from "@/features/organization/organization-config";
+import { CountrySelect } from "@/features/geo/components/country-select";
+import { PhoneInput } from "@/features/geo/components/phone-input";
 import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { cn } from "@/lib/utils";
 import { useAppDispatch } from "@/store/hooks";
 import { DEFAULT_TIME_ZONE } from "@hr-app/timezones";
-import { companySettingsSchema, type CompanySettingsFormValues } from "../company-settings-schema";
+import {
+  companySettingsSchema,
+  type CompanySettingsFormValues
+} from "../company-settings-schema";
 import { useGetCurrentTenantQuery, useUpdateCurrentTenantMutation } from "../tenants-api";
 import { updateCurrentTenantName } from "../tenant-slice";
 
@@ -33,6 +40,20 @@ const currencyOptions = [
   { label: "Boliviano (BOB)", value: "BOB" },
   { label: "US Dollar (USD)", value: "USD" }
 ] as const;
+
+const companySizeOptions = [
+  { label: "Select size", value: "" },
+  { label: "1-10", value: "1-10" },
+  { label: "11-50", value: "11-50" },
+  { label: "51-200", value: "51-200" },
+  { label: "201-500", value: "201-500" },
+  { label: "501-1000", value: "501-1000" },
+  { label: "1000+", value: "1000+" }
+] as const;
+type CompanySizeFormValue = (typeof companySizeOptions)[number]["value"];
+const companySizeValues = new Set<string>(companySizeOptions.map((option) => option.value));
+const toCompanySizeFormValue = (value: string | null | undefined): CompanySizeFormValue =>
+  value && companySizeValues.has(value) ? (value as CompanySizeFormValue) : "";
 
 const companySettingsTabs = [
   { key: "profile", label: "Profile" },
@@ -56,18 +77,25 @@ export function CompanySettingsPage() {
 
   const {
     formState: { errors, isDirty },
+    control,
     handleSubmit,
     register,
-    reset
+    reset,
+    watch
   } = useForm<CompanySettingsFormValues>({
     resolver: zodResolver(companySettingsSchema),
     defaultValues: {
       name: "",
       defaultLanguage: "es",
       defaultCurrency: "BOB",
-      timezone: DEFAULT_TIME_ZONE
+      timezone: DEFAULT_TIME_ZONE,
+      website: "",
+      companySize: "",
+      country: "",
+      phone: ""
     }
   });
+  const selectedCountry = watch("country");
 
   useEffect(() => {
     if (!tenant) {
@@ -78,19 +106,42 @@ export function CompanySettingsPage() {
       name: tenant.name,
       defaultLanguage: tenant.defaultLanguage === "en" ? "en" : "es",
       defaultCurrency: tenant.defaultCurrency === "USD" ? "USD" : "BOB",
-      timezone: tenant.timezone
+      timezone: tenant.timezone,
+      website: tenant.profile?.website ?? "",
+      companySize: toCompanySizeFormValue(tenant.profile?.companySize),
+      country: tenant.profile?.country ?? "",
+      phone: tenant.profile?.phone ?? ""
     });
   }, [reset, tenant]);
 
-  const onSubmit = async (values: CompanySettingsFormValues) => {
+  const onSubmit: SubmitHandler<CompanySettingsFormValues> = async (values) => {
+    const country = normalizeCountryCode(values.country);
+    const phone = normalizePhoneNumber(values.phone, country);
+
     try {
-      const updatedTenant = await updateTenant({ tenantSlug, ...values }).unwrap();
+      const updatedTenant = await updateTenant({
+        tenantSlug,
+        name: values.name,
+        defaultLanguage: values.defaultLanguage,
+        defaultCurrency: values.defaultCurrency,
+        timezone: values.timezone,
+        profile: {
+          website: values.website.trim() || null,
+          companySize: values.companySize || null,
+          country: country ?? null,
+          phone: phone ?? null
+        }
+      }).unwrap();
       dispatch(updateCurrentTenantName(updatedTenant.name));
       reset({
         name: updatedTenant.name,
         defaultLanguage: updatedTenant.defaultLanguage === "en" ? "en" : "es",
         defaultCurrency: updatedTenant.defaultCurrency === "USD" ? "USD" : "BOB",
-        timezone: updatedTenant.timezone
+        timezone: updatedTenant.timezone,
+        website: updatedTenant.profile?.website ?? "",
+        companySize: toCompanySizeFormValue(updatedTenant.profile?.companySize),
+        country: updatedTenant.profile?.country ?? "",
+        phone: updatedTenant.profile?.phone ?? ""
       });
       showToast({ title: "Company settings saved", tone: "success" });
     } catch {
@@ -160,6 +211,75 @@ export function CompanySettingsPage() {
                           <span className="text-sm font-medium">Workspace slug</span>
                           <Input className="mt-1" disabled value={tenant?.slug ?? ""} />
                           <span className="mt-1 block text-xs text-muted-foreground">Slug changes are disabled for now.</span>
+                        </label>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <UserRound className="h-4 w-4" aria-hidden="true" />
+                      Company profile
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2">
+                    {showInitialSkeleton ? (
+                      <CompanyProfileSkeleton />
+                    ) : (
+                      <>
+                        <label className="block">
+                          <span className="text-sm font-medium">Website</span>
+                          <Input className="mt-1" disabled={!tenant} placeholder="example.com" {...register("website")} />
+                          {errors.website ? (
+                            <span className="mt-1 block text-sm text-rose-600">{errors.website.message}</span>
+                          ) : null}
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium">Company size</span>
+                          <select
+                            className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            disabled={!tenant}
+                            {...register("companySize")}
+                          >
+                            {companySizeOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.companySize ? (
+                            <span className="mt-1 block text-sm text-rose-600">{errors.companySize.message}</span>
+                          ) : null}
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium">Country</span>
+                          <CountrySelect className="mt-1" disabled={!tenant} includeEmptyOption {...register("country")} />
+                          {errors.country ? (
+                            <span className="mt-1 block text-sm text-rose-600">{errors.country.message}</span>
+                          ) : null}
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium">Phone</span>
+                          <Controller
+                            control={control}
+                            name="phone"
+                            render={({ field }) => (
+                              <PhoneInput
+                                className="mt-1"
+                                countryCode={selectedCountry}
+                                disabled={!tenant}
+                                {...field}
+                              />
+                            )}
+                          />
+                          {errors.phone ? (
+                            <span className="mt-1 block text-sm text-rose-600">{errors.phone.message}</span>
+                          ) : null}
                         </label>
                       </>
                     )}
@@ -240,7 +360,7 @@ export function CompanySettingsPage() {
 
                 <Button className="w-full" disabled={updateState.isLoading || !isDirty || !tenant} type="submit">
                   <Save className="h-4 w-4" aria-hidden="true" />
-                  {updateState.isLoading ? "Saving..." : "Save settings"}
+                  {updateState.isLoading ? "Saving..." : "Save changes"}
                 </Button>
               </aside>
             </form>
@@ -282,6 +402,17 @@ function LocalizationSkeleton() {
       <div className="md:col-span-2">
         <FieldSkeleton />
       </div>
+    </>
+  );
+}
+
+function CompanyProfileSkeleton() {
+  return (
+    <>
+      <FieldSkeleton />
+      <FieldSkeleton />
+      <FieldSkeleton />
+      <FieldSkeleton />
     </>
   );
 }

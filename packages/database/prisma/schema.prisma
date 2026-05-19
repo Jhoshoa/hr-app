@@ -105,6 +105,7 @@ model Tenant {
   clientProjects         ClientProject[]
   employees              Employee[]
   features               TenantFeature[]
+  profile                TenantProfile?
   organizationUnitTypes  OrganizationUnitType[]
   organizationUnits      OrganizationUnit[]
   approvedCompanySignups CompanySignupRequest[] @relation("CompanySignupApprovedTenant")
@@ -126,6 +127,21 @@ model TenantFeature {
   @@unique([tenantId, key])
   @@index([tenantId, enabled])
   @@index([key, enabled])
+}
+
+model TenantProfile {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @unique @db.Uuid
+  website      String?
+  companySize  String?
+  country      String?
+  phone        String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([country])
 }
 
 model User {

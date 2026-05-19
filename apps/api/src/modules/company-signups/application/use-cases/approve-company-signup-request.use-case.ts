@@ -62,6 +62,16 @@ export class ApproveCompanySignupRequestUseCase {
             timezone: normalizeTimeZone(request.timezone) ?? DEFAULT_TIME_ZONE
           }
         });
+        await tx.tenantProfile.create({
+          data: {
+            tenantId: tenant.id,
+            website: request.companyWebsite,
+            companySize: request.companySize,
+            country: request.country,
+            phone: request.phone,
+            contactEmail: request.adminEmail
+          }
+        });
 
         const ownerRole = await this.createOwnerRoleWithPermissions(tx, tenant.id);
         const ownerUser = await tx.user.upsert({

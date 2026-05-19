@@ -25,7 +25,8 @@ const createTenant = (timezone = "America/La_Paz") => ({
   status: "ACTIVE",
   defaultLanguage: "en",
   defaultCurrency: "USD",
-  timezone
+  timezone,
+  profile: null
 });
 
 const createUseCase = (

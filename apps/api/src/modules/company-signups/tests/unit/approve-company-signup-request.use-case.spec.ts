@@ -56,6 +56,9 @@ describe("ApproveCompanySignupRequestUseCase", () => {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: "tenant-1" })
       },
+      tenantProfile: {
+        create: jest.fn().mockResolvedValue({ id: "profile-1" })
+      },
       role: {
         upsert: jest.fn().mockResolvedValue({ id: "role-1" })
       },
@@ -95,6 +98,16 @@ describe("ApproveCompanySignupRequestUseCase", () => {
         slug: "acme-demo",
         defaultLanguage: "es",
         timezone: "America/La_Paz"
+      }
+    });
+    expect(tx.tenantProfile.create).toHaveBeenCalledWith({
+      data: {
+        tenantId: "tenant-1",
+        website: null,
+        companySize: null,
+        country: null,
+        phone: null,
+        contactEmail: "ana@example.com"
       }
     });
     expect(tx.user.upsert).toHaveBeenCalledWith({
@@ -186,6 +199,9 @@ describe("ApproveCompanySignupRequestUseCase", () => {
       tenant: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: "tenant-1" })
+      },
+      tenantProfile: {
+        create: jest.fn().mockResolvedValue({ id: "profile-1" })
       },
       role: {
         upsert: jest.fn().mockResolvedValue({ id: "role-1" })

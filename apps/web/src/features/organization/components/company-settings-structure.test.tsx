@@ -15,6 +15,7 @@ const createOrganizationRecordMock = vi.fn();
 const deleteOrganizationUnitMock = vi.fn();
 const deleteOrganizationUnitTypeMock = vi.fn();
 const reorderOrganizationUnitTypesMock = vi.fn();
+const updateCurrentTenantMock = vi.fn();
 const defaultOrganizationUnitsData: OrganizationUnit[] = [
   {
     id: "unit-1",
@@ -64,7 +65,14 @@ const tenantData = {
   status: "ACTIVE",
   defaultLanguage: "en",
   defaultCurrency: "USD",
-  timezone: "America/New_York"
+  timezone: "America/New_York",
+  profile: {
+    website: "example.com",
+    companySize: "11-50",
+    country: "BO",
+    phone: "+59170000000",
+    contactEmail: "admin@example.com"
+  }
 };
 const locationRecordsData = [
   {
@@ -129,7 +137,7 @@ vi.mock("@/features/tenants/tenants-api", () => ({
     isError: false,
     isFetching: false
   }),
-  useUpdateCurrentTenantMutation: () => [vi.fn(), mutationState]
+  useUpdateCurrentTenantMutation: () => [updateCurrentTenantMock, mutationState]
 }));
 
 vi.mock("../organization-api", () => ({
@@ -207,6 +215,8 @@ describe("CompanySettingsPage structure settings", () => {
     deleteOrganizationUnitTypeMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
     reorderOrganizationUnitTypesMock.mockReset();
     reorderOrganizationUnitTypesMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
+    updateCurrentTenantMock.mockReset();
+    updateCurrentTenantMock.mockReturnValue({ unwrap: () => Promise.resolve(tenantData) });
   });
 
   it("shows company settings tabs", () => {
@@ -219,6 +229,51 @@ describe("CompanySettingsPage structure settings", () => {
     expect(screen.getByRole("button", { name: "Profile" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Locations" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Structure" })).toBeInTheDocument();
+  });
+
+  it("renders company profile fields with slug disabled and save changes gated by dirty state", async () => {
+    render(
+      <ToastProvider>
+        <CompanySettingsPage />
+      </ToastProvider>
+    );
+
+    expect(screen.getByDisplayValue("assuresoft-demo")).toBeDisabled();
+    expect(screen.getByDisplayValue("example.com")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("admin@example.com")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Contact email")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+
+    fireEvent.change(screen.getByDisplayValue("example.com"), { target: { value: "new.example.com" } });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled());
+  });
+
+  it("submits company profile changes as a nested tenant profile payload", async () => {
+    render(
+      <ToastProvider>
+        <CompanySettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.change(screen.getByDisplayValue("example.com"), { target: { value: "new.example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(updateCurrentTenantMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantSlug: "assuresoft-demo",
+          profile: expect.objectContaining({
+            website: "new.example.com",
+            companySize: "11-50",
+            country: "BO",
+            phone: "+59170000000"
+          })
+        })
+      )
+    );
+    const submittedPayload = updateCurrentTenantMock.mock.calls.at(0)?.at(0);
+    expect(submittedPayload?.profile).not.toHaveProperty("contactEmail");
   });
 
   it("renders organization unit types", () => {
