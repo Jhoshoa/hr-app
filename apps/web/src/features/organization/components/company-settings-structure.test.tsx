@@ -454,7 +454,7 @@ describe("CompanySettingsPage structure settings", () => {
     );
   });
 
-  it("uses tenant timezone defaults and shared selects when creating an inline primary location", async () => {
+  it("creates an organization unit with an optional existing primary location", async () => {
     render(
       <ToastProvider>
         <CompanySettingsPage />
@@ -464,34 +464,24 @@ describe("CompanySettingsPage structure settings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Structure" }));
     fireEvent.click(screen.getByRole("button", { name: "Add unit" }));
 
-    fireEvent.change(await screen.findByPlaceholderText("Santa Cruz"), { target: { value: "New York Branch" } });
-    fireEvent.click(screen.getByLabelText("Create primary location"));
-    fireEvent.change(screen.getByPlaceholderText("New York HQ"), { target: { value: "New York HQ" } });
-
-    expect(screen.getByDisplayValue("United States")).toHaveValue("US");
-    expect(screen.getByDisplayValue("New York (America/New_York)")).toHaveValue("America/New_York");
-
-    fireEvent.change(screen.getByPlaceholderText("New York"), { target: { value: "New York" } });
+    fireEvent.change(await screen.findByPlaceholderText("Santa Cruz"), { target: { value: "Santa Cruz Branch" } });
+    expect(screen.queryByLabelText("Create primary location")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "Primary location" }), { target: { value: "location-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    await waitFor(() =>
-      expect(createOrganizationRecordMock).toHaveBeenCalledWith({
-        kind: "location",
-        tenantSlug: "assuresoft-demo",
-        payload: {
-          name: "New York HQ",
-          country: "US",
-          city: "New York",
-          timezone: "America/New_York"
-        }
-      })
-    );
+    await waitFor(() => expect(createOrganizationUnitMock).toHaveBeenCalled());
+    expect(createOrganizationRecordMock).not.toHaveBeenCalled();
     expect(createOrganizationUnitMock).toHaveBeenCalledWith({
       tenantSlug: "assuresoft-demo",
-      payload: expect.objectContaining({
-        name: "New York Branch",
-        primaryLocationId: "location-created"
-      })
+      payload: {
+        typeId: "type-1",
+        parentOrganizationUnitId: null,
+        primaryLocationId: "location-1",
+        key: null,
+        name: "Santa Cruz Branch",
+        legalName: null,
+        code: null
+      }
     });
   });
 
