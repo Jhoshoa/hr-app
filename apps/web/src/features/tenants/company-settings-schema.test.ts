@@ -34,4 +34,15 @@ describe("companySettingsSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("rejects valid IANA timezones outside the product catalog", () => {
+    const result = companySettingsSchema.safeParse({
+      name: "AssureSoft Demo",
+      defaultLanguage: "es",
+      defaultCurrency: "BOB",
+      timezone: "Europe/Madrid"
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { TimezoneModule } from "../../common/timezones/timezone.module";
 import { AuditModule } from "../audit/audit.module";
 import { ArchivePlatformTenantUseCase } from "./application/use-cases/archive-platform-tenant.use-case";
 import { TENANTS_REPOSITORY } from "./domain/ports/tenants.repository.port";
@@ -10,7 +11,7 @@ import { PlatformTenantsController } from "./presentation/controllers/platform-t
 import { TenantsController } from "./presentation/controllers/tenants.controller";
 
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, TimezoneModule],
   controllers: [TenantsController, PlatformTenantsController],
   providers: [
     ArchivePlatformTenantUseCase,

@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { TimezonePolicyService } from "../../../../common/timezones/timezone-policy.service";
 import type { TenantEntity, UpdateTenantSettingsInput } from "../../domain/entities/tenant.entity";
 import { TENANTS_REPOSITORY, type TenantsRepository } from "../../domain/ports/tenants.repository.port";
 import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
@@ -11,6 +12,7 @@ export interface UpdateCurrentTenantCommand extends UpdateTenantSettingsInput {
 export class UpdateCurrentTenantUseCase {
   constructor(
     @Inject(TENANTS_REPOSITORY) private readonly tenantsRepository: TenantsRepository,
+    private readonly timezonePolicyService: TimezonePolicyService,
     private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
@@ -22,7 +24,13 @@ export class UpdateCurrentTenantUseCase {
     }
 
     const { actorUserId, ...updateInput } = input;
-    const updatedTenant = await this.tenantsRepository.updateSettings(updateInput);
+    const normalizedInput: UpdateTenantSettingsInput = {
+      ...updateInput,
+      ...(updateInput.timezone !== undefined
+        ? { timezone: this.timezonePolicyService.assertSupported(updateInput.timezone) }
+        : {})
+    };
+    const updatedTenant = await this.tenantsRepository.updateSettings(normalizedInput);
 
     await this.createAuditEventUseCase.execute({
       tenantId: input.tenantId,
@@ -31,7 +39,7 @@ export class UpdateCurrentTenantUseCase {
       resourceType: "tenant",
       resourceId: updatedTenant.id,
       metadata: {
-        updatedFields: Object.keys(updateInput).filter((key) => key !== "tenantId")
+        updatedFields: Object.keys(normalizedInput).filter((key) => key !== "tenantId")
       }
     });
 

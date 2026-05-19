@@ -162,4 +162,69 @@ describe("ApproveCompanySignupRequestUseCase", () => {
       })
     ).rejects.toBeInstanceOf(ConflictException);
   });
+
+  it("falls back to the product default when approving a legacy request with unsupported timezone", async () => {
+    const tx = {
+      companySignupRequest: {
+        findUnique: jest.fn().mockResolvedValueOnce({ ...pendingRequest, timezone: "Europe/Madrid" }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          ...pendingRequest,
+          timezone: "Europe/Madrid",
+          status: "APPROVED",
+          approvedTenantId: "tenant-1",
+          approvedTenant: {
+            id: "tenant-1",
+            name: "Acme Corp",
+            slug: "acme-demo",
+            status: "ACTIVE"
+          },
+          reviewedByUserId: "reviewer-1",
+          reviewedAt: new Date("2026-05-14T00:00:00.000Z")
+        })
+      },
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: "tenant-1" })
+      },
+      role: {
+        upsert: jest.fn().mockResolvedValue({ id: "role-1" })
+      },
+      permission: {
+        findMany: jest.fn().mockResolvedValue([])
+      },
+      rolePermission: {
+        createMany: jest.fn()
+      },
+      user: {
+        upsert: jest.fn().mockResolvedValue({ id: "user-1" })
+      },
+      tenantMembership: {
+        upsert: jest.fn().mockResolvedValue({ id: "membership-1" })
+      },
+      tenantMembershipRole: {
+        upsert: jest.fn().mockResolvedValue({ membershipId: "membership-1", roleId: "role-1" })
+      },
+      auditEvent: {
+        create: jest.fn().mockResolvedValue({ id: "audit-1" })
+      }
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx))
+    } as unknown as PrismaService;
+    const useCase = new ApproveCompanySignupRequestUseCase(prisma, createEventBus());
+
+    await useCase.execute({
+      signupRequestId: "request-1",
+      reviewedByUserId: "reviewer-1"
+    });
+
+    expect(tx.tenant.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          timezone: "America/New_York"
+        })
+      })
+    );
+  });
 });
