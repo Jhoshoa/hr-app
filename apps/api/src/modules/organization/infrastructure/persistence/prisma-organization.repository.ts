@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { DEFAULT_COUNTRY_CODE } from "@hr-app/geo";
+import { DEFAULT_TIME_ZONE } from "@hr-app/timezones";
 import { PrismaService } from "../../../../database/prisma/prisma.service";
 import type {
   CreateOrganizationRecordInput,
@@ -27,9 +29,9 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
           data: {
             tenantId: input.tenantId,
             name: input.name,
-            country: input.country ?? "BO",
+            country: input.country ?? DEFAULT_COUNTRY_CODE,
             city: input.city,
-            timezone: input.timezone ?? "America/La_Paz"
+            timezone: input.timezone ?? DEFAULT_TIME_ZONE
           }
         });
       case "jobTitle":

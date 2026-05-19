@@ -4,6 +4,8 @@ import {
   normalizeCompanyWebsite,
   normalizeEmail,
   normalizeOptionalText,
+  normalizeSignupCountry,
+  normalizeSignupTimeZone,
   normalizeTenantSlug,
   reservedTenantSlugs,
   tenantSlugPattern
@@ -58,12 +60,44 @@ export class CreateCompanySignupRequestUseCase {
     adminEmail: normalizeEmail(input.adminEmail),
     companyWebsite: normalizeCompanyWebsite(input.companyWebsite),
     companySize: normalizeOptionalText(input.companySize),
-    country: normalizeOptionalText(input.country),
-    timezone: normalizeOptionalText(input.timezone),
+    country: this.normalizeCountry(input.country),
+    timezone: this.normalizeTimeZone(input.timezone),
     preferredLanguage: input.preferredLanguage,
     phone: normalizeOptionalText(input.phone),
     message: normalizeOptionalText(input.message)
   });
+
+  private normalizeCountry = (value: string | undefined): string | undefined => {
+    const normalized = normalizeOptionalText(value);
+
+    if (!normalized) {
+      return undefined;
+    }
+
+    const country = normalizeSignupCountry(normalized);
+
+    if (!country) {
+      throw new BadRequestException("Country must be a supported ISO country code.");
+    }
+
+    return country;
+  };
+
+  private normalizeTimeZone = (value: string | undefined): string | undefined => {
+    const normalized = normalizeOptionalText(value);
+
+    if (!normalized) {
+      return undefined;
+    }
+
+    const timeZone = normalizeSignupTimeZone(normalized);
+
+    if (!timeZone) {
+      throw new BadRequestException("Timezone must be a supported IANA timezone.");
+    }
+
+    return timeZone;
+  };
 
   private ensureTenantSlugCanBeRequested = async (slug: string): Promise<void> => {
     if (!tenantSlugPattern.test(slug)) {

@@ -1,4 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { DEFAULT_COUNTRY_CODE, normalizeCountryCode } from "@hr-app/geo";
+import { DEFAULT_TIME_ZONE, normalizeTimeZone } from "@hr-app/timezones";
 import type {
   CreateOrganizationRecordInput,
   OrganizationRecordEntity
@@ -31,7 +33,15 @@ export class CreateOrganizationRecordUseCase {
     }
 
     const { actorUserId, ...createInput } = input;
-    const record = await this.organizationRepository.create(createInput);
+    const normalizedInput =
+      createInput.kind === "location"
+        ? {
+            ...createInput,
+            country: this.normalizeCountry(createInput.country) ?? DEFAULT_COUNTRY_CODE,
+            timezone: this.normalizeLocationTimeZone(createInput.timezone) ?? DEFAULT_TIME_ZONE
+          }
+        : createInput;
+    const record = await this.organizationRepository.create(normalizedInput);
 
     await this.createAuditEventUseCase.execute({
       tenantId: input.tenantId,
@@ -43,5 +53,33 @@ export class CreateOrganizationRecordUseCase {
     });
 
     return record;
+  };
+
+  private normalizeCountry = (value: string | undefined): string | undefined => {
+    if (!value) {
+      return undefined;
+    }
+
+    const country = normalizeCountryCode(value);
+
+    if (!country) {
+      throw new BadRequestException("Country must be a supported ISO country code.");
+    }
+
+    return country;
+  };
+
+  private normalizeLocationTimeZone = (value: string | undefined): string | undefined => {
+    if (!value) {
+      return undefined;
+    }
+
+    const timeZone = normalizeTimeZone(value);
+
+    if (!timeZone) {
+      throw new BadRequestException("Timezone must be a supported IANA timezone.");
+    }
+
+    return timeZone;
   };
 }

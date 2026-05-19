@@ -47,4 +47,97 @@ describe("CreateOrganizationRecordUseCase", () => {
       })
     );
   });
+
+  it("normalizes location country and timezone before creating records", async () => {
+    const repository = createRepository();
+    const createdAt = new Date("2026-05-12T10:00:00.000Z");
+
+    repository.create.mockResolvedValue({
+      id: "location-1",
+      tenantId: "tenant-1",
+      name: "Cochabamba HQ",
+      country: "BO",
+      city: "Cochabamba",
+      timezone: "America/La_Paz",
+      status: "ACTIVE",
+      createdAt,
+      updatedAt: createdAt
+    });
+
+    const createAuditEventUseCase = { execute: jest.fn() };
+    const useCase = new CreateOrganizationRecordUseCase(repository, createAuditEventUseCase as never);
+
+    await useCase.execute({
+      tenantId: "tenant-1",
+      actorUserId: "user-1",
+      kind: "location",
+      name: "Cochabamba HQ",
+      country: "bolivia",
+      city: "Cochabamba",
+      timezone: "America/La_Paz"
+    });
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "BO",
+        timezone: "America/La_Paz"
+      })
+    );
+  });
+
+  it("defaults location country and timezone when omitted", async () => {
+    const repository = createRepository();
+    const createdAt = new Date("2026-05-12T10:00:00.000Z");
+
+    repository.create.mockResolvedValue({
+      id: "location-1",
+      tenantId: "tenant-1",
+      name: "Default HQ",
+      country: "BO",
+      timezone: "America/La_Paz",
+      status: "ACTIVE",
+      createdAt,
+      updatedAt: createdAt
+    });
+
+    const useCase = new CreateOrganizationRecordUseCase(repository, { execute: jest.fn() } as never);
+
+    await useCase.execute({
+      tenantId: "tenant-1",
+      actorUserId: "user-1",
+      kind: "location",
+      name: "Default HQ"
+    });
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "BO",
+        timezone: "America/La_Paz"
+      })
+    );
+  });
+
+  it("rejects unsupported location country and timezone values", async () => {
+    const useCase = new CreateOrganizationRecordUseCase(createRepository(), { execute: jest.fn() } as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: "tenant-1",
+        actorUserId: "user-1",
+        kind: "location",
+        name: "Invalid HQ",
+        country: "ZZ"
+      })
+    ).rejects.toThrow("Country must be a supported ISO country code.");
+
+    await expect(
+      useCase.execute({
+        tenantId: "tenant-1",
+        actorUserId: "user-1",
+        kind: "location",
+        name: "Invalid HQ",
+        timezone: "not-a-timezone"
+      })
+    ).rejects.toThrow("Timezone must be a supported IANA timezone.");
+  });
 });

@@ -1,3 +1,6 @@
+import { normalizeCountryCode } from "@hr-app/geo";
+import { normalizeTimeZone } from "@hr-app/timezones";
+
 export const reservedTenantSlugs = new Set([
   "www",
   "api",
@@ -31,3 +34,9 @@ export const normalizeCompanyWebsite = (value: string | undefined): string | und
 
   return normalized.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
 };
+
+export const normalizeSignupCountry = (value: string | undefined): string | undefined =>
+  normalizeCountryCode(value) ?? undefined;
+
+export const normalizeSignupTimeZone = (value: string | undefined): string | undefined =>
+  normalizeTimeZone(value) ?? undefined;

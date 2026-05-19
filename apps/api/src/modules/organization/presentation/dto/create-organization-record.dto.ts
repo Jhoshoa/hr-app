@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
-import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from "class-validator";
+import { IsOptional, IsString, IsTimeZone, IsUUID, Matches, MaxLength, MinLength } from "class-validator";
 
 export class CreateDepartmentDto {
   @ApiProperty()
@@ -24,6 +24,7 @@ export class CreateLocationDto {
   @ApiPropertyOptional({ default: "BO" })
   @IsOptional()
   @IsString()
+  @Matches(/^[a-zA-Z]{2}$/)
   @MaxLength(2)
   country?: string;
 
@@ -36,6 +37,7 @@ export class CreateLocationDto {
   @ApiPropertyOptional({ default: "America/La_Paz" })
   @IsOptional()
   @IsString()
+  @IsTimeZone()
   @MaxLength(80)
   timezone?: string;
 }

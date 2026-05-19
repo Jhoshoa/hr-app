@@ -90,6 +90,49 @@ describe("CreateCompanySignupRequestUseCase", () => {
     );
   });
 
+  it("normalizes legacy country names before creating the request", async () => {
+    const repository = createRepository();
+    repository.pendingRequestExistsForSlug.mockResolvedValue(false);
+    repository.pendingRequestExistsForAdminEmail.mockResolvedValue(false);
+    repository.tenantSlugExists.mockResolvedValue(false);
+    repository.create.mockImplementation(async (input) => ({
+      id: "request-1",
+      status: "PENDING",
+      approvedTenantId: null,
+      approvedTenant: null,
+      reviewedByUserId: null,
+      reviewedAt: null,
+      rejectionReason: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...input,
+      companySize: input.companySize ?? null,
+      country: input.country ?? null,
+      timezone: input.timezone ?? null,
+      companyWebsite: input.companyWebsite ?? null,
+      phone: input.phone ?? null,
+      message: input.message ?? null
+    }));
+
+    const eventBus = createEventBus();
+    const useCase = new CreateCompanySignupRequestUseCase(repository, eventBus);
+
+    await useCase.execute({ ...validInput, country: "Bolivia" });
+
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ country: "BO" }));
+  });
+
+  it("rejects unsupported country and timezone values", async () => {
+    const useCase = new CreateCompanySignupRequestUseCase(createRepository(), createEventBus());
+
+    await expect(useCase.execute({ ...validInput, country: "ZZ" })).rejects.toThrow(
+      "Country must be a supported ISO country code."
+    );
+    await expect(useCase.execute({ ...validInput, timezone: "not-a-timezone" })).rejects.toThrow(
+      "Timezone must be a supported IANA timezone."
+    );
+  });
+
   it("rejects an existing tenant slug", async () => {
     const repository = createRepository();
     const eventBus = createEventBus();

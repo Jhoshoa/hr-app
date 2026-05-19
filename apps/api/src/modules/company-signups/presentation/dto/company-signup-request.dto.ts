@@ -55,7 +55,8 @@ export class CreateCompanySignupRequestDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MaxLength(80)
+  @Matches(/^[a-zA-Z]{2}$/)
+  @MaxLength(2)
   country?: string;
 
   @ApiProperty()

@@ -1,4 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { normalizeCountryCode } from "@hr-app/geo";
+import { normalizeTimeZone } from "@hr-app/timezones";
 import type {
   OrganizationRecordEntity,
   UpdateOrganizationRecordInput
@@ -35,7 +37,17 @@ export class UpdateOrganizationRecordUseCase {
     }
 
     const { actorUserId, ...updateInput } = input;
-    const record = await this.organizationRepository.update(updateInput);
+    const normalizedInput =
+      updateInput.kind === "location"
+        ? {
+            ...updateInput,
+            ...(updateInput.country !== undefined ? { country: this.normalizeCountry(updateInput.country) } : {}),
+            ...(updateInput.timezone !== undefined
+              ? { timezone: this.normalizeLocationTimeZone(updateInput.timezone) }
+              : {})
+          }
+        : updateInput;
+    const record = await this.organizationRepository.update(normalizedInput);
 
     await this.createAuditEventUseCase.execute({
       tenantId: input.tenantId,
@@ -49,5 +61,25 @@ export class UpdateOrganizationRecordUseCase {
     });
 
     return record;
+  };
+
+  private normalizeCountry = (value: string | undefined): string => {
+    const country = normalizeCountryCode(value);
+
+    if (!country) {
+      throw new BadRequestException("Country must be a supported ISO country code.");
+    }
+
+    return country;
+  };
+
+  private normalizeLocationTimeZone = (value: string | undefined): string => {
+    const timeZone = normalizeTimeZone(value);
+
+    if (!timeZone) {
+      throw new BadRequestException("Timezone must be a supported IANA timezone.");
+    }
+
+    return timeZone;
   };
 }
