@@ -17,6 +17,12 @@ importers:
 
   apps/api:
     dependencies:
+      '@hr-app/geo':
+        specifier: workspace:*
+        version: link:../../packages/geo
+      '@hr-app/timezones':
+        specifier: workspace:*
+        version: link:../../packages/timezones
       '@nestjs/common':
         specifier: ^10.4.15
         version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -126,6 +132,12 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.75.0(react@18.3.1))
+      '@hr-app/geo':
+        specifier: workspace:*
+        version: link:../../packages/geo
+      '@hr-app/timezones':
+        specifier: workspace:*
+        version: link:../../packages/timezones
       '@reduxjs/toolkit':
         specifier: ^2.5.0
         version: 2.11.2(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1)(redux@5.0.1))(react@18.3.1)
@@ -239,6 +251,22 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
+  packages/geo:
+    dependencies:
+      '@hr-app/timezones':
+        specifier: workspace:*
+        version: link:../timezones
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
+  packages/timezones:
+    devDependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
