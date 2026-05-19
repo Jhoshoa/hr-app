@@ -2,10 +2,12 @@ import type { IanaTimeZone } from "@hr-app/timezones";
 
 export type CountryCode = string & { readonly __brand: "CountryCode" };
 export type CallingCode = `+${number}`;
+export type E164PhoneNumber = `+${number}`;
 
 export interface CountryMetadata {
   readonly code: CountryCode;
   readonly name: string;
+  readonly flagEmoji: string;
   readonly callingCodes: readonly CallingCode[];
   readonly timeZones: readonly IanaTimeZone[];
   readonly defaultTimeZone: IanaTimeZone;
@@ -16,6 +18,14 @@ export interface CountryOption {
   readonly label: string;
 }
 
+export interface CallingCodeOption {
+  readonly value: CallingCode;
+  readonly label: string;
+  readonly countryCode: CountryCode;
+  readonly countryName: string;
+  readonly flagEmoji: string;
+}
+
 export const DEFAULT_COUNTRY_CODE = "BO" as CountryCode;
 const timeZone = (value: string) => value as IanaTimeZone;
 
@@ -23,6 +33,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "BO" as CountryCode,
     name: "Bolivia",
+    flagEmoji: "🇧🇴",
     callingCodes: ["+591"],
     timeZones: [timeZone("America/La_Paz")],
     defaultTimeZone: timeZone("America/La_Paz")
@@ -30,6 +41,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "US" as CountryCode,
     name: "United States",
+    flagEmoji: "🇺🇸",
     callingCodes: ["+1"],
     timeZones: [
       timeZone("America/New_York"),
@@ -43,6 +55,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "MX" as CountryCode,
     name: "Mexico",
+    flagEmoji: "🇲🇽",
     callingCodes: ["+52"],
     timeZones: [timeZone("America/Mexico_City"), timeZone("America/Tijuana"), timeZone("America/Cancun")],
     defaultTimeZone: timeZone("America/Mexico_City")
@@ -50,6 +63,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "CO" as CountryCode,
     name: "Colombia",
+    flagEmoji: "🇨🇴",
     callingCodes: ["+57"],
     timeZones: [timeZone("America/Bogota")],
     defaultTimeZone: timeZone("America/Bogota")
@@ -57,6 +71,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "PE" as CountryCode,
     name: "Peru",
+    flagEmoji: "🇵🇪",
     callingCodes: ["+51"],
     timeZones: [timeZone("America/Lima")],
     defaultTimeZone: timeZone("America/Lima")
@@ -64,6 +79,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "AR" as CountryCode,
     name: "Argentina",
+    flagEmoji: "🇦🇷",
     callingCodes: ["+54"],
     timeZones: [timeZone("America/Argentina/Buenos_Aires")],
     defaultTimeZone: timeZone("America/Argentina/Buenos_Aires")
@@ -71,6 +87,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "CL" as CountryCode,
     name: "Chile",
+    flagEmoji: "🇨🇱",
     callingCodes: ["+56"],
     timeZones: [timeZone("America/Santiago")],
     defaultTimeZone: timeZone("America/Santiago")
@@ -78,6 +95,7 @@ export const AMERICA_COUNTRIES = [
   {
     code: "BR" as CountryCode,
     name: "Brazil",
+    flagEmoji: "🇧🇷",
     callingCodes: ["+55"],
     timeZones: [timeZone("America/Sao_Paulo")],
     defaultTimeZone: timeZone("America/Sao_Paulo")
@@ -87,6 +105,10 @@ export const AMERICA_COUNTRIES = [
 const countryByCode = new Map<string, CountryMetadata>(
   AMERICA_COUNTRIES.map((country) => [country.code, country])
 );
+
+const supportedCallingCodes = Array.from(
+  new Set(AMERICA_COUNTRIES.flatMap((country) => country.callingCodes))
+).sort((left, right) => right.length - left.length);
 
 const legacyCountryNameByCode = new Map<string, CountryCode>(
   AMERICA_COUNTRIES.flatMap((country) => [
@@ -133,3 +155,64 @@ export const getCountryDefaultTimeZone = (value: string): IanaTimeZone | null =>
 
 export const getCountryTimeZones = (value: string): readonly IanaTimeZone[] =>
   getCountryByCode(value)?.timeZones ?? [];
+
+export const getCountryCodeForTimeZone = (value: string): CountryCode | null => {
+  const normalizedTimeZone = value.trim();
+  const country = AMERICA_COUNTRIES.find((item) =>
+    item.timeZones.some((timeZoneValue) => timeZoneValue === normalizedTimeZone)
+  );
+
+  return country?.code ?? null;
+};
+
+export const getCountryCallingCodes = (value: string): readonly CallingCode[] =>
+  getCountryByCode(value)?.callingCodes ?? [];
+
+export const getCountryDefaultCallingCode = (value: string | null | undefined): CallingCode | null => {
+  const countryCode = value ? normalizeCountryCode(value) : null;
+
+  return countryCode ? getCountryByCode(countryCode)?.callingCodes[0] ?? null : null;
+};
+
+export const getCallingCodeOptions = (): readonly CallingCodeOption[] =>
+  AMERICA_COUNTRIES.flatMap((country) =>
+    country.callingCodes.map((callingCode) => ({
+      value: callingCode,
+      label: `${country.flagEmoji} ${callingCode}`,
+      countryCode: country.code,
+      countryName: country.name,
+      flagEmoji: country.flagEmoji
+    }))
+  );
+
+export const isSupportedCallingCode = (value: string): value is CallingCode =>
+  supportedCallingCodes.some((callingCode) => callingCode === value);
+
+export const normalizePhoneNumber = (
+  value: string | null | undefined,
+  countryCode?: string | null
+): string | null => {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const compact = trimmed.replace(/[\s().-]/g, "");
+  const withPlus = compact.startsWith("00") ? `+${compact.slice(2)}` : compact;
+  const candidate = withPlus.startsWith("+")
+    ? withPlus
+    : `${getCountryDefaultCallingCode(countryCode) ?? ""}${withPlus.replace(/\D/g, "")}`;
+
+  if (!/^\+[1-9]\d{7,14}$/.test(candidate)) {
+    return null;
+  }
+
+  const matchedCallingCode = supportedCallingCodes.find((callingCode) => candidate.startsWith(callingCode));
+
+  if (!matchedCallingCode) {
+    return null;
+  }
+
+  return candidate;
+};
