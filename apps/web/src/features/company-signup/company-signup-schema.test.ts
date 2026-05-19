@@ -33,7 +33,7 @@ describe("companySignupSchema", () => {
       country: "BO",
       desiredTenantSlug: "acme-operations",
       message: "Needs approval",
-      phone: "+591 70000000",
+      phone: "+59170000000",
       preferredLanguage: "es",
       timezone: "America/La_Paz"
     });
@@ -70,6 +70,26 @@ describe("companySignupSchema", () => {
       ...validInput,
       country: "ZZ",
       timezone: "not-a-timezone"
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("allows phone numbers with a supported calling code different from the selected company country", () => {
+    expect(
+      companySignupSchema.parse({
+        ...validInput,
+        country: "BO",
+        phone: "+1 555 0100"
+      })
+    ).toEqual(expect.objectContaining({ phone: "+15550100" }));
+  });
+
+  it("rejects phone numbers with unsupported calling codes", () => {
+    const result = companySignupSchema.safeParse({
+      ...validInput,
+      country: "BO",
+      phone: "+34 600 000 000"
     });
 
     expect(result.success).toBe(false);

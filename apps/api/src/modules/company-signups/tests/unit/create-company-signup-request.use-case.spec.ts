@@ -74,7 +74,7 @@ describe("CreateCompanySignupRequestUseCase", () => {
       country: "BO",
       timezone: "America/La_Paz",
       preferredLanguage: "es",
-      phone: "+591 70000000",
+      phone: "+59170000000",
       message: "Interested in HR app"
     });
     expect(result.status).toBe("PENDING");
@@ -122,6 +122,37 @@ describe("CreateCompanySignupRequestUseCase", () => {
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ country: "BO" }));
   });
 
+  it("normalizes local phone numbers with the selected country calling code", async () => {
+    const repository = createRepository();
+    repository.pendingRequestExistsForSlug.mockResolvedValue(false);
+    repository.pendingRequestExistsForAdminEmail.mockResolvedValue(false);
+    repository.tenantSlugExists.mockResolvedValue(false);
+    repository.create.mockImplementation(async (input) => ({
+      id: "request-1",
+      status: "PENDING",
+      approvedTenantId: null,
+      approvedTenant: null,
+      reviewedByUserId: null,
+      reviewedAt: null,
+      rejectionReason: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...input,
+      companySize: input.companySize ?? null,
+      country: input.country ?? null,
+      timezone: input.timezone ?? null,
+      companyWebsite: input.companyWebsite ?? null,
+      phone: input.phone ?? null,
+      message: input.message ?? null
+    }));
+
+    const useCase = new CreateCompanySignupRequestUseCase(repository, createEventBus());
+
+    await useCase.execute({ ...validInput, phone: "70000000" });
+
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ phone: "+59170000000" }));
+  });
+
   it("rejects unsupported country and timezone values", async () => {
     const useCase = new CreateCompanySignupRequestUseCase(createRepository(), createEventBus());
 
@@ -130,6 +161,45 @@ describe("CreateCompanySignupRequestUseCase", () => {
     );
     await expect(useCase.execute({ ...validInput, timezone: "not-a-timezone" })).rejects.toThrow(
       "Timezone must be a supported IANA timezone."
+    );
+  });
+
+  it("allows phone numbers with a supported calling code different from the selected company country", async () => {
+    const repository = createRepository();
+    repository.pendingRequestExistsForSlug.mockResolvedValue(false);
+    repository.pendingRequestExistsForAdminEmail.mockResolvedValue(false);
+    repository.tenantSlugExists.mockResolvedValue(false);
+    repository.create.mockImplementation(async (input) => ({
+      id: "request-1",
+      status: "PENDING",
+      approvedTenantId: null,
+      approvedTenant: null,
+      reviewedByUserId: null,
+      reviewedAt: null,
+      rejectionReason: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...input,
+      companySize: input.companySize ?? null,
+      country: input.country ?? null,
+      timezone: input.timezone ?? null,
+      companyWebsite: input.companyWebsite ?? null,
+      phone: input.phone ?? null,
+      message: input.message ?? null
+    }));
+
+    const useCase = new CreateCompanySignupRequestUseCase(repository, createEventBus());
+
+    await useCase.execute({ ...validInput, country: "BO", phone: "+1 555 0100" });
+
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ phone: "+15550100" }));
+  });
+
+  it("rejects phone numbers with unsupported calling codes", async () => {
+    const useCase = new CreateCompanySignupRequestUseCase(createRepository(), createEventBus());
+
+    await expect(useCase.execute({ ...validInput, country: "BO", phone: "+34 600 000 000" })).rejects.toThrow(
+      "Phone must be a valid E.164 number with a supported calling code."
     );
   });
 

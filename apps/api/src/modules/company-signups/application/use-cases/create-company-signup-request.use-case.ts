@@ -5,6 +5,7 @@ import {
   normalizeEmail,
   normalizeOptionalText,
   normalizeSignupCountry,
+  normalizeSignupPhone,
   normalizeSignupTimeZone,
   normalizeTenantSlug,
   reservedTenantSlugs,
@@ -52,20 +53,24 @@ export class CreateCompanySignupRequestUseCase {
 
   private normalizeInput = (
     input: CreateCompanySignupRequestInput
-  ): CreateCompanySignupRequestInput => ({
-    companyName: input.companyName.trim(),
-    desiredTenantSlug: normalizeTenantSlug(input.desiredTenantSlug),
-    adminFirstName: input.adminFirstName.trim(),
-    adminLastName: input.adminLastName.trim(),
-    adminEmail: normalizeEmail(input.adminEmail),
-    companyWebsite: normalizeCompanyWebsite(input.companyWebsite),
-    companySize: normalizeOptionalText(input.companySize),
-    country: this.normalizeCountry(input.country),
-    timezone: this.normalizeTimeZone(input.timezone),
-    preferredLanguage: input.preferredLanguage,
-    phone: normalizeOptionalText(input.phone),
-    message: normalizeOptionalText(input.message)
-  });
+  ): CreateCompanySignupRequestInput => {
+    const country = this.normalizeCountry(input.country);
+
+    return {
+      companyName: input.companyName.trim(),
+      desiredTenantSlug: normalizeTenantSlug(input.desiredTenantSlug),
+      adminFirstName: input.adminFirstName.trim(),
+      adminLastName: input.adminLastName.trim(),
+      adminEmail: normalizeEmail(input.adminEmail),
+      companyWebsite: normalizeCompanyWebsite(input.companyWebsite),
+      companySize: normalizeOptionalText(input.companySize),
+      country,
+      timezone: this.normalizeTimeZone(input.timezone),
+      preferredLanguage: input.preferredLanguage,
+      phone: this.normalizePhone(input.phone, country),
+      message: normalizeOptionalText(input.message)
+    };
+  };
 
   private normalizeCountry = (value: string | undefined): string | undefined => {
     const normalized = normalizeOptionalText(value);
@@ -97,6 +102,22 @@ export class CreateCompanySignupRequestUseCase {
     }
 
     return timeZone;
+  };
+
+  private normalizePhone = (value: string | undefined, country: string | undefined): string | undefined => {
+    const normalized = normalizeOptionalText(value);
+
+    if (!normalized) {
+      return undefined;
+    }
+
+    const phone = normalizeSignupPhone(normalized, country);
+
+    if (!phone) {
+      throw new BadRequestException("Phone must be a valid E.164 number with a supported calling code.");
+    }
+
+    return phone;
   };
 
   private ensureTenantSlugCanBeRequested = async (slug: string): Promise<void> => {

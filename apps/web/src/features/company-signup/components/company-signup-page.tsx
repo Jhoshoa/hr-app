@@ -5,10 +5,11 @@ import type { ReactNode, SelectHTMLAttributes } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getCountryDefaultTimeZone, getCountryTimeZones } from "@hr-app/geo";
 import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CountrySelect } from "@/features/geo/components/country-select";
+import { PhoneInput } from "@/features/geo/components/phone-input";
 import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useToast } from "@/components/ui/toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -56,6 +57,7 @@ export function CompanySignupPage() {
 
   const {
     formState: { errors, isSubmitting, isValid },
+    control,
     handleSubmit,
     register,
     setValue,
@@ -308,7 +310,11 @@ export function CompanySignupPage() {
                 </Field>
 
                 <Field label="Phone number" error={errors.phone?.message}>
-                  <Input placeholder="+1 555 0100" {...register("phone")} />
+                  <Controller
+                    control={control}
+                    name="phone"
+                    render={({ field }) => <PhoneInput countryCode={selectedCountry} {...field} />}
+                  />
                 </Field>
 
                 <Field label="Preferred language" error={errors.preferredLanguage?.message} required>

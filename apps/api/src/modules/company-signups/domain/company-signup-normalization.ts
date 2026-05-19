@@ -1,4 +1,4 @@
-import { normalizeCountryCode } from "@hr-app/geo";
+import { normalizeCountryCode, normalizePhoneNumber } from "@hr-app/geo";
 import { normalizeTimeZone } from "@hr-app/timezones";
 
 export const reservedTenantSlugs = new Set([
@@ -40,3 +40,8 @@ export const normalizeSignupCountry = (value: string | undefined): string | unde
 
 export const normalizeSignupTimeZone = (value: string | undefined): string | undefined =>
   normalizeTimeZone(value) ?? undefined;
+
+export const normalizeSignupPhone = (
+  value: string | undefined,
+  countryCode: string | undefined
+): string | undefined => normalizePhoneNumber(value, countryCode) ?? undefined;

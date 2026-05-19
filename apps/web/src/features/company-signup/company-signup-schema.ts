@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isSupportedCountryCode, normalizeCountryCode } from "@hr-app/geo";
+import { isSupportedCountryCode, normalizeCountryCode, normalizePhoneNumber } from "@hr-app/geo";
 import { isSupportedTimeZone } from "@hr-app/timezones";
 
 const tenantSlugPattern = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/;
@@ -29,7 +29,7 @@ export const normalizeEmailInput = (value: string) => value.trim().toLowerCase()
 
 export const normalizeWebsiteInput = (value: string) => value.trim();
 
-export const companySignupSchema = z.object({
+const companySignupBaseSchema = z.object({
   adminEmail: z.string().trim().email("Enter a valid email.").max(254, "Email is too long.").transform(normalizeEmailInput),
   adminFirstName: z.string().trim().min(1, "Enter the admin first name.").max(80, "First name is too long."),
   adminLastName: z.string().trim().min(1, "Enter the admin last name.").max(80, "Last name is too long."),
@@ -59,14 +59,29 @@ export const companySignupSchema = z.object({
   )
 });
 
+export const companySignupSchema = companySignupBaseSchema
+  .superRefine((values, context) => {
+    if (values.phone && !normalizePhoneNumber(values.phone, values.country)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter a valid phone number with a supported calling code.",
+        path: ["phone"]
+      });
+    }
+  })
+  .transform((values) => ({
+    ...values,
+    phone: normalizePhoneNumber(values.phone, values.country) ?? undefined
+  }));
+
 export type CompanySignupFormValues = z.input<typeof companySignupSchema>;
 export type CompanySignupRequestPayload = z.output<typeof companySignupSchema>;
 
 export const canCheckTenantSlugAvailability = (value: string) =>
-  companySignupSchema.shape.desiredTenantSlug.safeParse(value).success;
+  companySignupBaseSchema.shape.desiredTenantSlug.safeParse(value).success;
 
 export const canCheckAdminEmailAvailability = (value: string) =>
-  companySignupSchema.shape.adminEmail.safeParse(value).success;
+  companySignupBaseSchema.shape.adminEmail.safeParse(value).success;
 
 export const canCheckCompanyWebsiteAvailability = (value: string) =>
-  value.trim().length > 0 && companySignupSchema.shape.companyWebsite.safeParse(value).success;
+  value.trim().length > 0 && companySignupBaseSchema.shape.companyWebsite.safeParse(value).success;
