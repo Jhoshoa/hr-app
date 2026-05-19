@@ -242,6 +242,9 @@ describe("CompanySettingsPage structure settings", () => {
     expect(screen.getByDisplayValue("example.com")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("admin@example.com")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Contact email")).not.toBeInTheDocument();
+    expect(screen.queryByText("Default language")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Timezone/)).toHaveValue("America/La_Paz");
+    expect(screen.queryByRole("option", { name: "New York (America/New_York)" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
 
     fireEvent.change(screen.getByDisplayValue("example.com"), { target: { value: "new.example.com" } });
@@ -262,6 +265,7 @@ describe("CompanySettingsPage structure settings", () => {
     await waitFor(() =>
       expect(updateCurrentTenantMock).toHaveBeenCalledWith(
         expect.objectContaining({
+          defaultLanguage: "en",
           tenantSlug: "assuresoft-demo",
           profile: expect.objectContaining({
             website: "new.example.com",

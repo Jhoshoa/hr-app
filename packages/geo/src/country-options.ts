@@ -29,7 +29,7 @@ export const getCallingCodeOptions = (): readonly CallingCodeOption[] =>
   AMERICA_COUNTRIES.flatMap((country) =>
     country.callingCodes.map((callingCode) => ({
       value: callingCode,
-      label: `${country.flagEmoji} ${callingCode}`,
+      label: `${country.code} ${callingCode}`,
       countryCode: country.code,
       countryName: country.name,
       flagEmoji: country.flagEmoji

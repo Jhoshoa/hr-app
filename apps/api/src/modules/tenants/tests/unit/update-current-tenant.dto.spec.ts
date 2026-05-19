@@ -44,4 +44,15 @@ describe("UpdateCurrentTenantDto", () => {
       )
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it("rejects slug updates from company settings", async () => {
+    await expect(
+      createValidationPipe().transform(
+        {
+          slug: "new-workspace-slug"
+        },
+        { type: "body", metatype: UpdateCurrentTenantDto }
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });

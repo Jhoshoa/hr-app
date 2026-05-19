@@ -3,6 +3,19 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PhoneInput } from "./phone-input";
 
+function ControlledPhoneInput({ countryCode = "BO" }: { readonly countryCode?: string }) {
+  const [value, setValue] = React.useState("");
+
+  return (
+    <PhoneInput
+      countryCode={countryCode}
+      name="phone"
+      onChange={(event) => setValue(event.target.value)}
+      value={value}
+    />
+  );
+}
+
 describe("PhoneInput", () => {
   it("uses the selected country default calling code and emits E.164-shaped values", () => {
     const onChange = vi.fn();
@@ -10,8 +23,8 @@ describe("PhoneInput", () => {
     render(<PhoneInput countryCode="BO" name="phone" onChange={onChange} value="" />);
 
     expect(screen.getByLabelText("Phone country code")).toHaveValue("+591");
-    expect(screen.getByRole("option", { name: "🇧🇴 +591" })).toHaveValue("+591");
-    expect(screen.getByRole("option", { name: "🇺🇸 +1" })).toHaveValue("+1");
+    expect(screen.getByRole("option", { name: "BO +591" })).toHaveValue("+591");
+    expect(screen.getByRole("option", { name: "US +1" })).toHaveValue("+1");
 
     fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "70000000" } });
 
@@ -59,5 +72,20 @@ describe("PhoneInput", () => {
         })
       })
     );
+  });
+
+  it("does not duplicate the calling code while typing an incomplete number", () => {
+    render(<ControlledPhoneInput countryCode="BO" />);
+
+    const input = screen.getByLabelText("Phone number");
+
+    fireEvent.change(input, { target: { value: "7" } });
+    expect(input).toHaveValue("7");
+
+    fireEvent.change(input, { target: { value: "70" } });
+    expect(input).toHaveValue("70");
+
+    fireEvent.change(input, { target: { value: "70000000" } });
+    expect(input).toHaveValue("70000000");
   });
 });

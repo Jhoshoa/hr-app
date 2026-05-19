@@ -74,7 +74,7 @@ export function CompanySignupPage() {
       desiredTenantSlug: "",
       message: "",
       phone: "",
-      preferredLanguage: "es",
+      preferredLanguage: "en",
       timezone: ""
     },
     mode: "onChange",
@@ -317,12 +317,7 @@ export function CompanySignupPage() {
                   />
                 </Field>
 
-                <Field label="Preferred language" error={errors.preferredLanguage?.message} required>
-                  <Select required {...register("preferredLanguage")}>
-                    <option value="es">Spanish</option>
-                    <option value="en">English</option>
-                  </Select>
-                </Field>
+                <input type="hidden" value="en" {...register("preferredLanguage")} />
               </div>
             </section>
 

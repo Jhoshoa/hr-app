@@ -106,10 +106,21 @@ const getValueCallingCode = (value: string): CallingCode | undefined =>
   callingCodeOptions.find((option) => value.startsWith(option.value))?.value;
 
 const getLocalNumber = (value: string, callingCode: CallingCode): string => {
+  const digitsOnly = value.replace(/\D/g, "");
+  const callingCodeDigits = callingCode.replace(/\D/g, "");
+
+  if (value.startsWith(callingCode)) {
+    return value.slice(callingCode.length).replace(/\D/g, "");
+  }
+
+  if (digitsOnly.startsWith(callingCodeDigits)) {
+    return digitsOnly.slice(callingCodeDigits.length);
+  }
+
   const normalized = normalizePhoneNumber(value);
 
   if (!normalized) {
-    return value.replace(/\D/g, "");
+    return digitsOnly;
   }
 
   return normalized.startsWith(callingCode) ? normalized.slice(callingCode.length) : normalized.slice(1);

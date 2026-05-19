@@ -2,7 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { normalizeCountryCode, normalizePhoneNumber } from "@hr-app/geo";
+import {
+  getCountryDefaultTimeZone,
+  getCountryTimeZones,
+  normalizeCountryCode,
+  normalizePhoneNumber
+} from "@hr-app/geo";
 import { Building2, Globe2, Save, UserRound } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import type { SubmitHandler } from "react-hook-form";
@@ -31,11 +36,6 @@ import {
 import { useGetCurrentTenantQuery, useUpdateCurrentTenantMutation } from "../tenants-api";
 import { updateCurrentTenantName } from "../tenant-slice";
 
-const languageOptions = [
-  { label: "Spanish", value: "es" },
-  { label: "English", value: "en" }
-] as const;
-
 const currencyOptions = [
   { label: "Boliviano (BOB)", value: "BOB" },
   { label: "US Dollar (USD)", value: "USD" }
@@ -54,6 +54,19 @@ type CompanySizeFormValue = (typeof companySizeOptions)[number]["value"];
 const companySizeValues = new Set<string>(companySizeOptions.map((option) => option.value));
 const toCompanySizeFormValue = (value: string | null | undefined): CompanySizeFormValue =>
   value && companySizeValues.has(value) ? (value as CompanySizeFormValue) : "";
+const toTimezoneFormValue = (country: string | null | undefined, timezone: string): string => {
+  if (!country) {
+    return timezone;
+  }
+
+  const countryTimeZones = getCountryTimeZones(country);
+
+  if (countryTimeZones.some((timeZone) => timeZone === timezone)) {
+    return timezone;
+  }
+
+  return getCountryDefaultTimeZone(country) ?? timezone;
+};
 
 const companySettingsTabs = [
   { key: "profile", label: "Profile" },
@@ -81,12 +94,13 @@ export function CompanySettingsPage() {
     handleSubmit,
     register,
     reset,
+    setValue,
     watch
   } = useForm<CompanySettingsFormValues>({
     resolver: zodResolver(companySettingsSchema),
     defaultValues: {
       name: "",
-      defaultLanguage: "es",
+      defaultLanguage: "en",
       defaultCurrency: "BOB",
       timezone: DEFAULT_TIME_ZONE,
       website: "",
@@ -96,6 +110,7 @@ export function CompanySettingsPage() {
     }
   });
   const selectedCountry = watch("country");
+  const selectedTimezone = watch("timezone");
 
   useEffect(() => {
     if (!tenant) {
@@ -104,15 +119,33 @@ export function CompanySettingsPage() {
 
     reset({
       name: tenant.name,
-      defaultLanguage: tenant.defaultLanguage === "en" ? "en" : "es",
+      defaultLanguage: "en",
       defaultCurrency: tenant.defaultCurrency === "USD" ? "USD" : "BOB",
-      timezone: tenant.timezone,
+      timezone: toTimezoneFormValue(tenant.profile?.country, tenant.timezone),
       website: tenant.profile?.website ?? "",
       companySize: toCompanySizeFormValue(tenant.profile?.companySize),
       country: tenant.profile?.country ?? "",
       phone: tenant.profile?.phone ?? ""
     });
   }, [reset, tenant]);
+
+  useEffect(() => {
+    if (!selectedCountry) {
+      return;
+    }
+
+    const countryTimeZones = getCountryTimeZones(selectedCountry);
+
+    if (selectedTimezone && countryTimeZones.some((timeZone) => timeZone === selectedTimezone)) {
+      return;
+    }
+
+    const defaultTimeZone = getCountryDefaultTimeZone(selectedCountry);
+
+    if (defaultTimeZone) {
+      setValue("timezone", defaultTimeZone, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [selectedCountry, selectedTimezone, setValue]);
 
   const onSubmit: SubmitHandler<CompanySettingsFormValues> = async (values) => {
     const country = normalizeCountryCode(values.country);
@@ -122,7 +155,7 @@ export function CompanySettingsPage() {
       const updatedTenant = await updateTenant({
         tenantSlug,
         name: values.name,
-        defaultLanguage: values.defaultLanguage,
+        defaultLanguage: "en",
         defaultCurrency: values.defaultCurrency,
         timezone: values.timezone,
         profile: {
@@ -135,9 +168,9 @@ export function CompanySettingsPage() {
       dispatch(updateCurrentTenantName(updatedTenant.name));
       reset({
         name: updatedTenant.name,
-        defaultLanguage: updatedTenant.defaultLanguage === "en" ? "en" : "es",
+        defaultLanguage: "en",
         defaultCurrency: updatedTenant.defaultCurrency === "USD" ? "USD" : "BOB",
-        timezone: updatedTenant.timezone,
+        timezone: toTimezoneFormValue(updatedTenant.profile?.country, updatedTenant.timezone),
         website: updatedTenant.profile?.website ?? "",
         companySize: toCompanySizeFormValue(updatedTenant.profile?.companySize),
         country: updatedTenant.profile?.country ?? "",
@@ -202,14 +235,21 @@ export function CompanySettingsPage() {
                     ) : (
                       <>
                         <label className="block">
-                          <span className="text-sm font-medium">Company name</span>
+                          <span className="text-sm font-medium">
+                            Company name
+                            <RequiredMark />
+                          </span>
                           <Input className="mt-1" disabled={!tenant} placeholder="AssureSoft Demo" {...register("name")} />
                           {errors.name ? <span className="mt-1 block text-sm text-rose-600">{errors.name.message}</span> : null}
                         </label>
 
                         <label className="block">
                           <span className="text-sm font-medium">Workspace slug</span>
-                          <Input className="mt-1" disabled value={tenant?.slug ?? ""} />
+                          <Input
+                            className="mt-1 cursor-not-allowed border-border/70 bg-muted text-muted-foreground opacity-80"
+                            disabled
+                            value={tenant?.slug ?? ""}
+                          />
                           <span className="mt-1 block text-xs text-muted-foreground">Slug changes are disabled for now.</span>
                         </label>
                       </>
@@ -298,26 +338,13 @@ export function CompanySettingsPage() {
                       <LocalizationSkeleton />
                     ) : (
                       <>
-                        <label className="block">
-                          <span className="text-sm font-medium">Default language</span>
-                          <select
-                            className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                            disabled={!tenant}
-                            {...register("defaultLanguage")}
-                          >
-                            {languageOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          {errors.defaultLanguage ? (
-                            <span className="mt-1 block text-sm text-rose-600">{errors.defaultLanguage.message}</span>
-                          ) : null}
-                        </label>
+                        <input type="hidden" value="en" {...register("defaultLanguage")} />
 
                         <label className="block">
-                          <span className="text-sm font-medium">Default currency</span>
+                          <span className="text-sm font-medium">
+                            Default currency
+                            <RequiredMark />
+                          </span>
                           <select
                             className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
                             disabled={!tenant}
@@ -334,9 +361,17 @@ export function CompanySettingsPage() {
                           ) : null}
                         </label>
 
-                        <label className="block md:col-span-2">
-                          <span className="text-sm font-medium">Timezone</span>
-                          <TimezoneSelect disabled={!tenant} {...register("timezone")} />
+                        <label className="block">
+                          <span className="text-sm font-medium">
+                            Timezone
+                            <RequiredMark />
+                          </span>
+                          <TimezoneSelect
+                            className="mt-1"
+                            countryCode={selectedCountry}
+                            disabled={!tenant}
+                            {...register("timezone")}
+                          />
                           {errors.timezone ? (
                             <span className="mt-1 block text-sm text-rose-600">{errors.timezone.message}</span>
                           ) : null}
@@ -399,9 +434,6 @@ function LocalizationSkeleton() {
     <>
       <FieldSkeleton />
       <FieldSkeleton />
-      <div className="md:col-span-2">
-        <FieldSkeleton />
-      </div>
     </>
   );
 }
@@ -414,6 +446,14 @@ function CompanyProfileSkeleton() {
       <FieldSkeleton />
       <FieldSkeleton />
     </>
+  );
+}
+
+function RequiredMark() {
+  return (
+    <span aria-hidden="true" className="ml-1 text-black">
+      *
+    </span>
   );
 }
 

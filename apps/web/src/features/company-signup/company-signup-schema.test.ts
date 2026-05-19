@@ -17,7 +17,7 @@ const validInput = {
   desiredTenantSlug: " Acme Operations ",
   message: " Needs approval ",
   phone: "+591 70000000",
-  preferredLanguage: "es",
+  preferredLanguage: "en",
   timezone: "America/La_Paz"
 };
 
@@ -34,7 +34,7 @@ describe("companySignupSchema", () => {
       desiredTenantSlug: "acme-operations",
       message: "Needs approval",
       phone: "+59170000000",
-      preferredLanguage: "es",
+      preferredLanguage: "en",
       timezone: "America/La_Paz"
     });
   });

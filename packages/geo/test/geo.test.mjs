@@ -51,8 +51,8 @@ describe("@hr-app/geo", () => {
     });
   });
 
-  it("returns calling code options with flag labels", () => {
-    assert.equal(getCallingCodeOptions()[0]?.label, "\u{1F1FA}\u{1F1F8} +1");
+  it("returns calling code options with stable text labels", () => {
+    assert.equal(getCallingCodeOptions()[0]?.label, "US +1");
   });
 
   it("resolves subdivision catalogs by country", () => {
