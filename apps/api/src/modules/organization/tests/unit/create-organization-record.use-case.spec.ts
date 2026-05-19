@@ -1,5 +1,6 @@
 import { CreateOrganizationRecordUseCase } from "../../application/use-cases/create-organization-record.use-case";
 import type { OrganizationRepository } from "../../domain/ports/organization.repository.port";
+import type { TenantsRepository } from "../../../tenants/domain/ports/tenants.repository.port";
 
 const createRepository = (): jest.Mocked<OrganizationRepository> => ({
   archive: jest.fn(),
@@ -8,6 +9,22 @@ const createRepository = (): jest.Mocked<OrganizationRepository> => ({
   list: jest.fn(),
   reactivate: jest.fn(),
   update: jest.fn()
+});
+
+const createTenantsRepository = (): jest.Mocked<TenantsRepository> => ({
+  findById: jest.fn(),
+  findBySlug: jest.fn(),
+  updateSettings: jest.fn()
+});
+
+const createTenant = (timezone = "America/La_Paz") => ({
+  id: "tenant-1",
+  name: "Demo Tenant",
+  slug: "demo-tenant",
+  status: "ACTIVE",
+  defaultLanguage: "en",
+  defaultCurrency: "USD",
+  timezone
 });
 
 describe("CreateOrganizationRecordUseCase", () => {
@@ -25,7 +42,11 @@ describe("CreateOrganizationRecordUseCase", () => {
     });
 
     const createAuditEventUseCase = { execute: jest.fn() };
-    const useCase = new CreateOrganizationRecordUseCase(repository, createAuditEventUseCase as never);
+    const useCase = new CreateOrganizationRecordUseCase(
+      repository,
+      createTenantsRepository(),
+      createAuditEventUseCase as never
+    );
     const result = await useCase.execute({
       tenantId: "tenant-1",
       actorUserId: "user-1",
@@ -65,7 +86,13 @@ describe("CreateOrganizationRecordUseCase", () => {
     });
 
     const createAuditEventUseCase = { execute: jest.fn() };
-    const useCase = new CreateOrganizationRecordUseCase(repository, createAuditEventUseCase as never);
+    const tenantsRepository = createTenantsRepository();
+    tenantsRepository.findById.mockResolvedValue(createTenant());
+    const useCase = new CreateOrganizationRecordUseCase(
+      repository,
+      tenantsRepository,
+      createAuditEventUseCase as never
+    );
 
     await useCase.execute({
       tenantId: "tenant-1",
@@ -85,10 +112,50 @@ describe("CreateOrganizationRecordUseCase", () => {
     );
   });
 
-  it("defaults location country and timezone when omitted", async () => {
+  it("defaults location country and timezone from tenant timezone when omitted", async () => {
     const repository = createRepository();
+    const tenantsRepository = createTenantsRepository();
     const createdAt = new Date("2026-05-12T10:00:00.000Z");
 
+    tenantsRepository.findById.mockResolvedValue(createTenant("America/New_York"));
+    repository.create.mockResolvedValue({
+      id: "location-1",
+      tenantId: "tenant-1",
+      name: "Default HQ",
+      country: "US",
+      timezone: "America/New_York",
+      status: "ACTIVE",
+      createdAt,
+      updatedAt: createdAt
+    });
+
+    const useCase = new CreateOrganizationRecordUseCase(
+      repository,
+      tenantsRepository,
+      { execute: jest.fn() } as never
+    );
+
+    await useCase.execute({
+      tenantId: "tenant-1",
+      actorUserId: "user-1",
+      kind: "location",
+      name: "Default HQ"
+    });
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "US",
+        timezone: "America/New_York"
+      })
+    );
+  });
+
+  it("falls back to global location defaults when tenant timezone is unsupported", async () => {
+    const repository = createRepository();
+    const tenantsRepository = createTenantsRepository();
+    const createdAt = new Date("2026-05-12T10:00:00.000Z");
+
+    tenantsRepository.findById.mockResolvedValue(createTenant("Europe/Madrid"));
     repository.create.mockResolvedValue({
       id: "location-1",
       tenantId: "tenant-1",
@@ -100,7 +167,11 @@ describe("CreateOrganizationRecordUseCase", () => {
       updatedAt: createdAt
     });
 
-    const useCase = new CreateOrganizationRecordUseCase(repository, { execute: jest.fn() } as never);
+    const useCase = new CreateOrganizationRecordUseCase(
+      repository,
+      tenantsRepository,
+      { execute: jest.fn() } as never
+    );
 
     await useCase.execute({
       tenantId: "tenant-1",
@@ -118,7 +189,13 @@ describe("CreateOrganizationRecordUseCase", () => {
   });
 
   it("rejects unsupported location country and timezone values", async () => {
-    const useCase = new CreateOrganizationRecordUseCase(createRepository(), { execute: jest.fn() } as never);
+    const tenantsRepository = createTenantsRepository();
+    tenantsRepository.findById.mockResolvedValue(createTenant());
+    const useCase = new CreateOrganizationRecordUseCase(
+      createRepository(),
+      tenantsRepository,
+      { execute: jest.fn() } as never
+    );
 
     await expect(
       useCase.execute({

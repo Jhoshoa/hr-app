@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { DEFAULT_COUNTRY_CODE, normalizeCountryCode } from "@hr-app/geo";
+import { DEFAULT_COUNTRY_CODE, getCountryCodeForTimeZone, normalizeCountryCode } from "@hr-app/geo";
 import { DEFAULT_TIME_ZONE, normalizeTimeZone } from "@hr-app/timezones";
 import type {
   CreateOrganizationRecordInput,
@@ -9,6 +9,10 @@ import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository
 } from "../../domain/ports/organization.repository.port";
+import {
+  TENANTS_REPOSITORY,
+  type TenantsRepository
+} from "../../../tenants/domain/ports/tenants.repository.port";
 import { CreateAuditEventUseCase } from "../../../audit/application/use-cases/create-audit-event.use-case";
 
 export interface CreateOrganizationRecordCommand extends CreateOrganizationRecordInput {
@@ -20,6 +24,8 @@ export class CreateOrganizationRecordUseCase {
   constructor(
     @Inject(ORGANIZATION_REPOSITORY)
     private readonly organizationRepository: OrganizationRepository,
+    @Inject(TENANTS_REPOSITORY)
+    private readonly tenantsRepository: TenantsRepository,
     private readonly createAuditEventUseCase: CreateAuditEventUseCase
   ) {}
 
@@ -35,11 +41,7 @@ export class CreateOrganizationRecordUseCase {
     const { actorUserId, ...createInput } = input;
     const normalizedInput =
       createInput.kind === "location"
-        ? {
-            ...createInput,
-            country: this.normalizeCountry(createInput.country) ?? DEFAULT_COUNTRY_CODE,
-            timezone: this.normalizeLocationTimeZone(createInput.timezone) ?? DEFAULT_TIME_ZONE
-          }
+        ? await this.normalizeLocationInput(createInput)
         : createInput;
     const record = await this.organizationRepository.create(normalizedInput);
 
@@ -53,6 +55,26 @@ export class CreateOrganizationRecordUseCase {
     });
 
     return record;
+  };
+
+  private normalizeLocationInput = async (
+    input: CreateOrganizationRecordInput
+  ): Promise<CreateOrganizationRecordInput> => {
+    const tenant = await this.tenantsRepository.findById(input.tenantId);
+    const timeZone =
+      this.normalizeLocationTimeZone(input.timezone) ??
+      normalizeTimeZone(tenant?.timezone) ??
+      DEFAULT_TIME_ZONE;
+    const country =
+      this.normalizeCountry(input.country) ??
+      getCountryCodeForTimeZone(timeZone) ??
+      DEFAULT_COUNTRY_CODE;
+
+    return {
+      ...input,
+      country,
+      timezone: timeZone
+    };
   };
 
   private normalizeCountry = (value: string | undefined): string | undefined => {

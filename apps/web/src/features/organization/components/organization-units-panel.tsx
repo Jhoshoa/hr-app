@@ -9,8 +9,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
+import { CountrySelect } from "@/features/geo/components/country-select";
+import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
+import { useGetCurrentTenantQuery } from "@/features/tenants/tenants-api";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { normalizeApiError } from "@/lib/api/api-error";
+import { DEFAULT_COUNTRY_CODE, getCountryCodeForTimeZone, getCountryDefaultTimeZone } from "@hr-app/geo";
+import { DEFAULT_TIME_ZONE, normalizeTimeZone } from "@hr-app/timezones";
 import {
   useCreateOrganizationRecordMutation,
   useListOrganizationRecordsQuery
@@ -55,6 +60,7 @@ export function OrganizationUnitsPanel() {
     { kind: "location", tenantSlug },
     { skip: !tenantSlug }
   );
+  const { data: tenantSettings, isFetching: isTenantFetching } = useGetCurrentTenantQuery(tenantSlug, { skip: !tenantSlug });
   const [archiveUnit, archiveState] = useArchiveOrganizationUnitMutation();
   const [deleteUnit, deleteState] = useDeleteOrganizationUnitMutation();
   const [reactivateUnit, reactivateState] = useReactivateOrganizationUnitMutation();
@@ -222,8 +228,10 @@ export function OrganizationUnitsPanel() {
 
       <OrganizationUnitDrawer
         drawer={drawer}
+        defaultLocationCountry={getCountryCodeForTimeZone(tenantSettings?.timezone ?? "") ?? DEFAULT_COUNTRY_CODE}
+        defaultLocationTimezone={normalizeTimeZone(tenantSettings?.timezone) ?? DEFAULT_TIME_ZONE}
         locations={locations}
-        isOptionsLoading={isDrawerOptionsLoading}
+        isOptionsLoading={isDrawerOptionsLoading || isTenantFetching}
         onClose={() => setDrawer(null)}
         tenantSlug={tenantSlug}
         types={types}
@@ -261,6 +269,8 @@ export function OrganizationUnitsPanel() {
 
 function OrganizationUnitDrawer({
   drawer,
+  defaultLocationTimezone,
+  defaultLocationCountry,
   isOptionsLoading,
   locations,
   onClose,
@@ -269,6 +279,8 @@ function OrganizationUnitDrawer({
   units
 }: Readonly<{
   drawer: DrawerState | null;
+  defaultLocationCountry: string;
+  defaultLocationTimezone: string;
   isOptionsLoading: boolean;
   locations: readonly OrganizationRecord[];
   onClose: () => void;
@@ -280,20 +292,21 @@ function OrganizationUnitDrawer({
   const [createUnit, createState] = useCreateOrganizationUnitMutation();
   const [updateUnit, updateState] = useUpdateOrganizationUnitMutation();
   const [createLocation, createLocationState] = useCreateOrganizationRecordMutation();
-  const [formState, setFormState] = useState({
+  const buildEmptyFormState = () => ({
     typeId: "",
     parentOrganizationUnitId: "",
     primaryLocationId: "",
     createPrimaryLocation: false,
     primaryLocationName: "",
-    primaryLocationCountry: "US",
+    primaryLocationCountry: defaultLocationCountry,
     primaryLocationCity: "",
-    primaryLocationTimezone: "America/New_York",
+    primaryLocationTimezone: defaultLocationTimezone,
     key: "",
     name: "",
     legalName: "",
     code: ""
   });
+  const [formState, setFormState] = useState(buildEmptyFormState);
   const [initialFormState, setInitialFormState] = useState(formState);
   const [formReadyKey, setFormReadyKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -310,20 +323,7 @@ function OrganizationUnitDrawer({
 
   useEffect(() => {
     if (!drawer) {
-      const emptyState = {
-        typeId: "",
-        parentOrganizationUnitId: "",
-        primaryLocationId: "",
-        createPrimaryLocation: false,
-        primaryLocationName: "",
-        primaryLocationCountry: "US",
-        primaryLocationCity: "",
-        primaryLocationTimezone: "America/New_York",
-        key: "",
-        name: "",
-        legalName: "",
-        code: ""
-      };
+      const emptyState = buildEmptyFormState();
       setFormState(emptyState);
       setInitialFormState(emptyState);
       setFormReadyKey(null);
@@ -338,9 +338,9 @@ function OrganizationUnitDrawer({
             primaryLocationId: drawer.record.primaryLocationId ?? "",
             createPrimaryLocation: false,
             primaryLocationName: "",
-            primaryLocationCountry: "US",
+            primaryLocationCountry: defaultLocationCountry,
             primaryLocationCity: "",
-            primaryLocationTimezone: "America/New_York",
+            primaryLocationTimezone: defaultLocationTimezone,
             key: drawer.record.key ?? "",
             name: drawer.record.name,
             legalName: drawer.record.legalName ?? "",
@@ -352,9 +352,9 @@ function OrganizationUnitDrawer({
             primaryLocationId: "",
             createPrimaryLocation: false,
             primaryLocationName: "",
-            primaryLocationCountry: "US",
+            primaryLocationCountry: defaultLocationCountry,
             primaryLocationCity: "",
-            primaryLocationTimezone: "America/New_York",
+            primaryLocationTimezone: defaultLocationTimezone,
             key: "",
             name: "",
             legalName: "",
@@ -364,7 +364,7 @@ function OrganizationUnitDrawer({
     setInitialFormState(nextState);
     setFormReadyKey(drawerKey);
     setFormError(null);
-  }, [drawer, drawerKey, activeTypes]);
+  }, [drawer, drawerKey, activeTypes, defaultLocationCountry, defaultLocationTimezone]);
 
   const isSaving = createState.isLoading || updateState.isLoading || createLocationState.isLoading;
   const isFormReady = Boolean(drawerKey && formReadyKey === drawerKey && !isOptionsLoading);
@@ -536,12 +536,16 @@ function OrganizationUnitDrawer({
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
                   <RequiredLabel required>Country</RequiredLabel>
-                  <Input
+                  <CountrySelect
                     className="mt-1"
                     onChange={(event) =>
-                      setFormState((current) => ({ ...current, primaryLocationCountry: event.target.value }))
+                      setFormState((current) => ({
+                        ...current,
+                        primaryLocationCountry: event.target.value,
+                        primaryLocationTimezone:
+                          getCountryDefaultTimeZone(event.target.value) ?? current.primaryLocationTimezone
+                      }))
                     }
-                    placeholder="US"
                     value={formState.primaryLocationCountry}
                   />
                 </label>
@@ -559,12 +563,12 @@ function OrganizationUnitDrawer({
               </div>
               <label className="block">
                 <RequiredLabel required>Timezone</RequiredLabel>
-                <Input
+                <TimezoneSelect
                   className="mt-1"
+                  countryCode={formState.primaryLocationCountry}
                   onChange={(event) =>
                     setFormState((current) => ({ ...current, primaryLocationTimezone: event.target.value }))
                   }
-                  placeholder="America/New_York"
                   value={formState.primaryLocationTimezone}
                 />
               </label>

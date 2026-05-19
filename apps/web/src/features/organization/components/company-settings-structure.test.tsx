@@ -10,6 +10,8 @@ const dispatchMock = vi.fn();
 const archiveOrganizationUnitMock = vi.fn();
 const archiveOrganizationUnitTypeMock = vi.fn();
 const createOrganizationUnitTypeMock = vi.fn();
+const createOrganizationUnitMock = vi.fn();
+const createOrganizationRecordMock = vi.fn();
 const deleteOrganizationUnitMock = vi.fn();
 const deleteOrganizationUnitTypeMock = vi.fn();
 const reorderOrganizationUnitTypesMock = vi.fn();
@@ -131,7 +133,7 @@ vi.mock("@/features/tenants/tenants-api", () => ({
 
 vi.mock("../organization-api", () => ({
   useArchiveOrganizationRecordMutation: () => [vi.fn(), mutationState],
-  useCreateOrganizationRecordMutation: () => [vi.fn(), mutationState],
+  useCreateOrganizationRecordMutation: () => [createOrganizationRecordMock, mutationState],
   useListOrganizationRecordsQuery: ({ kind }: { kind: string }) => ({
     data: kind === "location" ? locationRecordsData : [],
     isError: false,
@@ -144,7 +146,7 @@ vi.mock("../organization-api", () => ({
 vi.mock("../organization-units-api", () => ({
   useArchiveOrganizationUnitMutation: () => [archiveOrganizationUnitMock, mutationState],
   useArchiveOrganizationUnitTypeMutation: () => [archiveOrganizationUnitTypeMock, mutationState],
-  useCreateOrganizationUnitMutation: () => [vi.fn(), mutationState],
+  useCreateOrganizationUnitMutation: () => [createOrganizationUnitMock, mutationState],
   useCreateOrganizationUnitTypeMutation: () => [createOrganizationUnitTypeMock, mutationState],
   useDeleteOrganizationUnitMutation: () => [deleteOrganizationUnitMock, mutationState],
   useDeleteOrganizationUnitTypeMutation: () => [deleteOrganizationUnitTypeMock, mutationState],
@@ -181,6 +183,22 @@ describe("CompanySettingsPage structure settings", () => {
     archiveOrganizationUnitTypeMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
     createOrganizationUnitTypeMock.mockReset();
     createOrganizationUnitTypeMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
+    createOrganizationUnitMock.mockReset();
+    createOrganizationUnitMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
+    createOrganizationRecordMock.mockReset();
+    createOrganizationRecordMock.mockReturnValue({
+      unwrap: () => Promise.resolve({
+        id: "location-created",
+        tenantId: "tenant-1",
+        name: "New York HQ",
+        country: "US",
+        city: "New York",
+        timezone: "America/New_York",
+        status: "ACTIVE",
+        createdAt: "2026-05-18T00:00:00.000Z",
+        updatedAt: "2026-05-18T00:00:00.000Z"
+      })
+    });
     deleteOrganizationUnitMock.mockReset();
     deleteOrganizationUnitMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
     deleteOrganizationUnitTypeMock.mockReset();
@@ -401,6 +419,47 @@ describe("CompanySettingsPage structure settings", () => {
 
     expect(screen.getByRole("heading", { name: "Organization units" })).toBeInTheDocument();
     expect(screen.getByText("Cochabamba HQ")).toBeInTheDocument();
+  });
+
+  it("uses tenant timezone defaults and shared selects when creating an inline primary location", async () => {
+    render(
+      <ToastProvider>
+        <CompanySettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add unit" }));
+
+    fireEvent.change(await screen.findByPlaceholderText("Santa Cruz"), { target: { value: "New York Branch" } });
+    fireEvent.click(screen.getByLabelText("Create primary location"));
+    fireEvent.change(screen.getByPlaceholderText("New York HQ"), { target: { value: "New York HQ" } });
+
+    expect(screen.getByDisplayValue("United States")).toHaveValue("US");
+    expect(screen.getByDisplayValue("New York (America/New_York)")).toHaveValue("America/New_York");
+
+    fireEvent.change(screen.getByPlaceholderText("New York"), { target: { value: "New York" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(createOrganizationRecordMock).toHaveBeenCalledWith({
+        kind: "location",
+        tenantSlug: "assuresoft-demo",
+        payload: {
+          name: "New York HQ",
+          country: "US",
+          city: "New York",
+          timezone: "America/New_York"
+        }
+      })
+    );
+    expect(createOrganizationUnitMock).toHaveBeenCalledWith({
+      tenantSlug: "assuresoft-demo",
+      payload: expect.objectContaining({
+        name: "New York Branch",
+        primaryLocationId: "location-created"
+      })
+    });
   });
 
   it("paginates organization units after ten rows", () => {
