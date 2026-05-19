@@ -69,6 +69,7 @@ export class ReactivatePlatformTenantUseCase {
     status: tenant.status,
     defaultLanguage: tenant.defaultLanguage,
     defaultCurrency: tenant.defaultCurrency,
-    timezone: tenant.timezone
+    timezone: tenant.timezone,
+    profile: null
   });
 }

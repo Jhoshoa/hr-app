@@ -10,7 +10,8 @@ describe("MeController", () => {
           tenantSlug: "assuresoft-demo",
           tenantName: "AssureSoft Demo",
           roleKey: "owner",
-          permissions: ["tenant.read"]
+          permissions: ["tenant.read"],
+          features: ["timesheets"]
         }
       ])
     } as unknown as jest.Mocked<ListUserTenantsUseCase>;
@@ -40,7 +41,8 @@ describe("MeController", () => {
           tenantSlug: "assuresoft-demo",
           tenantName: "AssureSoft Demo",
           roleKey: "owner",
-          permissions: ["tenant.read"]
+          permissions: ["tenant.read"],
+          features: ["timesheets"]
         }
       ],
       platformRoles: ["PLATFORM_OWNER"]

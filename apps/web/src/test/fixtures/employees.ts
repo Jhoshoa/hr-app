@@ -9,6 +9,8 @@ export const employeeFixtures: EmployeeListItem[] = [
     location: "Cochabamba",
     manager: "Diego Pereira",
     name: "Camila Vargas",
+    organizationUnit: "Cochabamba",
+    organizationUnitId: "unit-cochabamba",
     startDate: "2022-03-14",
     status: "ACTIVE",
     workEmail: "camila.vargas@andeshr.example"
@@ -21,6 +23,8 @@ export const employeeFixtures: EmployeeListItem[] = [
     location: "Santa Cruz",
     manager: "Maria Rojas",
     name: "Lucia Fernandez",
+    organizationUnit: "Santa Cruz",
+    organizationUnitId: "unit-santa-cruz",
     startDate: "2021-08-02",
     status: "ACTIVE",
     workEmail: "lucia.fernandez@andeshr.example"
@@ -33,6 +37,8 @@ export const employeeFixtures: EmployeeListItem[] = [
     location: "La Paz",
     manager: "Sofia Aguilar",
     name: "Mateo Quiroga",
+    organizationUnit: "La Paz",
+    organizationUnitId: "unit-la-paz",
     startDate: "2023-11-20",
     status: "ACTIVE",
     workEmail: "mateo.quiroga@andeshr.example"
@@ -45,6 +51,8 @@ export const employeeFixtures: EmployeeListItem[] = [
     location: "Remote",
     manager: "Lucia Fernandez",
     name: "Valeria Salazar",
+    organizationUnit: "Remote Team",
+    organizationUnitId: "unit-remote-team",
     startDate: "2020-05-11",
     status: "INACTIVE",
     workEmail: "valeria.salazar@andeshr.example"
@@ -57,6 +65,8 @@ export const employeeFixtures: EmployeeListItem[] = [
     location: "Cochabamba",
     manager: "Diego Pereira",
     name: "Andres Molina",
+    organizationUnit: "Cochabamba",
+    organizationUnitId: "unit-cochabamba",
     startDate: "2019-01-07",
     status: "TERMINATED",
     workEmail: "andres.molina@andeshr.example"

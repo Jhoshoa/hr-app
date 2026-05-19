@@ -28,7 +28,8 @@ export class ResolveTenantContextUseCase {
       name: membership.tenantName,
       roleKey: membership.roleKey,
       roles: membership.roles,
-      permissions: membership.permissions
+      permissions: membership.permissions,
+      features: membership.features
     };
   };
 }

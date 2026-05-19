@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Settings2, ShieldCheck } from "lucide-react";
+import { Settings2, ShieldCheck, UsersRound } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
@@ -29,23 +29,23 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Company profile, language, currency, and timezone defaults.
+                Company profile, locations, hierarchy, language, currency, and timezone defaults.
               </p>
             </CardContent>
           </Card>
         </Link>
 
-        <Link href="/settings/organization">
+        <Link href="/settings/hr">
           <Card className="h-full transition-colors hover:border-primary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" aria-hidden="true" />
-                Organization
+                <UsersRound className="h-4 w-4" aria-hidden="true" />
+                HR
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Departments, locations, job titles, employment types, work modes, and client projects.
+                Departments, job titles, employment types, work modes, and client projects.
               </p>
             </CardContent>
           </Card>

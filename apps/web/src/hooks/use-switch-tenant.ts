@@ -3,7 +3,6 @@
 import { useCallback } from "react";
 import { baseApi } from "@/features/api/base-api";
 import { dashboardApi } from "@/features/dashboard/dashboard-api";
-import { employeesApi } from "@/features/employees/employees-api";
 import { selectTenant } from "@/features/tenants/tenant-slice";
 import { saveSelectedTenantSlugToWorkspaceCache } from "@/lib/auth/workspace-cache";
 import { useAppDispatch } from "@/store/hooks";
@@ -31,7 +30,6 @@ export const useSwitchTenant = () => {
       saveSelectedTenantSlugToWorkspaceCache(tenantSlug);
       dispatch(baseApi.util.resetApiState());
       dispatch(dashboardApi.util.resetApiState());
-      dispatch(employeesApi.util.resetApiState());
 
       return true;
     },

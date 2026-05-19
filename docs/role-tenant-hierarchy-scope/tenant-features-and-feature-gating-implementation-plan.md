@@ -2,6 +2,8 @@
 
 Fecha: 2026-05-17
 
+Ultima actualizacion de implementacion: 2026-05-18
+
 ## Objetivo
 
 Definir una implementacion minima temprana para habilitar/deshabilitar modulos
@@ -706,3 +708,70 @@ Orden recomendado:
 
 Esto evita refactors grandes en navegacion, endpoints y use cases cuando el
 producto empiece a vender modulos por tenant o hacer rollouts graduales.
+
+## Estado Implementado 2026-05-18
+
+La fase minima de `TenantFeature` ya quedo implementada:
+
+```txt
+DB:
+  TenantFeature agregado a Prisma.
+  Relacion Tenant.features agregada.
+  Migracion 20260518120000_tenant_features aplicada en DB local.
+  Indices:
+    unique tenantId + key
+    tenantId + enabled
+    key + enabled
+
+Catalogo:
+  packages/database/src/tenant-feature-catalog.ts
+  Seed local habilita todas las features del catalogo para tenants demo.
+
+Backend:
+  TenantContext.features agregado.
+  TenantMembershipContext.features agregado.
+  PrismaUsersRepository carga solo features enabled en el contexto efectivo.
+  /me devuelve features por tenant.
+  TenantFeatureService agregado.
+  @RequireFeature agregado.
+  TenantFeatureGuard registrado globalmente despues de TenantGuard y antes de PermissionsGuard.
+
+Frontend:
+  TenantSummary.features agregado.
+  current-user-api normaliza features faltantes a [].
+  helpers hasFeature, hasAllFeatures, hasAnyFeature agregados.
+  SidebarNav soporta item.features sin cambiar la navegacion existente.
+```
+
+Decision aplicada:
+
+```txt
+Por compatibilidad, ningun item de navegacion existente fue gated todavia con
+features. Cada modulo nuevo debe declarar su feature key cuando se agregue su
+route/page y cada endpoint debe usar @RequireFeature o TenantFeatureService.
+```
+
+Validacion ejecutada:
+
+```txt
+corepack pnpm --filter @hr-app/database db:generate
+corepack pnpm --filter @hr-app/api typecheck
+corepack pnpm --filter @hr-app/web typecheck
+corepack pnpm --filter @hr-app/database typecheck
+corepack pnpm --filter @hr-app/api test
+corepack pnpm --filter @hr-app/web test
+corepack pnpm --filter @hr-app/database db:migrate
+corepack pnpm --filter @hr-app/database db:seed
+corepack pnpm --filter @hr-app/api test:e2e
+```
+
+Siguiente fase:
+
+```txt
+OrganizationUnit:
+  OrganizationUnitType
+  OrganizationUnit
+  EmployeeJobAssignment.organizationUnitId
+  CRUD backend especifico dentro de OrganizationModule
+  paneles frontend especificos en Organization Settings
+```

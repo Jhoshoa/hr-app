@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Archive, Edit3, Plus, RotateCcw } from "lucide-react";
-import { PageHeader } from "@/components/app-shell/page-header";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,8 +9,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
+import { CountrySelect } from "@/features/geo/components/country-select";
+import { SubdivisionSelect } from "@/features/geo/components/subdivision-select";
+import { useGetCurrentTenantQuery } from "@/features/tenants/tenants-api";
+import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
-import { cn } from "@/lib/utils";
+import { DEFAULT_COUNTRY_CODE, getCountryCodeForTimeZone, getCountryDefaultTimeZone } from "@hr-app/geo";
+import { DEFAULT_TIME_ZONE, formatDateInTimeZone, normalizeTimeZone } from "@hr-app/timezones";
 import {
   useArchiveOrganizationRecordMutation,
   useCreateOrganizationRecordMutation,
@@ -19,16 +23,13 @@ import {
   useReactivateOrganizationRecordMutation,
   useUpdateOrganizationRecordMutation
 } from "../organization-api";
-import { organizationCatalogs } from "../organization-config";
 import { getOrganizationRecordDetail, ORGANIZATION_PAGE_SIZE, paginateRecords } from "../organization-utils";
+import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./organization-loading";
 import type {
   OrganizationCatalogConfig,
   OrganizationRecord,
-  OrganizationRecordKind,
   OrganizationRecordPayload
 } from "../organization-types";
-
-const defaultCatalog = organizationCatalogs[0] as OrganizationCatalogConfig;
 
 type DrawerState =
   | { readonly mode: "create"; readonly record?: undefined }
@@ -39,55 +40,16 @@ interface PendingAction {
   readonly record: OrganizationRecord;
 }
 
-export function OrganizationSettingsPage() {
-  const [activeKind, setActiveKind] = useState<OrganizationRecordKind>(defaultCatalog.kind);
-  const activeCatalog = organizationCatalogs.find((catalog) => catalog.kind === activeKind) ?? defaultCatalog;
-
-  return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          { label: "Settings", href: "/settings" },
-          { label: "Organization settings" }
-        ]}
-        title="Organization settings"
-        description="Configure tenant-level catalogs used by employee profiles, assignments, and reporting."
-      />
-
-      <div className="flex flex-wrap gap-2 border-b border-border">
-        {organizationCatalogs.map((catalog) => (
-          <button
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              activeKind === catalog.kind
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-            key={catalog.kind}
-            onClick={() => setActiveKind(catalog.kind)}
-            type="button"
-          >
-            {catalog.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-5">
-        <OrganizationCatalogPanel catalog={activeCatalog} />
-      </div>
-    </>
-  );
-}
-
-function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationCatalogConfig }>) {
+export function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationCatalogConfig }>) {
   const { showToast } = useToast();
   const currentTenant = useCurrentTenant();
   const tenantSlug = currentTenant.tenantSlug;
   const [page, setPage] = useState(1);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const { data: tenantSettings } = useGetCurrentTenantQuery(tenantSlug, { skip: !tenantSlug });
 
-  const { data = [], isError, isFetching } = useListOrganizationRecordsQuery(
+  const { data = [], isError, isFetching, isLoading } = useListOrganizationRecordsQuery(
     { kind: catalog.kind, tenantSlug },
     { skip: !tenantSlug }
   );
@@ -99,6 +61,7 @@ function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationC
     [data]
   );
   const paginated = paginateRecords(sortedRecords, page, ORGANIZATION_PAGE_SIZE);
+  const showTableSkeleton = isLoading || (isFetching && sortedRecords.length === 0);
 
   useEffect(() => {
     setPage(1);
@@ -151,58 +114,65 @@ function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationC
               <th className="px-5 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {paginated.items.map((record) => (
-              <tr key={record.id}>
-                <td className="px-5 py-4 font-medium">{record.name}</td>
-                <td className="px-5 py-4 text-muted-foreground">{getOrganizationRecordDetail(record)}</td>
-                <td className="px-5 py-4">
-                  <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
-                </td>
-                <td className="px-5 py-4 text-muted-foreground">
-                  {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(record.updatedAt))}
-                </td>
-                <td className="px-5 py-4">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      aria-label={`Edit ${record.name}`}
-                      className="h-8 w-8 px-0"
-                      onClick={() => setDrawer({ mode: "edit", record })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      <Edit3 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    {record.status === "ARCHIVED" ? (
+          {showTableSkeleton ? (
+            <OrganizationTableSkeleton columns={5} />
+          ) : (
+            <tbody className="divide-y divide-border">
+              {paginated.items.map((record) => (
+                <tr key={record.id}>
+                  <td className="px-5 py-4 font-medium">{record.name}</td>
+                  <td className="px-5 py-4 text-muted-foreground">{getOrganizationRecordDetail(record)}</td>
+                  <td className="px-5 py-4">
+                    <Badge tone={record.status === "ACTIVE" ? "green" : "gray"}>{record.status}</Badge>
+                  </td>
+                  <td className="px-5 py-4 text-muted-foreground">
+                    {formatDateInTimeZone(record.updatedAt, {
+                      locale: "en-US",
+                      timeZone: tenantSettings?.timezone ?? DEFAULT_TIME_ZONE
+                    })}
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-end gap-2">
                       <Button
-                        aria-label={`Reactivate ${record.name}`}
+                        aria-label={`Edit ${record.name}`}
                         className="h-8 w-8 px-0"
-                        onClick={() => setPendingAction({ action: "reactivate", record })}
+                        onClick={() => setDrawer({ mode: "edit", record })}
                         type="button"
                         variant="secondary"
                       >
-                        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        <Edit3 className="h-4 w-4" aria-hidden="true" />
                       </Button>
-                    ) : (
-                      <Button
-                        aria-label={`Archive ${record.name}`}
-                        className="h-8 w-8 px-0"
-                        onClick={() => setPendingAction({ action: "archive", record })}
-                        type="button"
-                        variant="secondary"
-                      >
-                        <Archive className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+                      {record.status === "ARCHIVED" ? (
+                        <Button
+                          aria-label={`Reactivate ${record.name}`}
+                          className="h-8 w-8 px-0"
+                          onClick={() => setPendingAction({ action: "reactivate", record })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      ) : (
+                        <Button
+                          aria-label={`Archive ${record.name}`}
+                          className="h-8 w-8 px-0"
+                          onClick={() => setPendingAction({ action: "archive", record })}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <Archive className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          )}
         </table>
       </div>
 
-      {!isFetching && sortedRecords.length === 0 ? (
+      {!showTableSkeleton && sortedRecords.length === 0 ? (
         <div className="border-t border-border px-5 py-10 text-center">
           <p className="font-medium">No records exist.</p>
           <p className="mt-1 text-sm text-muted-foreground">Add the first {catalog.singularLabel} to use it later.</p>
@@ -260,34 +230,59 @@ function OrganizationRecordDrawer({
   tenantSlug: string;
 }>) {
   const { showToast } = useToast();
+  const { data: tenantSettings } = useGetCurrentTenantQuery(tenantSlug, {
+    skip: !tenantSlug || catalog.kind !== "location"
+  });
   const [createRecord, createState] = useCreateOrganizationRecordMutation();
   const [updateRecord, updateState] = useUpdateOrganizationRecordMutation();
   const [formState, setFormState] = useState<OrganizationRecordPayload>({});
+  const [initialFormState, setInitialFormState] = useState<OrganizationRecordPayload>({});
+  const [formReadyKey, setFormReadyKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const drawerKey = drawer ? `${drawer.mode}:${drawer.mode === "edit" ? drawer.record.id : catalog.kind}` : null;
 
   useEffect(() => {
     if (!drawer) {
       setFormState({});
+      setInitialFormState({});
+      setFormReadyKey(null);
       return;
     }
 
-    setFormState(drawer.mode === "edit" ? drawer.record : {});
+    const nextState =
+      drawer.mode === "edit"
+        ? drawer.record
+        : catalog.kind === "location"
+          ? {
+              country: getCountryCodeForTimeZone(tenantSettings?.timezone ?? "") ?? DEFAULT_COUNTRY_CODE,
+              timezone: normalizeTimeZone(tenantSettings?.timezone) ?? DEFAULT_TIME_ZONE
+            }
+          : {};
+    setFormState(nextState);
+    setInitialFormState(nextState);
+    setFormReadyKey(drawerKey);
     setFormError(null);
-  }, [drawer]);
+  }, [catalog.kind, drawer, drawerKey, tenantSettings?.timezone]);
 
   const isSaving = createState.isLoading || updateState.isLoading;
-  const title =
-    drawer?.mode === "edit" ? `Edit ${catalog.singularLabel}` : `Add ${catalog.singularLabel}`;
+  const isFormReady = Boolean(drawerKey && formReadyKey === drawerKey);
+  const title = drawer?.mode === "edit" ? `Edit ${catalog.singularLabel}` : `Add ${catalog.singularLabel}`;
 
   const updateField = (key: keyof OrganizationRecordPayload, value: string) => {
-    setFormState((current) => ({ ...current, [key]: value }));
+    setFormState((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "country"
+        ? { subdivisionCode: "", timezone: getCountryDefaultTimeZone(value) ?? current.timezone }
+        : {})
+    }));
   };
 
-  const cleanPayload = () => {
+  const cleanPayload = (source: OrganizationRecordPayload) => {
     const payload: OrganizationRecordPayload = {};
 
     for (const field of catalog.fields) {
-      const rawValue = formState[field.key];
+      const rawValue = source[field.key];
       const value = typeof rawValue === "string" ? rawValue.trim() : rawValue;
 
       if (value) {
@@ -300,10 +295,16 @@ function OrganizationRecordDrawer({
     return payload;
   };
 
+  const currentPayload = cleanPayload(formState);
+  const initialPayload = cleanPayload(initialFormState);
+  const isFormValid = catalog.fields.every((field) => !field.required || Boolean(currentPayload[field.key]));
+  const isDirty = JSON.stringify(currentPayload) !== JSON.stringify(initialPayload);
+  const canSave = !isSaving && isFormReady && isFormValid && (drawer?.mode === "edit" ? isDirty : true);
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const payload = cleanPayload();
+    const payload = cleanPayload(formState);
     const missingRequired = catalog.fields.find((field) => field.required && !payload[field.key]);
 
     if (missingRequired) {
@@ -331,31 +332,85 @@ function OrganizationRecordDrawer({
       isOpen={Boolean(drawer)}
       onClose={onClose}
       title={title}
-    >
-      <form className="space-y-4" onSubmit={submit}>
-        {catalog.fields.map((field) => (
-          <label className="block" key={field.key}>
-            <span className="text-sm font-medium">{field.label}</span>
-            <Input
-              className="mt-1"
-              onChange={(event) => updateField(field.key, event.target.value)}
-              placeholder={field.placeholder}
-              value={String(formState[field.key] ?? "")}
-            />
-          </label>
-        ))}
-
-        {formError ? <p className="text-sm text-rose-600">{formError}</p> : null}
-
-        <div className="flex justify-end gap-2 pt-2">
+      footer={
+        <>
           <Button disabled={isSaving} onClick={onClose} type="button" variant="secondary">
             Cancel
           </Button>
-          <Button disabled={isSaving} type="submit">
+          <Button disabled={!canSave} form="organization-record-form" type="submit">
             {isSaving ? "Saving..." : "Save"}
           </Button>
-        </div>
+        </>
+      }
+    >
+      <form className="space-y-4" id="organization-record-form" onSubmit={submit}>
+        {!isFormReady ? (
+          <DrawerFormSkeleton fields={catalog.fields.length} />
+        ) : (
+          catalog.fields.map((field) => (
+            <label className="block" key={field.key}>
+              <RequiredLabel required={field.required}>{field.label}</RequiredLabel>
+              <OrganizationFieldControl
+                field={field}
+                formState={formState}
+                onChange={updateField}
+              />
+            </label>
+          ))
+        )}
+
+        {formError ? <p className="text-sm text-rose-600">{formError}</p> : null}
       </form>
     </SideDrawer>
   );
+}
+
+function OrganizationFieldControl({
+  field,
+  formState,
+  onChange
+}: Readonly<{
+  field: OrganizationCatalogConfig["fields"][number];
+  formState: OrganizationRecordPayload;
+  onChange: (key: keyof OrganizationRecordPayload, value: string) => void;
+}>) {
+  const value = String(formState[field.key] ?? "");
+
+  switch (field.control) {
+    case "country":
+      return (
+        <CountrySelect
+          className="mt-1"
+          onChange={(event) => onChange(field.key, event.target.value)}
+          value={value}
+        />
+      );
+    case "subdivision":
+      return (
+        <SubdivisionSelect
+          className="mt-1"
+          countryCode={String(formState.country ?? "")}
+          onChange={(event) => onChange(field.key, event.target.value)}
+          value={value}
+        />
+      );
+    case "timezone":
+      return (
+        <TimezoneSelect
+          className="mt-1"
+          countryCode={String(formState.country ?? "")}
+          onChange={(event) => onChange(field.key, event.target.value)}
+          value={value}
+        />
+      );
+    default:
+      return (
+        <Input
+          className="mt-1"
+          onChange={(event) => onChange(field.key, event.target.value)}
+          placeholder={field.placeholder}
+          value={value}
+        />
+      );
+  }
 }

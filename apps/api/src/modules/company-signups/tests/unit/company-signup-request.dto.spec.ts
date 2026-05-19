@@ -8,6 +8,7 @@ const validPayload = {
   adminLastName: "Owner",
   companyName: "Acme Corp",
   companySize: "11-50",
+  country: "BO",
   desiredTenantSlug: "acme-corp",
   preferredLanguage: "es",
   timezone: "America/La_Paz"
@@ -34,16 +35,17 @@ describe("CreateCompanySignupRequestDto", () => {
     expect(fieldsWithErrors).toEqual(expect.arrayContaining(["companySize", "preferredLanguage", "timezone"]));
   });
 
-  it("rejects unsupported company size and invalid timezone", async () => {
+  it("rejects unsupported company size, invalid country, and invalid timezone", async () => {
     const dto = plainToInstance(CreateCompanySignupRequestDto, {
       ...validPayload,
       companySize: "invalid",
+      country: "Bolivia",
       timezone: "not-a-timezone"
     });
 
     const errors = await validate(dto);
     const fieldsWithErrors = errors.map((error) => error.property);
 
-    expect(fieldsWithErrors).toEqual(expect.arrayContaining(["companySize", "timezone"]));
+    expect(fieldsWithErrors).toEqual(expect.arrayContaining(["companySize", "country", "timezone"]));
   });
 });

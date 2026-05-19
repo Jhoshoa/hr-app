@@ -15,6 +15,7 @@ export interface OrganizationRecordEntity {
   readonly updatedAt: Date;
   readonly parentDepartmentId?: string | null;
   readonly country?: string | null;
+  readonly subdivisionCode?: string | null;
   readonly city?: string | null;
   readonly timezone?: string | null;
   readonly level?: string | null;
@@ -29,6 +30,7 @@ export interface CreateOrganizationRecordInput {
   readonly name: string;
   readonly parentDepartmentId?: string;
   readonly country?: string;
+  readonly subdivisionCode?: string;
   readonly city?: string;
   readonly timezone?: string;
   readonly level?: string;
@@ -44,6 +46,7 @@ export interface UpdateOrganizationRecordInput {
   readonly name?: string;
   readonly parentDepartmentId?: string | null;
   readonly country?: string;
+  readonly subdivisionCode?: string | null;
   readonly city?: string | null;
   readonly timezone?: string;
   readonly level?: string | null;

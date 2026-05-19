@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import type { EmployeeCustomFieldValueEntity } from "../../domain/entities/employee.entity";
 import {
   EMPLOYEES_REPOSITORY,
@@ -22,6 +22,17 @@ export class SetEmployeeCustomFieldValueUseCase {
   execute = async (
     input: SetEmployeeCustomFieldValueCommand
   ): Promise<EmployeeCustomFieldValueEntity> => {
+    const [employeeExists, fieldDefinitionExists] = await Promise.all([
+      this.employeesRepository.existsById(input.tenantId, input.employeeId),
+      this.employeesRepository.customFieldDefinitionExists(input.tenantId, input.fieldDefinitionId)
+    ]);
+
+    if (!employeeExists || !fieldDefinitionExists) {
+      throw new BadRequestException(
+        "Employee and custom field definition must belong to the tenant."
+      );
+    }
+
     const value = await this.employeesRepository.setCustomFieldValue(input);
 
     await this.createAuditEventUseCase.execute({

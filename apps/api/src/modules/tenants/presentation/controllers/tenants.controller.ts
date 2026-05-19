@@ -1,8 +1,12 @@
 import { Body, Controller, Get, Patch } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentTenant } from "../../../../common/decorators/current-tenant.decorator";
+import { CurrentUser } from "../../../../common/decorators/current-user.decorator";
 import { Permissions } from "../../../../common/decorators/permissions.decorator";
-import type { TenantContext } from "../../../../common/types/request-context";
+import type {
+  AuthenticatedUserContext,
+  TenantContext
+} from "../../../../common/types/request-context";
 import { GetCurrentTenantUseCase } from "../../application/use-cases/get-current-tenant.use-case";
 import { UpdateCurrentTenantUseCase } from "../../application/use-cases/update-current-tenant.use-case";
 import { UpdateCurrentTenantDto } from "../dto/update-current-tenant.dto";
@@ -26,10 +30,12 @@ export class TenantsController {
   @Permissions("tenant.manage")
   async updateCurrentTenant(
     @CurrentTenant() tenantContext: TenantContext,
+    @CurrentUser() user: AuthenticatedUserContext,
     @Body() body: UpdateCurrentTenantDto
   ) {
     return this.updateCurrentTenantUseCase.execute({
       tenantId: tenantContext.id,
+      actorUserId: user.id,
       ...body
     });
   }

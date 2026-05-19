@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { hasAllFeatures } from "@/config/features";
 import { navigationItems } from "@/config/navigation";
 import { hasAnyPermission } from "@/config/permissions";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
@@ -10,7 +11,11 @@ import { cn } from "@/lib/utils";
 export function SidebarNav() {
   const pathname = usePathname();
   const tenant = useCurrentTenant();
-  const items = navigationItems.filter((item) => hasAnyPermission(tenant.permissions, item.permissions));
+  const items = navigationItems.filter(
+    (item) =>
+      hasAllFeatures(tenant.features ?? [], item.features ?? []) &&
+      hasAnyPermission(tenant.permissions, item.permissions)
+  );
 
   return (
     <nav className="space-y-1 px-3">

@@ -3,6 +3,7 @@ import { currentTenantFixture } from "@/test/fixtures/current-user";
 import { selectTenant, setTenants, tenantSlice } from "./tenant-slice";
 
 const acmeTenant = {
+  features: [],
   tenantId: "tenant-acme",
   tenantName: "Acme",
   tenantSlug: "acme",
@@ -11,6 +12,7 @@ const acmeTenant = {
 };
 
 const globexTenant = {
+  features: [],
   tenantId: "tenant-globex",
   tenantName: "Globex",
   tenantSlug: "globex",

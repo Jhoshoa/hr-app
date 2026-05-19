@@ -25,10 +25,21 @@ describe("ReactivateOrganizationRecordUseCase", () => {
       updatedAt: reactivatedAt
     });
 
-    const useCase = new ReactivateOrganizationRecordUseCase(repository);
-    const result = await useCase.execute("tenant-1", "workMode", "work-mode-1");
+    const createAuditEventUseCase = { execute: jest.fn() };
+    const useCase = new ReactivateOrganizationRecordUseCase(
+      repository,
+      createAuditEventUseCase as never
+    );
+    const result = await useCase.execute("tenant-1", "workMode", "work-mode-1", "user-1");
 
     expect(result.status).toBe("ACTIVE");
     expect(repository.reactivate).toHaveBeenCalledWith("tenant-1", "workMode", "work-mode-1");
+    expect(createAuditEventUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "organization.workMode.reactivated",
+        actorUserId: "user-1",
+        resourceId: "work-mode-1"
+      })
+    );
   });
 });

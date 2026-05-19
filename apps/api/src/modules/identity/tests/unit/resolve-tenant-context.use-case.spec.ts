@@ -21,7 +21,8 @@ describe("ResolveTenantContextUseCase", () => {
       tenantSlug: "assuresoft-demo",
       tenantName: "AssureSoft Demo",
       roleKey: "owner",
-      permissions: ["tenant.read"]
+      permissions: ["tenant.read"],
+      features: ["timesheets"]
     });
 
     const useCase = new ResolveTenantContextUseCase(repository);
@@ -31,6 +32,7 @@ describe("ResolveTenantContextUseCase", () => {
     });
 
     expect(result.permissions).toEqual(["tenant.read"]);
+    expect(result.features).toEqual(["timesheets"]);
     expect(result.name).toBe("AssureSoft Demo");
   });
 

@@ -15,6 +15,7 @@ export interface OrganizationRecord {
   readonly updatedAt: string;
   readonly parentDepartmentId?: string | null;
   readonly country?: string | null;
+  readonly subdivisionCode?: string | null;
   readonly city?: string | null;
   readonly timezone?: string | null;
   readonly level?: string | null;
@@ -27,6 +28,7 @@ export interface OrganizationRecordPayload {
   name?: string | null;
   parentDepartmentId?: string | null;
   country?: string | null;
+  subdivisionCode?: string | null;
   city?: string | null;
   timezone?: string | null;
   level?: string | null;
@@ -40,6 +42,7 @@ export interface OrganizationFieldConfig {
   readonly label: string;
   readonly placeholder?: string;
   readonly required?: boolean;
+  readonly control?: "text" | "country" | "subdivision" | "timezone";
 }
 
 export interface OrganizationCatalogConfig {

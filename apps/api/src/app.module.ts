@@ -4,9 +4,11 @@ import { AppConfigModule } from "./config/app-config.module";
 import { PrismaModule } from "./database/prisma/prisma.module";
 import { InMemoryEventBusModule } from "./events/event-bus.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { TenantFeatureService } from "./common/features/tenant-feature.service";
 import { AuthGuard } from "./common/guards/auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
 import { PlatformRolesGuard } from "./common/guards/platform-roles.guard";
+import { TenantFeatureGuard } from "./common/guards/tenant-feature.guard";
 import { TenantGuard } from "./common/guards/tenant.guard";
 import { AccessModule } from "./modules/access/access.module";
 import { AuditModule } from "./modules/audit/audit.module";
@@ -35,6 +37,8 @@ import { TenantsModule } from "./modules/tenants/tenants.module";
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    TenantFeatureService,
+    { provide: APP_GUARD, useClass: TenantFeatureGuard },
     { provide: APP_GUARD, useClass: PlatformRolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard }
   ]

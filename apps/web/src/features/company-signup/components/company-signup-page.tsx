@@ -3,12 +3,18 @@
 import React, { forwardRef, useEffect, useRef, useState } from "react";
 import type { ReactNode, SelectHTMLAttributes } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { getCountryDefaultTimeZone, getCountryTimeZones } from "@hr-app/geo";
 import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CountrySelect } from "@/features/geo/components/country-select";
+import { PhoneInput } from "@/features/geo/components/phone-input";
+import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useToast } from "@/components/ui/toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { loginPath } from "@/lib/auth/auth-redirects";
 import {
   useCreateCompanySignupRequestMutation,
   useLazyCheckCompanySignupAdminEmailAvailabilityQuery,
@@ -39,29 +45,23 @@ const companySizeOptions = [
   { label: "1000+", value: "1000+" }
 ] as const;
 
-const countryOptions = [
-  { label: "Select country", value: "" },
-  { label: "Bolivia", value: "Bolivia" },
-  { label: "United States", value: "United States" },
-  { label: "Mexico", value: "Mexico" },
-  { label: "Colombia", value: "Colombia" },
-  { label: "Peru", value: "Peru" },
-  { label: "Argentina", value: "Argentina" },
-  { label: "Chile", value: "Chile" }
-] as const;
-
-const timezoneOptions = [
-  { label: "Select timezone", value: "" },
-  { label: "America/La_Paz", value: "America/La_Paz" },
-  { label: "America/New_York", value: "America/New_York" },
-  { label: "America/Los_Angeles", value: "America/Los_Angeles" },
-  { label: "America/Mexico_City", value: "America/Mexico_City" },
-  { label: "America/Bogota", value: "America/Bogota" },
-  { label: "America/Lima", value: "America/Lima" },
-  { label: "UTC", value: "UTC" }
-] as const;
+const companySignupDefaultValues: CompanySignupFormValues = {
+  adminEmail: "",
+  adminFirstName: "",
+  adminLastName: "",
+  companyName: "",
+  companySize: "",
+  companyWebsite: "",
+  country: "",
+  desiredTenantSlug: "",
+  message: "",
+  phone: "",
+  preferredLanguage: "en",
+  timezone: ""
+};
 
 export function CompanySignupPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const submitInFlightRef = useRef(false);
   const lastTenantSlugCheckRef = useRef("");
@@ -75,24 +75,14 @@ export function CompanySignupPage() {
 
   const {
     formState: { errors, isSubmitting, isValid },
+    control,
     handleSubmit,
     register,
+    reset,
+    setValue,
     watch
   } = useForm<CompanySignupFormValues, unknown, CompanySignupRequestPayload>({
-    defaultValues: {
-      adminEmail: "",
-      adminFirstName: "",
-      adminLastName: "",
-      companyName: "",
-      companySize: "",
-      companyWebsite: "",
-      country: "",
-      desiredTenantSlug: "",
-      message: "",
-      phone: "",
-      preferredLanguage: "es",
-      timezone: ""
-    },
+    defaultValues: companySignupDefaultValues,
     mode: "onChange",
     resolver: zodResolver(companySignupSchema)
   });
@@ -100,6 +90,8 @@ export function CompanySignupPage() {
   const desiredTenantSlug = normalizeTenantSlugInput(watch("desiredTenantSlug") ?? "");
   const adminEmail = normalizeEmailInput(watch("adminEmail") ?? "");
   const companyWebsite = normalizeWebsiteInput(watch("companyWebsite") ?? "");
+  const selectedCountry = watch("country") ?? "";
+  const selectedTimezone = watch("timezone") ?? "";
   const debouncedTenantSlug = useDebouncedValue(desiredTenantSlug, 500);
   const debouncedAdminEmail = useDebouncedValue(adminEmail, 500);
   const debouncedCompanyWebsite = useDebouncedValue(companyWebsite, 500);
@@ -162,6 +154,24 @@ export function CompanySignupPage() {
     void checkWebsite(debouncedCompanyWebsite, true);
   }, [checkWebsite, debouncedCompanyWebsite]);
 
+  useEffect(() => {
+    if (!selectedCountry) {
+      return;
+    }
+
+    const countryTimeZones = getCountryTimeZones(selectedCountry);
+
+    if (selectedTimezone && countryTimeZones.some((timeZone) => timeZone === selectedTimezone)) {
+      return;
+    }
+
+    const defaultTimeZone = getCountryDefaultTimeZone(selectedCountry);
+
+    if (defaultTimeZone) {
+      setValue("timezone", defaultTimeZone, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [selectedCountry, selectedTimezone, setValue]);
+
   const onSubmit = async (values: CompanySignupRequestPayload) => {
     if (submitInFlightRef.current || createState.isLoading || submittedRequest) {
       return;
@@ -172,6 +182,10 @@ export function CompanySignupPage() {
     try {
       const request = await createCompanySignupRequest(values).unwrap();
       setSubmittedRequest(request);
+      reset(companySignupDefaultValues);
+      lastTenantSlugCheckRef.current = "";
+      lastAdminEmailCheckRef.current = "";
+      lastWebsiteCheckRef.current = "";
       showToast({
         title: "Signup request sent",
         description: "Your request is pending approval.",
@@ -263,23 +277,11 @@ export function CompanySignupPage() {
                 </Field>
 
                 <Field label="Country" error={errors.country?.message}>
-                  <Select {...register("country")}>
-                    {countryOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <CountrySelect includeEmptyOption {...register("country")} />
                 </Field>
 
                 <Field label="Timezone" error={errors.timezone?.message} required>
-                  <Select required {...register("timezone")}>
-                    {timezoneOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <TimezoneSelect countryCode={selectedCountry} includeEmptyOption required {...register("timezone")} />
                 </Field>
               </div>
             </section>
@@ -318,15 +320,14 @@ export function CompanySignupPage() {
                 </Field>
 
                 <Field label="Phone number" error={errors.phone?.message}>
-                  <Input placeholder="+1 555 0100" {...register("phone")} />
+                  <Controller
+                    control={control}
+                    name="phone"
+                    render={({ field }) => <PhoneInput countryCode={selectedCountry} {...field} />}
+                  />
                 </Field>
 
-                <Field label="Preferred language" error={errors.preferredLanguage?.message} required>
-                  <Select required {...register("preferredLanguage")}>
-                    <option value="es">Spanish</option>
-                    <option value="en">English</option>
-                  </Select>
-                </Field>
+                <input type="hidden" value="en" {...register("preferredLanguage")} />
               </div>
             </section>
 
@@ -362,7 +363,61 @@ export function CompanySignupPage() {
           </aside>
         </form>
       </div>
+
+      <SignupSuccessDialog
+        isOpen={Boolean(submittedRequest)}
+        request={submittedRequest}
+        onContinue={() => router.replace(loginPath)}
+      />
     </main>
+  );
+}
+
+function SignupSuccessDialog({
+  isOpen,
+  onContinue,
+  request
+}: Readonly<{
+  isOpen: boolean;
+  onContinue: () => void;
+  request: CompanySignupRequestResponse | null;
+}>) {
+  if (!isOpen || !request) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4">
+      <div
+        aria-labelledby="company-signup-success-title"
+        aria-modal="true"
+        className="w-full max-w-md rounded-lg border border-emerald-200 bg-surface p-5 shadow-xl"
+        role="dialog"
+      >
+        <div className="flex gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-emerald-900" id="company-signup-success-title">
+              Request submitted
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your company workspace request was sent for approval. We will notify the admin email when access is ready.
+            </p>
+            <div className="mt-4 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <p className="font-medium">{request.companyName}</p>
+              <p className="mt-1 text-emerald-800">Workspace: {request.desiredTenantSlug}</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end">
+          <Button onClick={onContinue} type="button">
+            Continue
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

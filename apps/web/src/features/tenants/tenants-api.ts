@@ -1,5 +1,13 @@
 import { baseApi } from "@/features/api/base-api";
 
+export interface TenantProfileSettings {
+  readonly website: string | null;
+  readonly companySize: string | null;
+  readonly country: string | null;
+  readonly phone: string | null;
+  readonly contactEmail: string | null;
+}
+
 export interface TenantSettings {
   readonly id: string;
   readonly name: string;
@@ -8,6 +16,7 @@ export interface TenantSettings {
   readonly defaultLanguage: "es" | "en" | string;
   readonly defaultCurrency: "BOB" | "USD" | string;
   readonly timezone: string;
+  readonly profile: TenantProfileSettings | null;
 }
 
 export interface UpdateTenantSettingsRequest {
@@ -16,6 +25,7 @@ export interface UpdateTenantSettingsRequest {
   readonly defaultLanguage?: "es" | "en";
   readonly defaultCurrency?: "BOB" | "USD";
   readonly timezone?: string;
+  readonly profile?: Partial<Omit<TenantProfileSettings, "contactEmail">>;
 }
 
 export const tenantsApi = baseApi.injectEndpoints({

@@ -1,3 +1,4 @@
+import { DEFAULT_TIME_ZONE, formatDateTimeInTimeZone } from "@hr-app/timezones";
 import type { PlatformRoleKey } from "@/types/identity";
 import type { CompanySignupStatus, PlatformCompanySignupRequest } from "./company-signup-types";
 
@@ -35,8 +36,10 @@ export const formatPlatformDate = (value: string | null) => {
     return "Not reviewed";
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return formatDateTimeInTimeZone(value, {
     dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
+    locale: "en-US",
+    timeStyle: "short",
+    timeZone: DEFAULT_TIME_ZONE
+  });
 };

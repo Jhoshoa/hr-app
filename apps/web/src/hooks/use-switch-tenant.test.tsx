@@ -10,6 +10,7 @@ import { setTenants } from "@/features/tenants/tenant-slice";
 import { useSwitchTenant } from "./use-switch-tenant";
 
 const acmeTenant = {
+  features: [],
   tenantId: "tenant-acme",
   tenantName: "Acme",
   tenantSlug: "acme",
@@ -18,6 +19,7 @@ const acmeTenant = {
 };
 
 const globexTenant = {
+  features: [],
   tenantId: "tenant-globex",
   tenantName: "Globex",
   tenantSlug: "globex",

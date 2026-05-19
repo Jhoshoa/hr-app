@@ -59,6 +59,7 @@ export interface EmployeeListFilters {
   readonly search?: string;
   readonly departmentId?: string;
   readonly locationId?: string;
+  readonly organizationUnitId?: string;
 }
 
 export interface AddEmployeeJobAssignmentInput {
@@ -67,10 +68,22 @@ export interface AddEmployeeJobAssignmentInput {
   readonly departmentId?: string;
   readonly jobTitleId?: string;
   readonly locationId?: string;
+  readonly organizationUnitId?: string;
   readonly employmentTypeId?: string;
   readonly workModeId?: string;
   readonly effectiveFrom: Date;
   readonly effectiveTo?: Date;
+}
+
+export interface EmployeeJobAssignmentReferenceInput {
+  readonly tenantId: string;
+  readonly employeeId: string;
+  readonly departmentId?: string;
+  readonly jobTitleId?: string;
+  readonly locationId?: string;
+  readonly organizationUnitId?: string;
+  readonly employmentTypeId?: string;
+  readonly workModeId?: string;
 }
 
 export interface AddManagerRelationshipInput {
@@ -122,6 +135,11 @@ export interface EmployeesRepository {
   ): Promise<EmployeeEntity[]>;
   findById(tenantId: string, employeeId: string): Promise<EmployeeEntity | null>;
   findByUserId(tenantId: string, userId: string): Promise<EmployeeEntity | null>;
+  existsById(tenantId: string, employeeId: string): Promise<boolean>;
+  customFieldDefinitionExists(tenantId: string, fieldDefinitionId: string): Promise<boolean>;
+  findInvalidJobAssignmentReferences(
+    input: EmployeeJobAssignmentReferenceInput
+  ): Promise<string[]>;
   addJobAssignment(input: AddEmployeeJobAssignmentInput): Promise<EmployeeJobAssignmentEntity>;
   addManagerRelationship(input: AddManagerRelationshipInput): Promise<ManagerRelationshipEntity>;
   addCompensationRecord(input: AddCompensationRecordInput): Promise<CompensationRecordEntity>;

@@ -15,6 +15,9 @@ const createRepository = (): jest.Mocked<EmployeesRepository> => ({
   addManagerRelationship: jest.fn(),
   addCompensationRecord: jest.fn(),
   createCustomFieldDefinition: jest.fn(),
+  customFieldDefinitionExists: jest.fn(),
+  existsById: jest.fn(),
+  findInvalidJobAssignmentReferences: jest.fn(),
   setCustomFieldValue: jest.fn()
 });
 
@@ -30,6 +33,26 @@ describe("AddManagerRelationshipUseCase", () => {
         actorUserId: "user-1",
         employeeId: "employee-1",
         managerEmployeeId: "employee-1",
+        effectiveFrom: new Date("2026-05-12T00:00:00.000Z")
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repository.addManagerRelationship).not.toHaveBeenCalled();
+  });
+
+  it("rejects manager relationships outside the tenant", async () => {
+    const repository = createRepository();
+    const createAuditEventUseCase = { execute: jest.fn() };
+    repository.existsById.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    const useCase = new AddManagerRelationshipUseCase(repository, createAuditEventUseCase as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: "tenant-1",
+        actorUserId: "user-1",
+        employeeId: "employee-1",
+        managerEmployeeId: "employee-other",
         effectiveFrom: new Date("2026-05-12T00:00:00.000Z")
       })
     ).rejects.toBeInstanceOf(BadRequestException);

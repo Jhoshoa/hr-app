@@ -12,6 +12,7 @@ import type {
 import type {
   AddCompensationRecordInput,
   AddEmployeeJobAssignmentInput,
+  EmployeeJobAssignmentReferenceInput,
   AddManagerRelationshipInput,
   CreateEmployeeCustomFieldDefinitionInput,
   CreateEmployeeInput,
@@ -135,12 +136,13 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
         some: {
           departmentId: filters.departmentId,
           locationId: filters.locationId,
+          organizationUnitId: filters.organizationUnitId,
           effectiveTo: null
         }
       }
     };
 
-    if (!filters.departmentId && !filters.locationId) {
+    if (!filters.departmentId && !filters.locationId && !filters.organizationUnitId) {
       delete where.jobAssignments;
     }
 
@@ -195,11 +197,12 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
       }
     };
 
-    if (filters.departmentId || filters.locationId) {
+    if (filters.departmentId || filters.locationId || filters.organizationUnitId) {
       where.jobAssignments = {
         some: {
           departmentId: filters.departmentId,
           locationId: filters.locationId,
+          organizationUnitId: filters.organizationUnitId,
           effectiveTo: null
         }
       };
@@ -252,6 +255,85 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
     return employee ? this.toEmployeeEntity(employee) : null;
   };
 
+  existsById = async (tenantId: string, employeeId: string): Promise<boolean> =>
+    (await this.prisma.employee.count({ where: { id: employeeId, tenantId } })) > 0;
+
+  customFieldDefinitionExists = async (
+    tenantId: string,
+    fieldDefinitionId: string
+  ): Promise<boolean> =>
+    (await this.prisma.employeeCustomFieldDefinition.count({
+      where: { id: fieldDefinitionId, tenantId }
+    })) > 0;
+
+  findInvalidJobAssignmentReferences = async (
+    input: EmployeeJobAssignmentReferenceInput
+  ): Promise<string[]> => {
+    const checks: Array<[string, Promise<number>]> = [
+      [
+        "employeeId",
+        this.prisma.employee.count({ where: { id: input.employeeId, tenantId: input.tenantId } })
+      ]
+    ];
+
+    if (input.departmentId) {
+      checks.push([
+        "departmentId",
+        this.prisma.department.count({
+          where: { id: input.departmentId, tenantId: input.tenantId, status: "ACTIVE" }
+        })
+      ]);
+    }
+
+    if (input.jobTitleId) {
+      checks.push([
+        "jobTitleId",
+        this.prisma.jobTitle.count({
+          where: { id: input.jobTitleId, tenantId: input.tenantId, status: "ACTIVE" }
+        })
+      ]);
+    }
+
+    if (input.locationId) {
+      checks.push([
+        "locationId",
+        this.prisma.location.count({
+          where: { id: input.locationId, tenantId: input.tenantId, status: "ACTIVE" }
+        })
+      ]);
+    }
+
+    if (input.organizationUnitId) {
+      checks.push([
+        "organizationUnitId",
+        this.prisma.organizationUnit.count({
+          where: { id: input.organizationUnitId, tenantId: input.tenantId, status: "ACTIVE" }
+        })
+      ]);
+    }
+
+    if (input.employmentTypeId) {
+      checks.push([
+        "employmentTypeId",
+        this.prisma.employmentType.count({
+          where: { id: input.employmentTypeId, tenantId: input.tenantId, status: "ACTIVE" }
+        })
+      ]);
+    }
+
+    if (input.workModeId) {
+      checks.push([
+        "workModeId",
+        this.prisma.workMode.count({
+          where: { id: input.workModeId, tenantId: input.tenantId, status: "ACTIVE" }
+        })
+      ]);
+    }
+
+    const results = await Promise.all(checks.map(async ([field, count]) => [field, await count] as const));
+    return results.filter(([, count]) => count === 0).map(([field]) => field);
+  };
+
   addJobAssignment = async (
     input: AddEmployeeJobAssignmentInput
   ): Promise<EmployeeJobAssignmentEntity> =>
@@ -262,6 +344,7 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
         departmentId: input.departmentId,
         jobTitleId: input.jobTitleId,
         locationId: input.locationId,
+        organizationUnitId: input.organizationUnitId,
         employmentTypeId: input.employmentTypeId,
         workModeId: input.workModeId,
         effectiveFrom: input.effectiveFrom,

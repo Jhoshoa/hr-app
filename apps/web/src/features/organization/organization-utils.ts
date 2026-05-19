@@ -2,6 +2,9 @@ import type { OrganizationRecord } from "./organization-types";
 
 export const ORGANIZATION_PAGE_SIZE = 10;
 
+const formatLocationArea = (record: OrganizationRecord): string =>
+  [record.city, record.subdivisionCode, record.country].filter(Boolean).join(", ");
+
 export const paginateRecords = <T>(records: readonly T[], page: number, pageSize = ORGANIZATION_PAGE_SIZE) => {
   const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
   const safePage = Math.min(Math.max(page, 1), totalPages);
@@ -17,7 +20,7 @@ export const paginateRecords = <T>(records: readonly T[], page: number, pageSize
 export const getOrganizationRecordDetail = (record: OrganizationRecord) => {
   const details = [
     record.parentDepartmentId ? `Parent: ${record.parentDepartmentId}` : null,
-    [record.city, record.country].filter(Boolean).join(", "),
+    formatLocationArea(record),
     record.timezone,
     record.level,
     record.category,

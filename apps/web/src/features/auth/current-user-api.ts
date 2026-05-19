@@ -8,6 +8,7 @@ interface BackendTenantMembership {
   readonly roleKey: string;
   readonly roles?: TenantSummary["roles"];
   readonly permissions: string[];
+  readonly features?: string[];
 }
 
 interface BackendMeResponse {
@@ -29,7 +30,10 @@ export const currentUserApi = baseApi.injectEndpoints({
       query: () => "/me",
       transformResponse: (response: BackendMeResponse): MeResponse => ({
         user: response.user,
-        tenants: response.tenants.map((tenant) => ({ ...tenant })),
+        tenants: response.tenants.map((tenant) => ({
+          ...tenant,
+          features: [...(tenant.features ?? [])]
+        })),
         platformRoles: [...(response.platformRoles ?? [])]
       })
     })

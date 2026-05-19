@@ -13,12 +13,15 @@
     "db:deploy": "dotenv -e ../../.env -e ../../.env.example -- prisma migrate deploy --schema prisma/schema.prisma",
     "db:studio": "dotenv -e ../../.env -e ../../.env.example -- prisma studio --schema prisma/schema.prisma",
     "db:seed": "dotenv -e ../../.env -e ../../.env.example -- tsx prisma/seed.ts",
+    "audit:geo-timezone": "dotenv -e ../../.env -e ../../.env.example -- tsx prisma/audit-geo-timezone-data.ts",
     "auth:seed:dev": "dotenv -e ../../.env -e ../../.env.example -- tsx scripts/seed-supabase-auth-users.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "echo \"No database package tests yet\""
+    "test": "tsc -p tsconfig.json && node --test test"
   },
   "dependencies": {
+    "@hr-app/geo": "workspace:^",
+    "@hr-app/timezones": "workspace:^",
     "@prisma/client": "^6.1.0"
   },
   "devDependencies": {

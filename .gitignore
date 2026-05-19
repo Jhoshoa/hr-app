@@ -9,3 +9,6 @@ coverage/
 *.log
 *.tsbuildinfo
 docker/postgres-data/
+docker/postgres-data-corrupt-*/
+.agents/
+skills-lock.json

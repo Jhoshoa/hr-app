@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from "@nestjs/common";
+import { DEFAULT_TIME_ZONE, normalizeTimeZone } from "@hr-app/timezones";
 import { Prisma } from "@prisma/client";
 import type { CompanySignupRequest, Prisma as PrismaTypes } from "@prisma/client";
 import { PrismaService } from "../../../../database/prisma/prisma.service";
@@ -58,7 +59,17 @@ export class ApproveCompanySignupRequestUseCase {
             name: request.companyName,
             slug: finalTenantSlug,
             defaultLanguage: request.preferredLanguage,
-            timezone: request.timezone ?? "America/La_Paz"
+            timezone: normalizeTimeZone(request.timezone) ?? DEFAULT_TIME_ZONE
+          }
+        });
+        await tx.tenantProfile.create({
+          data: {
+            tenantId: tenant.id,
+            website: request.companyWebsite,
+            companySize: request.companySize,
+            country: request.country,
+            phone: request.phone,
+            contactEmail: request.adminEmail
           }
         });
 

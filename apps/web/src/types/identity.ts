@@ -7,6 +7,7 @@ export interface TenantSummary {
   readonly roleKey: string;
   readonly roles?: TenantRoleSummary[];
   readonly permissions: string[];
+  readonly features: string[];
 }
 
 export interface TenantRoleSummary {

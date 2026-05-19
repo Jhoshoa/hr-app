@@ -1,3 +1,4 @@
+import { DEFAULT_TIME_ZONE, formatDateTimeInTimeZone } from "@hr-app/timezones";
 import type {
   AccessPermission,
   TenantInvitation,
@@ -11,10 +12,12 @@ export const formatAccessDate = (value?: string | null) => {
     return "Not set";
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return formatDateTimeInTimeZone(value, {
     dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
+    locale: "en-US",
+    timeStyle: "short",
+    timeZone: DEFAULT_TIME_ZONE
+  });
 };
 
 export const getInvitationDisplayStatus = (

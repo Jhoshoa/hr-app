@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import type { EmployeeJobAssignmentEntity } from "../../domain/entities/employee.entity";
 import {
   EMPLOYEES_REPOSITORY,
@@ -22,6 +22,14 @@ export class AddEmployeeJobAssignmentUseCase {
   execute = async (
     input: AddEmployeeJobAssignmentCommand
   ): Promise<EmployeeJobAssignmentEntity> => {
+    const invalidReferences = await this.employeesRepository.findInvalidJobAssignmentReferences(input);
+
+    if (invalidReferences.length > 0) {
+      throw new BadRequestException(
+        `Job assignment references must be active and belong to the tenant: ${invalidReferences.join(", ")}.`
+      );
+    }
+
     const assignment = await this.employeesRepository.addJobAssignment(input);
 
     await this.createAuditEventUseCase.execute({
@@ -30,8 +38,25 @@ export class AddEmployeeJobAssignmentUseCase {
       action: "employee.job_assignment.created",
       resourceType: "employee",
       resourceId: input.employeeId,
-      metadata: { assignmentId: assignment.id }
+      metadata: {
+        assignmentId: assignment.id,
+        organizationUnitId: assignment.organizationUnitId ?? null
+      }
     });
+
+    if (assignment.organizationUnitId) {
+      await this.createAuditEventUseCase.execute({
+        tenantId: input.tenantId,
+        actorUserId: input.actorUserId,
+        action: "employee.job_assignment.organization_unit_set",
+        resourceType: "employee",
+        resourceId: input.employeeId,
+        metadata: {
+          assignmentId: assignment.id,
+          organizationUnitId: assignment.organizationUnitId
+        }
+      });
+    }
 
     return assignment;
   };

@@ -11,6 +11,7 @@ export interface EmployeeJobAssignmentEntity {
   readonly departmentId?: string | null;
   readonly jobTitleId?: string | null;
   readonly locationId?: string | null;
+  readonly organizationUnitId?: string | null;
   readonly employmentTypeId?: string | null;
   readonly workModeId?: string | null;
   readonly effectiveFrom: Date;

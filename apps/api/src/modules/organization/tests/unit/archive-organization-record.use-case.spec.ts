@@ -24,10 +24,18 @@ describe("ArchiveOrganizationRecordUseCase", () => {
       updatedAt: archivedAt
     });
 
-    const useCase = new ArchiveOrganizationRecordUseCase(repository);
-    const result = await useCase.execute("tenant-1", "department", "department-1");
+    const createAuditEventUseCase = { execute: jest.fn() };
+    const useCase = new ArchiveOrganizationRecordUseCase(repository, createAuditEventUseCase as never);
+    const result = await useCase.execute("tenant-1", "department", "department-1", "user-1");
 
     expect(result.status).toBe("ARCHIVED");
     expect(repository.archive).toHaveBeenCalledWith("tenant-1", "department", "department-1");
+    expect(createAuditEventUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "organization.department.archived",
+        actorUserId: "user-1",
+        resourceId: "department-1"
+      })
+    );
   });
 });
