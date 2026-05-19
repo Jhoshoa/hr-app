@@ -52,6 +52,8 @@ El camino principal para este proyecto es `ES256` con JWKS.
 4. Para JWKS:
    - exige `kid`;
    - descarga/cacha las keys por 10 minutos;
+   - aplica timeout de 2 segundos al fetch de JWKS;
+   - si el `kid` no aparece en cache, refresca JWKS una vez antes de devolver `401`;
    - busca una key cuyo `kid` coincida;
    - valida firma con la public key;
    - para `ES256` usa encoding `ieee-p1363`, que coincide con la firma compacta del JWT.
@@ -116,8 +118,8 @@ El provider cachea JWKS por 10 minutos. Esto mejora performance, pero durante un
 Mitigaciones:
 
 - Mantener TTL corto y documentado.
+- Refrescar JWKS una vez si el `kid` no aparece en cache antes de responder `401`.
 - Agregar mecanismo para purgar cache en runtime si hacemos rotacion de keys.
-- En errores de `kid` no encontrado, reintentar una vez refrescando JWKS antes de responder `401`.
 - Monitorear `401` por causa para detectar rotaciones incompletas.
 
 ### 3. Disponibilidad de JWKS en cold start
@@ -127,9 +129,9 @@ El primer request con una key no cacheada necesita descargar JWKS. Si Supabase J
 Mitigaciones:
 
 - Cachear JWKS en memoria.
+- Aplicar timeout explicito al fetch de JWKS.
 - Agregar prewarm al boot de la API.
 - Reusar cache existente si el refresh falla y todavia no expiró de forma critica.
-- Agregar timeout explicito al fetch de JWKS.
 
 ### 4. Claims stale
 
@@ -171,35 +173,38 @@ Mitigaciones:
 - Mantener pruebas para algoritmos, expiracion, `nbf`, `kid`, payload invalido y firma invalida.
 - Evitar aceptar algoritmos no esperados.
 
-## Recomendaciones Futuras
+## Estado de Implementacion
 
-### Fase 1: Endurecer tests
+### Implementado
 
-Agregar tests para:
+- Verificacion local de JWT para evitar `supabase.auth.getUser()` en cada request.
+- Soporte principal para `ES256` y `RS256` usando Supabase JWKS.
+- Compatibilidad legacy con `HS256` y `SUPABASE_JWT_SECRET`.
+- Cache JWKS en memoria por 10 minutos.
+- Timeout de 2 segundos al fetch de JWKS con `AbortController`.
+- Refresh forzado de JWKS una vez si el `kid` no aparece en cache.
+- Validacion de `exp` y `nbf`.
+- Rechazo de algoritmos no permitidos.
+- Rechazo de tokens `ES256` sin `kid`.
+- Rechazo de payload JWT malformado.
+- Rechazo de tokens sin `sub` o `email`.
+- Reconocimiento de `user_metadata.email_verified`.
+- Tests unitarios para token valido, expirado, firma invalida, `ES256` con JWKS, algoritmo no permitido, `kid` ausente, refresh por `kid` nuevo, JWKS caido, `nbf` futuro, payload malformado y claims requeridos ausentes.
+- Documentacion de riesgos, mitigaciones y tradeoffs.
 
-- token sin `sub`;
-- token sin `email`;
-- token con `alg` no permitido;
-- token `ES256` sin `kid`;
-- token con `kid` no encontrado;
-- token con JWKS endpoint caido;
-- token con `nbf` futuro;
-- token con payload JSON invalido;
-- token con firma invalida en `ES256`;
-- token con `user_metadata.email_verified`;
-- token con `email_confirmed_at` y `confirmed_at`.
+### Pendiente para futuro
 
-### Fase 2: Mejorar JWKS cache
+#### Fase 1: Mejorar JWKS cache y resiliencia
 
 Implementar:
 
-- refresh forzado si no se encuentra `kid`;
-- timeout con `AbortController`;
 - metricas de cache hit/miss;
 - log estructurado cuando JWKS falla;
-- metodo interno para limpiar cache durante rotacion.
+- metodo interno para limpiar cache durante rotacion;
+- fallback temporal a cache anterior si un refresh falla pero existe una key cacheada todavia razonablemente reciente;
+- prewarm de JWKS al boot de la API.
 
-### Fase 3: Migrar a `jose`
+#### Fase 2: Migrar a `jose`
 
 Reemplazar la validacion manual por `jose`.
 
@@ -210,7 +215,7 @@ Beneficios:
 - Mejor soporte para `kid`, `alg`, cache y rotacion.
 - API estandar para validacion de claims.
 
-### Fase 4: Revocacion fuerte
+#### Fase 3: Revocacion fuerte
 
 Si el producto requiere revocacion inmediata:
 
@@ -220,7 +225,7 @@ Si el producto requiere revocacion inmediata:
 - invalidar sesiones cuando un usuario sea deshabilitado;
 - usar validacion remota puntual para acciones de alto riesgo.
 
-### Fase 5: Observabilidad de auth
+#### Fase 4: Observabilidad de auth
 
 Agregar metricas:
 
@@ -236,7 +241,7 @@ Agregar metricas:
 
 Esto ayudaria a detectar regresiones antes de que el frontend vuelva a mostrar errores genericos como "Could not load your workspace".
 
-### Fase 6: Mejor UX de errores en frontend
+#### Fase 5: Mejor UX de errores en frontend
 
 El mensaje actual del frontend no distingue entre:
 

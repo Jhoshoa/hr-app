@@ -32,6 +32,7 @@ interface JsonWebKeySet {
 @Injectable()
 export class SupabaseAuthProvider implements AuthProvider {
   private static readonly jwksCacheTtlMs = 10 * 60 * 1000;
+  private static readonly jwksFetchTimeoutMs = 2_000;
 
   private readonly client: SupabaseClient;
   private readonly realtimeTransport = WebSocket as unknown as WebSocketLikeConstructor;
@@ -207,30 +208,50 @@ export class SupabaseAuthProvider implements AuthProvider {
 
   private findJwk = async (kid: string): Promise<JsonWebKey | undefined> => {
     const keys = await this.getJwks();
-    return keys.find((key) => key.kid === kid);
+    const cachedKey = keys.find((key) => key.kid === kid);
+
+    if (cachedKey) {
+      return cachedKey;
+    }
+
+    const refreshedKeys = await this.getJwks({ forceRefresh: true });
+    return refreshedKeys.find((key) => key.kid === kid);
   };
 
-  private getJwks = async (): Promise<JsonWebKey[]> => {
+  private getJwks = async (options: { readonly forceRefresh?: boolean } = {}): Promise<JsonWebKey[]> => {
     const now = Date.now();
 
-    if (this.jwksCache && this.jwksCache.expiresAt > now) {
+    if (!options.forceRefresh && this.jwksCache && this.jwksCache.expiresAt > now) {
       return this.jwksCache.keys;
     }
 
-    const response = await fetch(this.jwksUrl);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SupabaseAuthProvider.jwksFetchTimeoutMs);
 
-    if (!response.ok) {
+    try {
+      const response = await fetch(this.jwksUrl, { signal: controller.signal });
+
+      if (!response.ok) {
+        throw new UnauthorizedException("Could not verify Supabase access token.");
+      }
+
+      const body = (await response.json()) as JsonWebKeySet;
+      const keys = body.keys ?? [];
+      this.jwksCache = {
+        expiresAt: now + SupabaseAuthProvider.jwksCacheTtlMs,
+        keys
+      };
+
+      return keys;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
       throw new UnauthorizedException("Could not verify Supabase access token.");
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const body = (await response.json()) as JsonWebKeySet;
-    const keys = body.keys ?? [];
-    this.jwksCache = {
-      expiresAt: now + SupabaseAuthProvider.jwksCacheTtlMs,
-      keys
-    };
-
-    return keys;
   };
 
   private decodeJwtPart = <TValue>(value: string): TValue => {
