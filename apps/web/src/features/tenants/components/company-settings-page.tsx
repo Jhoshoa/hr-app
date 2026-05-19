@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Globe2, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -11,7 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { OrganizationCatalogPanel } from "@/features/organization/components/organization-catalog-panel";
+import { OrganizationUnitTypesPanel } from "@/features/organization/components/organization-unit-types-panel";
+import { OrganizationUnitsPanel } from "@/features/organization/components/organization-units-panel";
+import { organizationCatalogByKind } from "@/features/organization/organization-config";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
+import { cn } from "@/lib/utils";
 import { useAppDispatch } from "@/store/hooks";
 import { companySettingsSchema, type CompanySettingsFormValues } from "../company-settings-schema";
 import { useGetCurrentTenantQuery, useUpdateCurrentTenantMutation } from "../tenants-api";
@@ -37,9 +42,18 @@ const timezoneOptions = [
   "UTC"
 ] as const;
 
+const companySettingsTabs = [
+  { key: "profile", label: "Profile" },
+  { key: "locations", label: "Locations" },
+  { key: "structure", label: "Structure" }
+] as const;
+
+type CompanySettingsTab = (typeof companySettingsTabs)[number]["key"];
+
 export function CompanySettingsPage() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<CompanySettingsTab>("profile");
   const currentTenant = useCurrentTenant();
   const tenantSlug = currentTenant.tenantSlug;
   const { data: tenant, isError, isFetching } = useGetCurrentTenantQuery(tenantSlug, {
@@ -104,129 +118,164 @@ export function CompanySettingsPage() {
           { label: "Company settings" }
         ]}
         title="Company settings"
-        description="Manage tenant identity, localization, currency, and timezone defaults."
+        description="Manage company profile, operating locations, and organizational structure."
       />
 
-      {isError ? <ErrorState title="Company settings could not load" /> : null}
+      <div className="flex flex-wrap gap-2 border-b border-border">
+        {companySettingsTabs.map((tab) => (
+          <button
+            className={cn(
+              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              activeTab === tab.key
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      <form className="grid gap-5 xl:grid-cols-[1fr_22rem]" onSubmit={handleSubmit(onSubmit)}>
-        <div className="space-y-5">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" aria-hidden="true" />
-                Company identity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {showInitialSkeleton ? (
-                <CompanyIdentitySkeleton />
-              ) : (
-                <>
-                  <label className="block">
-                    <span className="text-sm font-medium">Company name</span>
-                    <Input className="mt-1" disabled={!tenant} placeholder="AssureSoft Demo" {...register("name")} />
-                    {errors.name ? <span className="mt-1 block text-sm text-rose-600">{errors.name.message}</span> : null}
-                  </label>
+      <div className="mt-5">
+        {activeTab === "profile" ? (
+          <>
+            {isError ? <ErrorState title="Company settings could not load" /> : null}
 
-                  <label className="block">
-                    <span className="text-sm font-medium">Workspace slug</span>
-                    <Input className="mt-1" disabled value={tenant?.slug ?? ""} />
-                    <span className="mt-1 block text-xs text-muted-foreground">Slug changes are disabled for now.</span>
-                  </label>
-                </>
-              )}
-            </CardContent>
-          </Card>
+            <form className="grid gap-5 xl:grid-cols-[1fr_22rem]" onSubmit={handleSubmit(onSubmit)}>
+              <div className="space-y-5">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" aria-hidden="true" />
+                      Company identity
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {showInitialSkeleton ? (
+                      <CompanyIdentitySkeleton />
+                    ) : (
+                      <>
+                        <label className="block">
+                          <span className="text-sm font-medium">Company name</span>
+                          <Input className="mt-1" disabled={!tenant} placeholder="AssureSoft Demo" {...register("name")} />
+                          {errors.name ? <span className="mt-1 block text-sm text-rose-600">{errors.name.message}</span> : null}
+                        </label>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe2 className="h-4 w-4" aria-hidden="true" />
-                Localization
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              {showInitialSkeleton ? (
-                <LocalizationSkeleton />
-              ) : (
-                <>
-                  <label className="block">
-                    <span className="text-sm font-medium">Default language</span>
-                    <select
-                      className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      disabled={!tenant}
-                      {...register("defaultLanguage")}
-                    >
-                      {languageOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.defaultLanguage ? (
-                      <span className="mt-1 block text-sm text-rose-600">{errors.defaultLanguage.message}</span>
-                    ) : null}
-                  </label>
+                        <label className="block">
+                          <span className="text-sm font-medium">Workspace slug</span>
+                          <Input className="mt-1" disabled value={tenant?.slug ?? ""} />
+                          <span className="mt-1 block text-xs text-muted-foreground">Slug changes are disabled for now.</span>
+                        </label>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
 
-                  <label className="block">
-                    <span className="text-sm font-medium">Default currency</span>
-                    <select
-                      className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      disabled={!tenant}
-                      {...register("defaultCurrency")}
-                    >
-                      {currencyOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.defaultCurrency ? (
-                      <span className="mt-1 block text-sm text-rose-600">{errors.defaultCurrency.message}</span>
-                    ) : null}
-                  </label>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe2 className="h-4 w-4" aria-hidden="true" />
+                      Localization
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2">
+                    {showInitialSkeleton ? (
+                      <LocalizationSkeleton />
+                    ) : (
+                      <>
+                        <label className="block">
+                          <span className="text-sm font-medium">Default language</span>
+                          <select
+                            className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            disabled={!tenant}
+                            {...register("defaultLanguage")}
+                          >
+                            {languageOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.defaultLanguage ? (
+                            <span className="mt-1 block text-sm text-rose-600">{errors.defaultLanguage.message}</span>
+                          ) : null}
+                        </label>
 
-                  <label className="block md:col-span-2">
-                    <span className="text-sm font-medium">Timezone</span>
-                    <select
-                      className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      disabled={!tenant}
-                      {...register("timezone")}
-                    >
-                      {timezoneOptions.map((timezone) => (
-                        <option key={timezone} value={timezone}>
-                          {timezone}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.timezone ? (
-                      <span className="mt-1 block text-sm text-rose-600">{errors.timezone.message}</span>
-                    ) : null}
-                  </label>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                        <label className="block">
+                          <span className="text-sm font-medium">Default currency</span>
+                          <select
+                            className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            disabled={!tenant}
+                            {...register("defaultCurrency")}
+                          >
+                            {currencyOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.defaultCurrency ? (
+                            <span className="mt-1 block text-sm text-rose-600">{errors.defaultCurrency.message}</span>
+                          ) : null}
+                        </label>
 
-        <aside className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Defaults</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>These values are tenant-wide defaults for dates, currency display, reports, and future localized flows.</p>
-              <p>Feature-specific policies can override these defaults later when the module supports it.</p>
-            </CardContent>
-          </Card>
+                        <label className="block md:col-span-2">
+                          <span className="text-sm font-medium">Timezone</span>
+                          <select
+                            className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            disabled={!tenant}
+                            {...register("timezone")}
+                          >
+                            {timezoneOptions.map((timezone) => (
+                              <option key={timezone} value={timezone}>
+                                {timezone}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.timezone ? (
+                            <span className="mt-1 block text-sm text-rose-600">{errors.timezone.message}</span>
+                          ) : null}
+                        </label>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
-          <Button className="w-full" disabled={updateState.isLoading || !isDirty || !tenant} type="submit">
-            <Save className="h-4 w-4" aria-hidden="true" />
-            {updateState.isLoading ? "Saving..." : "Save settings"}
-          </Button>
-        </aside>
-      </form>
+              <aside className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Defaults</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-muted-foreground">
+                    <p>These values are tenant-wide defaults for dates, currency display, reports, and future localized flows.</p>
+                    <p>Feature-specific policies can override these defaults later when the module supports it.</p>
+                  </CardContent>
+                </Card>
+
+                <Button className="w-full" disabled={updateState.isLoading || !isDirty || !tenant} type="submit">
+                  <Save className="h-4 w-4" aria-hidden="true" />
+                  {updateState.isLoading ? "Saving..." : "Save settings"}
+                </Button>
+              </aside>
+            </form>
+          </>
+        ) : null}
+
+        {activeTab === "locations" ? (
+          <OrganizationCatalogPanel catalog={organizationCatalogByKind.location} />
+        ) : null}
+
+        {activeTab === "structure" ? (
+          <div className="space-y-5">
+            <OrganizationUnitTypesPanel />
+            <OrganizationUnitsPanel />
+          </div>
+        ) : null}
+      </div>
     </>
   );
 }

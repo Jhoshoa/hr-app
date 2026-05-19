@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Archive, Edit3, Plus, RotateCcw } from "lucide-react";
-import { PageHeader } from "@/components/app-shell/page-header";
 import { ErrorState } from "@/components/data-display/error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
-import { cn } from "@/lib/utils";
 import {
   useArchiveOrganizationRecordMutation,
   useCreateOrganizationRecordMutation,
@@ -19,32 +17,13 @@ import {
   useReactivateOrganizationRecordMutation,
   useUpdateOrganizationRecordMutation
 } from "../organization-api";
-import { organizationCatalogs } from "../organization-config";
 import { getOrganizationRecordDetail, ORGANIZATION_PAGE_SIZE, paginateRecords } from "../organization-utils";
 import { DrawerFormSkeleton, OrganizationTableSkeleton, RequiredLabel } from "./organization-loading";
-import { OrganizationUnitTypesPanel } from "./organization-unit-types-panel";
-import { OrganizationUnitsPanel } from "./organization-units-panel";
 import type {
   OrganizationCatalogConfig,
   OrganizationRecord,
-  OrganizationRecordKind,
   OrganizationRecordPayload
 } from "../organization-types";
-
-const defaultCatalog = organizationCatalogs[0] as OrganizationCatalogConfig;
-
-type OrganizationSettingsTab = OrganizationRecordKind | "organizationUnitTypes" | "organizationUnits";
-
-const organizationUnitTabs = [
-  {
-    key: "organizationUnitTypes",
-    label: "Organization unit types"
-  },
-  {
-    key: "organizationUnits",
-    label: "Organization units"
-  }
-] as const;
 
 type DrawerState =
   | { readonly mode: "create"; readonly record?: undefined }
@@ -55,67 +34,7 @@ interface PendingAction {
   readonly record: OrganizationRecord;
 }
 
-export function OrganizationSettingsPage() {
-  const [activeTab, setActiveTab] = useState<OrganizationSettingsTab>(defaultCatalog.kind);
-  const activeCatalog =
-    organizationCatalogs.find((catalog) => catalog.kind === activeTab) ?? defaultCatalog;
-
-  return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          { label: "Settings", href: "/settings" },
-          { label: "Organization settings" }
-        ]}
-        title="Organization settings"
-        description="Configure tenant-level catalogs used by employee profiles, assignments, and reporting."
-      />
-
-      <div className="flex flex-wrap gap-2 border-b border-border">
-        {organizationCatalogs.map((catalog) => (
-          <button
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              activeTab === catalog.kind
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-            key={catalog.kind}
-            onClick={() => setActiveTab(catalog.kind)}
-            type="button"
-          >
-            {catalog.label}
-          </button>
-        ))}
-        {organizationUnitTabs.map((tab) => (
-          <button
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              activeTab === tab.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-5">
-        {activeTab === "organizationUnitTypes" ? <OrganizationUnitTypesPanel /> : null}
-        {activeTab === "organizationUnits" ? <OrganizationUnitsPanel /> : null}
-        {activeTab !== "organizationUnitTypes" && activeTab !== "organizationUnits" ? (
-          <OrganizationCatalogPanel catalog={activeCatalog} />
-        ) : null}
-      </div>
-    </>
-  );
-}
-
-function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationCatalogConfig }>) {
+export function OrganizationCatalogPanel({ catalog }: Readonly<{ catalog: OrganizationCatalogConfig }>) {
   const { showToast } = useToast();
   const currentTenant = useCurrentTenant();
   const tenantSlug = currentTenant.tenantSlug;
@@ -326,18 +245,17 @@ function OrganizationRecordDrawer({
 
   const isSaving = createState.isLoading || updateState.isLoading;
   const isFormReady = Boolean(drawerKey && formReadyKey === drawerKey);
-  const title =
-    drawer?.mode === "edit" ? `Edit ${catalog.singularLabel}` : `Add ${catalog.singularLabel}`;
+  const title = drawer?.mode === "edit" ? `Edit ${catalog.singularLabel}` : `Add ${catalog.singularLabel}`;
 
   const updateField = (key: keyof OrganizationRecordPayload, value: string) => {
     setFormState((current) => ({ ...current, [key]: value }));
   };
 
-  const cleanPayload = () => {
+  const cleanPayload = (source: OrganizationRecordPayload) => {
     const payload: OrganizationRecordPayload = {};
 
     for (const field of catalog.fields) {
-      const rawValue = formState[field.key];
+      const rawValue = source[field.key];
       const value = typeof rawValue === "string" ? rawValue.trim() : rawValue;
 
       if (value) {
@@ -350,35 +268,16 @@ function OrganizationRecordDrawer({
     return payload;
   };
 
-  const currentPayload = cleanPayload();
-  const initialPayload = (() => {
-    const payload: OrganizationRecordPayload = {};
-
-    for (const field of catalog.fields) {
-      const rawValue = initialFormState[field.key];
-      const value = typeof rawValue === "string" ? rawValue.trim() : rawValue;
-
-      if (value) {
-        payload[field.key] = value;
-      } else if (drawer?.mode === "edit" && field.key !== "name" && field.key !== "country" && field.key !== "timezone") {
-        payload[field.key] = null;
-      }
-    }
-
-    return payload;
-  })();
+  const currentPayload = cleanPayload(formState);
+  const initialPayload = cleanPayload(initialFormState);
   const isFormValid = catalog.fields.every((field) => !field.required || Boolean(currentPayload[field.key]));
   const isDirty = JSON.stringify(currentPayload) !== JSON.stringify(initialPayload);
-  const canSave =
-    !isSaving &&
-    isFormReady &&
-    isFormValid &&
-    (drawer?.mode === "edit" ? isDirty : true);
+  const canSave = !isSaving && isFormReady && isFormValid && (drawer?.mode === "edit" ? isDirty : true);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const payload = cleanPayload();
+    const payload = cleanPayload(formState);
     const missingRequired = catalog.fields.find((field) => field.required && !payload[field.key]);
 
     if (missingRequired) {

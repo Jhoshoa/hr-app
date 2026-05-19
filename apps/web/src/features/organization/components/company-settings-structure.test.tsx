@@ -2,10 +2,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
-import { OrganizationSettingsPage } from "./organization-settings-page";
+import { CompanySettingsPage } from "@/features/tenants/components/company-settings-page";
 import type { OrganizationUnit } from "../organization-units-types";
 
 const mutationState = { isLoading: false };
+const dispatchMock = vi.fn();
 const archiveOrganizationUnitMock = vi.fn();
 const archiveOrganizationUnitTypeMock = vi.fn();
 const createOrganizationUnitTypeMock = vi.fn();
@@ -54,6 +55,60 @@ const defaultOrganizationUnitsData: OrganizationUnit[] = [
   }
 ];
 const organizationUnitsData: OrganizationUnit[] = [...defaultOrganizationUnitsData];
+const tenantData = {
+  id: "tenant-1",
+  name: "AssureSoft Demo",
+  slug: "assuresoft-demo",
+  status: "ACTIVE",
+  defaultLanguage: "en",
+  defaultCurrency: "USD",
+  timezone: "America/New_York"
+};
+const locationRecordsData = [
+  {
+    id: "location-1",
+    tenantId: "tenant-1",
+    name: "Cochabamba HQ",
+    country: "BO",
+    city: "Cochabamba",
+    timezone: "America/La_Paz",
+    status: "ACTIVE",
+    createdAt: "2026-05-18T00:00:00.000Z",
+    updatedAt: "2026-05-18T00:00:00.000Z"
+  }
+];
+const organizationUnitTypesData = [
+  {
+    id: "type-1",
+    tenantId: "tenant-1",
+    key: "branch",
+    name: "Branch",
+    sortOrder: 10,
+    status: "ACTIVE",
+    createdAt: "2026-05-18T00:00:00.000Z",
+    updatedAt: "2026-05-18T00:00:00.000Z"
+  },
+  {
+    id: "type-2",
+    tenantId: "tenant-1",
+    key: "office",
+    name: "Office",
+    sortOrder: 20,
+    status: "ACTIVE",
+    createdAt: "2026-05-18T00:00:00.000Z",
+    updatedAt: "2026-05-18T00:00:00.000Z"
+  },
+  {
+    id: "type-3",
+    tenantId: "tenant-1",
+    key: "archived_type",
+    name: "Archived Type",
+    sortOrder: 30,
+    status: "ARCHIVED",
+    createdAt: "2026-05-18T00:00:00.000Z",
+    updatedAt: "2026-05-18T00:00:00.000Z"
+  }
+];
 
 vi.mock("@/hooks/use-current-tenant", () => ({
   useCurrentTenant: () => ({
@@ -61,26 +116,24 @@ vi.mock("@/hooks/use-current-tenant", () => ({
   })
 }));
 
+vi.mock("@/store/hooks", () => ({
+  useAppDispatch: () => dispatchMock
+}));
+
+vi.mock("@/features/tenants/tenants-api", () => ({
+  useGetCurrentTenantQuery: () => ({
+    data: tenantData,
+    isError: false,
+    isFetching: false
+  }),
+  useUpdateCurrentTenantMutation: () => [vi.fn(), mutationState]
+}));
+
 vi.mock("../organization-api", () => ({
   useArchiveOrganizationRecordMutation: () => [vi.fn(), mutationState],
   useCreateOrganizationRecordMutation: () => [vi.fn(), mutationState],
   useListOrganizationRecordsQuery: ({ kind }: { kind: string }) => ({
-    data:
-      kind === "location"
-        ? [
-            {
-              id: "location-1",
-              tenantId: "tenant-1",
-              name: "Cochabamba HQ",
-              country: "BO",
-              city: "Cochabamba",
-              timezone: "America/La_Paz",
-              status: "ACTIVE",
-              createdAt: "2026-05-18T00:00:00.000Z",
-              updatedAt: "2026-05-18T00:00:00.000Z"
-            }
-          ]
-        : [],
+    data: kind === "location" ? locationRecordsData : [],
     isError: false,
     isFetching: false
   }),
@@ -96,38 +149,7 @@ vi.mock("../organization-units-api", () => ({
   useDeleteOrganizationUnitMutation: () => [deleteOrganizationUnitMock, mutationState],
   useDeleteOrganizationUnitTypeMutation: () => [deleteOrganizationUnitTypeMock, mutationState],
   useListOrganizationUnitTypesQuery: () => ({
-    data: [
-      {
-        id: "type-1",
-        tenantId: "tenant-1",
-        key: "branch",
-        name: "Branch",
-        sortOrder: 10,
-        status: "ACTIVE",
-        createdAt: "2026-05-18T00:00:00.000Z",
-        updatedAt: "2026-05-18T00:00:00.000Z"
-      },
-      {
-        id: "type-2",
-        tenantId: "tenant-1",
-        key: "office",
-        name: "Office",
-        sortOrder: 20,
-        status: "ACTIVE",
-        createdAt: "2026-05-18T00:00:00.000Z",
-        updatedAt: "2026-05-18T00:00:00.000Z"
-      },
-      {
-        id: "type-3",
-        tenantId: "tenant-1",
-        key: "archived_type",
-        name: "Archived Type",
-        sortOrder: 30,
-        status: "ARCHIVED",
-        createdAt: "2026-05-18T00:00:00.000Z",
-        updatedAt: "2026-05-18T00:00:00.000Z"
-      }
-    ],
+    data: organizationUnitTypesData,
     isError: false,
     isFetching: false,
     isLoading: false
@@ -145,8 +167,9 @@ vi.mock("../organization-units-api", () => ({
   useUpdateOrganizationUnitTypeMutation: () => [vi.fn(), mutationState]
 }));
 
-describe("OrganizationSettingsPage", () => {
+describe("CompanySettingsPage structure settings", () => {
   beforeEach(() => {
+    dispatchMock.mockReset();
     organizationUnitsData.splice(
       0,
       organizationUnitsData.length,
@@ -166,25 +189,26 @@ describe("OrganizationSettingsPage", () => {
     reorderOrganizationUnitTypesMock.mockReturnValue({ unwrap: () => Promise.resolve({}) });
   });
 
-  it("shows organization unit type and unit tabs", () => {
+  it("shows company settings tabs", () => {
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    expect(screen.getByRole("button", { name: "Organization unit types" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Organization units" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Locations" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Structure" })).toBeInTheDocument();
   });
 
   it("renders organization unit types", () => {
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization unit types" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
 
     expect(screen.getByRole("heading", { name: "Organization unit types" })).toBeInTheDocument();
     expect(screen.getByText("branch")).toBeInTheDocument();
@@ -196,11 +220,11 @@ describe("OrganizationSettingsPage", () => {
   it("does not expose sort order in the organization unit type drawer", () => {
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization unit types" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
     fireEvent.click(screen.getByRole("button", { name: "Add type" }));
 
     expect(screen.getByRole("heading", { name: "Add organization unit type" })).toBeInTheDocument();
@@ -224,11 +248,11 @@ describe("OrganizationSettingsPage", () => {
 
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization unit types" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
     fireEvent.click(screen.getByRole("button", { name: "Add type" }));
     fireEvent.change(screen.getByPlaceholderText("branch"), { target: { value: "office" } });
     fireEvent.change(screen.getByPlaceholderText("Branch"), { target: { value: "Office" } });
@@ -240,11 +264,11 @@ describe("OrganizationSettingsPage", () => {
   it("asks for confirmation before saving organization unit type order changes", async () => {
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization unit types" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
 
     fireEvent.keyDown(screen.getByRole("button", { name: "Reorder Office" }), { key: "ArrowUp" });
     await waitFor(() => expect(screen.getByRole("button", { name: "Save order" })).toBeEnabled());
@@ -265,11 +289,11 @@ describe("OrganizationSettingsPage", () => {
   it("shows permanent delete only for archived organization unit types and confirms before deleting", async () => {
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization unit types" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
 
     expect(screen.queryByRole("button", { name: "Delete Branch" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Delete Archived Type" }));
@@ -289,11 +313,11 @@ describe("OrganizationSettingsPage", () => {
   it("shows permanent delete only for archived organization units and confirms before deleting", async () => {
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization units" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
 
     expect(screen.queryByRole("button", { name: "Delete Cochabamba" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Delete Archived Unit" }));
@@ -325,11 +349,11 @@ describe("OrganizationSettingsPage", () => {
 
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization unit types" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
     fireEvent.click(screen.getByRole("button", { name: "Archive Branch" }));
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
 
@@ -353,11 +377,11 @@ describe("OrganizationSettingsPage", () => {
 
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization units" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
     fireEvent.click(screen.getByRole("button", { name: "Archive Cochabamba" }));
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
 
@@ -369,11 +393,11 @@ describe("OrganizationSettingsPage", () => {
   it("renders organization units with location kept separate", () => {
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization units" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
 
     expect(screen.getByRole("heading", { name: "Organization units" })).toBeInTheDocument();
     expect(screen.getByText("Cochabamba HQ")).toBeInTheDocument();
@@ -404,11 +428,11 @@ describe("OrganizationSettingsPage", () => {
 
     render(
       <ToastProvider>
-        <OrganizationSettingsPage />
+        <CompanySettingsPage />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Organization units" }));
+    fireEvent.click(screen.getByRole("button", { name: "Structure" }));
 
     expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
     expect(screen.getByText("Unit 10")).toBeInTheDocument();

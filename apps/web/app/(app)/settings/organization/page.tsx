@@ -1,5 +1,5 @@
-import { OrganizationSettingsPage } from "@/features/organization/components/organization-settings-page";
+import { redirect } from "next/navigation";
 
 export default function OrganizationSettingsRoute() {
-  return <OrganizationSettingsPage />;
+  redirect("/settings/hr");
 }
