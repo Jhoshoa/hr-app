@@ -21,6 +21,7 @@ export const organizationCatalogs: readonly OrganizationCatalogConfig[] = [
     fields: [
       { key: "name", label: "Name", placeholder: "Cochabamba HQ", required: true },
       { key: "country", label: "Country", placeholder: "BO", required: true, control: "country" },
+      { key: "subdivisionCode", label: "State / department", placeholder: "BO-C", control: "subdivision" },
       { key: "city", label: "City", placeholder: "Cochabamba" },
       { key: "timezone", label: "Timezone", placeholder: "America/La_Paz", required: true, control: "timezone" }
     ]

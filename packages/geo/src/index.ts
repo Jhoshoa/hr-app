@@ -6,7 +6,10 @@ export {
   type CountryCode,
   type CountryMetadata,
   type CountryOption,
-  type E164PhoneNumber
+  type E164PhoneNumber,
+  type SubdivisionCode,
+  type SubdivisionMetadata,
+  type SubdivisionOption
 } from "./geo";
 export {
   getAmericaCountries,
@@ -19,7 +22,12 @@ export {
   getCountryOptions,
   getCountryTimeZones,
   isSupportedCallingCode,
+  isSupportedSubdivisionCode,
   isSupportedCountryCode,
   normalizePhoneNumber,
-  normalizeCountryCode
+  normalizeCountryCode,
+  getAmericaSubdivisions,
+  getCountrySubdivisions,
+  getSubdivisionOptions,
+  normalizeSubdivisionCode
 } from "./geo";

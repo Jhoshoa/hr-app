@@ -30,6 +30,7 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
             tenantId: input.tenantId,
             name: input.name,
             country: input.country ?? DEFAULT_COUNTRY_CODE,
+            subdivisionCode: input.subdivisionCode,
             city: input.city,
             timezone: input.timezone ?? DEFAULT_TIME_ZONE
           }
@@ -129,6 +130,7 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
           data: {
             ...(input.name !== undefined ? { name: input.name } : {}),
             ...(input.country !== undefined ? { country: input.country } : {}),
+            ...(input.subdivisionCode !== undefined ? { subdivisionCode: input.subdivisionCode } : {}),
             ...(input.city !== undefined ? { city: input.city } : {}),
             ...(input.timezone !== undefined ? { timezone: input.timezone } : {})
           }

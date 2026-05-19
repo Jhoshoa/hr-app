@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { useToast } from "@/components/ui/toast";
 import { CountrySelect } from "@/features/geo/components/country-select";
+import { SubdivisionSelect } from "@/features/geo/components/subdivision-select";
 import { TimezoneSelect } from "@/features/timezones/components/timezone-select";
 import { useCurrentTenant } from "@/hooks/use-current-tenant";
 import { DEFAULT_COUNTRY_CODE } from "@hr-app/geo";
@@ -257,7 +258,11 @@ function OrganizationRecordDrawer({
   const title = drawer?.mode === "edit" ? `Edit ${catalog.singularLabel}` : `Add ${catalog.singularLabel}`;
 
   const updateField = (key: keyof OrganizationRecordPayload, value: string) => {
-    setFormState((current) => ({ ...current, [key]: value }));
+    setFormState((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "country" ? { subdivisionCode: "" } : {})
+    }));
   };
 
   const cleanPayload = (source: OrganizationRecordPayload) => {
@@ -363,6 +368,15 @@ function OrganizationFieldControl({
       return (
         <CountrySelect
           className="mt-1"
+          onChange={(event) => onChange(field.key, event.target.value)}
+          value={value}
+        />
+      );
+    case "subdivision":
+      return (
+        <SubdivisionSelect
+          className="mt-1"
+          countryCode={String(formState.country ?? "")}
           onChange={(event) => onChange(field.key, event.target.value)}
           value={value}
         />

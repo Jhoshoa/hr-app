@@ -78,6 +78,7 @@ describe("CreateOrganizationRecordUseCase", () => {
       tenantId: "tenant-1",
       name: "Cochabamba HQ",
       country: "BO",
+      subdivisionCode: "BO-C",
       city: "Cochabamba",
       timezone: "America/La_Paz",
       status: "ACTIVE",
@@ -100,6 +101,7 @@ describe("CreateOrganizationRecordUseCase", () => {
       kind: "location",
       name: "Cochabamba HQ",
       country: "bolivia",
+      subdivisionCode: "bo-c",
       city: "Cochabamba",
       timezone: "America/La_Paz"
     });
@@ -107,9 +109,31 @@ describe("CreateOrganizationRecordUseCase", () => {
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         country: "BO",
+        subdivisionCode: "BO-C",
         timezone: "America/La_Paz"
       })
     );
+  });
+
+  it("rejects unsupported location subdivision values", async () => {
+    const tenantsRepository = createTenantsRepository();
+    tenantsRepository.findById.mockResolvedValue(createTenant());
+    const useCase = new CreateOrganizationRecordUseCase(
+      createRepository(),
+      tenantsRepository,
+      { execute: jest.fn() } as never
+    );
+
+    await expect(
+      useCase.execute({
+        tenantId: "tenant-1",
+        actorUserId: "user-1",
+        kind: "location",
+        name: "Invalid HQ",
+        country: "BO",
+        subdivisionCode: "US-NY"
+      })
+    ).rejects.toThrow("Subdivision must be supported for the selected country.");
   });
 
   it("defaults location country and timezone from tenant timezone when omitted", async () => {

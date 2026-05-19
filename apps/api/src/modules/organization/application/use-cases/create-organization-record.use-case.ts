@@ -1,5 +1,10 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { DEFAULT_COUNTRY_CODE, getCountryCodeForTimeZone, normalizeCountryCode } from "@hr-app/geo";
+import {
+  DEFAULT_COUNTRY_CODE,
+  getCountryCodeForTimeZone,
+  normalizeCountryCode,
+  normalizeSubdivisionCode
+} from "@hr-app/geo";
 import { DEFAULT_TIME_ZONE, normalizeTimeZone } from "@hr-app/timezones";
 import type {
   CreateOrganizationRecordInput,
@@ -69,10 +74,12 @@ export class CreateOrganizationRecordUseCase {
       this.normalizeCountry(input.country) ??
       getCountryCodeForTimeZone(timeZone) ??
       DEFAULT_COUNTRY_CODE;
+    const subdivisionCode = this.normalizeSubdivision(country, input.subdivisionCode);
 
     return {
       ...input,
       country,
+      ...(subdivisionCode ? { subdivisionCode } : {}),
       timezone: timeZone
     };
   };
@@ -89,6 +96,20 @@ export class CreateOrganizationRecordUseCase {
     }
 
     return country;
+  };
+
+  private normalizeSubdivision = (countryCode: string, value: string | undefined): string | undefined => {
+    if (!value) {
+      return undefined;
+    }
+
+    const subdivisionCode = normalizeSubdivisionCode(countryCode, value);
+
+    if (!subdivisionCode) {
+      throw new BadRequestException("Subdivision must be supported for the selected country.");
+    }
+
+    return subdivisionCode;
   };
 
   private normalizeLocationTimeZone = (value: string | undefined): string | undefined => {

@@ -31,6 +31,12 @@ export class CreateLocationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(16)
+  subdivisionCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   @MaxLength(80)
   city?: string;
 

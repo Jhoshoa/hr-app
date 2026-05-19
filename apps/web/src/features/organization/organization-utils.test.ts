@@ -16,12 +16,13 @@ describe("organization utils", () => {
       name: "Cochabamba HQ",
       status: "ACTIVE",
       country: "BO",
+      subdivisionCode: "BO-C",
       city: "Cochabamba",
       timezone: "America/La_Paz",
       createdAt: "2026-05-13T10:00:00.000Z",
       updatedAt: "2026-05-13T10:00:00.000Z"
     });
 
-    expect(detail).toBe("Cochabamba, BO | America/La_Paz");
+    expect(detail).toBe("Cochabamba, BO-C, BO | America/La_Paz");
   });
 });

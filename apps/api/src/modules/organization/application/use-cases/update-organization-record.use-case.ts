@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { normalizeCountryCode } from "@hr-app/geo";
+import { normalizeCountryCode, normalizeSubdivisionCode } from "@hr-app/geo";
 import { normalizeTimeZone } from "@hr-app/timezones";
 import type {
   OrganizationRecordEntity,
@@ -39,13 +39,7 @@ export class UpdateOrganizationRecordUseCase {
     const { actorUserId, ...updateInput } = input;
     const normalizedInput =
       updateInput.kind === "location"
-        ? {
-            ...updateInput,
-            ...(updateInput.country !== undefined ? { country: this.normalizeCountry(updateInput.country) } : {}),
-            ...(updateInput.timezone !== undefined
-              ? { timezone: this.normalizeLocationTimeZone(updateInput.timezone) }
-              : {})
-          }
+        ? await this.normalizeLocationInput(updateInput)
         : updateInput;
     const record = await this.organizationRepository.update(normalizedInput);
 
@@ -63,6 +57,32 @@ export class UpdateOrganizationRecordUseCase {
     return record;
   };
 
+  private normalizeLocationInput = async (
+    input: Omit<UpdateOrganizationRecordCommand, "actorUserId">
+  ): Promise<Omit<UpdateOrganizationRecordCommand, "actorUserId">> => {
+    const currentRecord =
+      input.subdivisionCode !== undefined || input.country !== undefined
+        ? await this.organizationRepository.findById(input.tenantId, "location", input.id)
+        : null;
+    const country =
+      input.country !== undefined ? this.normalizeCountry(input.country) : currentRecord?.country ?? undefined;
+    const normalizedSubdivision =
+      input.subdivisionCode !== undefined
+        ? this.normalizeSubdivision(country, input.subdivisionCode)
+        : input.country !== undefined
+          ? null
+          : undefined;
+
+    return {
+      ...input,
+      ...(input.country !== undefined ? { country } : {}),
+      ...(input.subdivisionCode !== undefined || input.country !== undefined
+        ? { subdivisionCode: normalizedSubdivision }
+        : {}),
+      ...(input.timezone !== undefined ? { timezone: this.normalizeLocationTimeZone(input.timezone) } : {})
+    };
+  };
+
   private normalizeCountry = (value: string | undefined): string => {
     const country = normalizeCountryCode(value);
 
@@ -71,6 +91,23 @@ export class UpdateOrganizationRecordUseCase {
     }
 
     return country;
+  };
+
+  private normalizeSubdivision = (
+    countryCode: string | null | undefined,
+    value: string | null | undefined
+  ): string | null => {
+    if (!value) {
+      return null;
+    }
+
+    const subdivisionCode = normalizeSubdivisionCode(countryCode, value);
+
+    if (!subdivisionCode) {
+      throw new BadRequestException("Subdivision must be supported for the selected country.");
+    }
+
+    return subdivisionCode;
   };
 
   private normalizeLocationTimeZone = (value: string | undefined): string => {

@@ -72,6 +72,7 @@ const locationRecordsData = [
     tenantId: "tenant-1",
     name: "Cochabamba HQ",
     country: "BO",
+    subdivisionCode: "BO-C",
     city: "Cochabamba",
     timezone: "America/La_Paz",
     status: "ACTIVE",
@@ -192,6 +193,7 @@ describe("CompanySettingsPage structure settings", () => {
         tenantId: "tenant-1",
         name: "New York HQ",
         country: "US",
+        subdivisionCode: "US-NY",
         city: "New York",
         timezone: "America/New_York",
         status: "ACTIVE",
@@ -419,6 +421,36 @@ describe("CompanySettingsPage structure settings", () => {
 
     expect(screen.getByRole("heading", { name: "Organization units" })).toBeInTheDocument();
     expect(screen.getByText("Cochabamba HQ")).toBeInTheDocument();
+  });
+
+  it("uses a country-scoped subdivision dropdown when creating a location", async () => {
+    render(
+      <ToastProvider>
+        <CompanySettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Locations" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add location" }));
+
+    fireEvent.change(await screen.findByPlaceholderText("Cochabamba HQ"), { target: { value: "Santa Cruz HQ" } });
+    fireEvent.change(screen.getByLabelText("State / department"), { target: { value: "BO-S" } });
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Santa Cruz" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(createOrganizationRecordMock).toHaveBeenCalledWith({
+        kind: "location",
+        tenantSlug: "assuresoft-demo",
+        payload: {
+          name: "Santa Cruz HQ",
+          country: "BO",
+          subdivisionCode: "BO-S",
+          city: "Santa Cruz",
+          timezone: "America/La_Paz"
+        }
+      })
+    );
   });
 
   it("uses tenant timezone defaults and shared selects when creating an inline primary location", async () => {
