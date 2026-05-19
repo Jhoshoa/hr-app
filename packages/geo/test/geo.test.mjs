@@ -10,9 +10,11 @@ import {
   getCountryOptions,
   getSubdivisionOptions,
   isSupportedCallingCode,
+  isSupportedPhoneNumber,
   normalizeSubdivisionCode,
   normalizeCountryCode,
-  normalizePhoneNumber
+  normalizePhoneNumber,
+  parseSupportedPhoneNumber
 } from "../dist/index.js";
 
 describe("@hr-app/geo", () => {
@@ -37,8 +39,16 @@ describe("@hr-app/geo", () => {
     assert.equal(getCountryDefaultCallingCode("BO"), "+591");
     assert.equal(isSupportedCallingCode("+591"), true);
     assert.equal(normalizePhoneNumber("70000000", "BO"), "+59170000000");
-    assert.equal(normalizePhoneNumber("+1 555 0100", "BO"), "+15550100");
+    assert.equal(normalizePhoneNumber("+1 415 555 0100", "BO"), "+14155550100");
     assert.equal(normalizePhoneNumber("+34 600 000 000", "BO"), null);
+    assert.equal(normalizePhoneNumber("+1 555 0100", "BO"), null);
+    assert.equal(isSupportedPhoneNumber("4155550100", "US"), true);
+    assert.deepEqual(parseSupportedPhoneNumber("4155550100", "US"), {
+      e164: "+14155550100",
+      countryCode: "US",
+      callingCode: "+1",
+      nationalNumber: "4155550100"
+    });
   });
 
   it("returns calling code options with flag labels", () => {

@@ -1,6 +1,8 @@
 import { AMERICA_COUNTRIES } from "./countries";
-import type { CallingCode } from "./country-types";
-import { getCountryByCode, normalizeCountryCode } from "./geo-validation";
+import type { CountryCode as PhoneCountryCode } from "libphonenumber-js/min";
+import { parsePhoneNumberFromString } from "libphonenumber-js/min";
+import type { CallingCode, CountryCode, E164PhoneNumber } from "./country-types";
+import { getCountryByCode, isSupportedCountryCode, normalizeCountryCode } from "./geo-validation";
 
 const supportedCallingCodes = Array.from(
   new Set(AMERICA_COUNTRIES.flatMap((country) => country.callingCodes))
@@ -18,31 +20,60 @@ export const getCountryDefaultCallingCode = (value: string | null | undefined): 
 export const isSupportedCallingCode = (value: string): value is CallingCode =>
   supportedCallingCodes.some((callingCode) => callingCode === value);
 
-export const normalizePhoneNumber = (
+export interface SupportedPhoneNumber {
+  readonly e164: E164PhoneNumber;
+  readonly countryCode: CountryCode;
+  readonly callingCode: CallingCode;
+  readonly nationalNumber: string;
+}
+
+export const parseSupportedPhoneNumber = (
   value: string | null | undefined,
   countryCode?: string | null
-): string | null => {
+): SupportedPhoneNumber | null => {
   const trimmed = value?.trim();
 
   if (!trimmed) {
     return null;
   }
 
-  const compact = trimmed.replace(/[\s().-]/g, "");
-  const withPlus = compact.startsWith("00") ? `+${compact.slice(2)}` : compact;
-  const candidate = withPlus.startsWith("+")
-    ? withPlus
-    : `${getCountryDefaultCallingCode(countryCode) ?? ""}${withPlus.replace(/\D/g, "")}`;
+  const defaultCountry = normalizeCountryCode(countryCode);
+  const internationalized = trimmed.replace(/^[\s()-.]*00/, "+");
+  const phoneNumber = parsePhoneNumberFromString(
+    internationalized,
+    defaultCountry ? (defaultCountry as PhoneCountryCode) : undefined
+  );
 
-  if (!/^\+[1-9]\d{7,14}$/.test(candidate)) {
+  if (!phoneNumber?.isValid() || !phoneNumber.country) {
     return null;
   }
 
-  const matchedCallingCode = supportedCallingCodes.find((callingCode) => candidate.startsWith(callingCode));
+  const parsedCountryCode = phoneNumber.country;
 
-  if (!matchedCallingCode) {
+  if (!isSupportedCountryCode(parsedCountryCode)) {
     return null;
   }
 
-  return candidate;
+  const callingCode = `+${phoneNumber.countryCallingCode}`;
+
+  if (!isSupportedCallingCode(callingCode)) {
+    return null;
+  }
+
+  return {
+    e164: phoneNumber.number as E164PhoneNumber,
+    countryCode: parsedCountryCode as CountryCode,
+    callingCode,
+    nationalNumber: phoneNumber.nationalNumber
+  };
 };
+
+export const normalizePhoneNumber = (
+  value: string | null | undefined,
+  countryCode?: string | null
+): string | null => parseSupportedPhoneNumber(value, countryCode)?.e164 ?? null;
+
+export const isSupportedPhoneNumber = (
+  value: string | null | undefined,
+  countryCode?: string | null
+): boolean => Boolean(parseSupportedPhoneNumber(value, countryCode));

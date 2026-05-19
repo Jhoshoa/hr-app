@@ -80,9 +80,19 @@ describe("companySignupSchema", () => {
       companySignupSchema.parse({
         ...validInput,
         country: "BO",
-        phone: "+1 555 0100"
+        phone: "+1 415 555 0100"
       })
-    ).toEqual(expect.objectContaining({ phone: "+15550100" }));
+    ).toEqual(expect.objectContaining({ phone: "+14155550100" }));
+  });
+
+  it("rejects invalid national phone numbers even when the calling code is supported", () => {
+    const result = companySignupSchema.safeParse({
+      ...validInput,
+      country: "BO",
+      phone: "+1 555 0100"
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("rejects phone numbers with unsupported calling codes", () => {

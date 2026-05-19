@@ -10,11 +10,14 @@ export type {
 } from "./country-types";
 export { getCountryByCode, isSupportedCountryCode, normalizeCountryCode } from "./geo-validation";
 export { getCountryCodeForTimeZone, getCountryDefaultTimeZone, getCountryTimeZones } from "./geo-resolution";
+export type { SupportedPhoneNumber } from "./phone";
 export {
   getCountryCallingCodes,
   getCountryDefaultCallingCode,
   isSupportedCallingCode,
-  normalizePhoneNumber
+  isSupportedPhoneNumber,
+  normalizePhoneNumber,
+  parseSupportedPhoneNumber
 } from "./phone";
 export { getSubdivisionOptions } from "./subdivision-options";
 export type { SubdivisionCode, SubdivisionMetadata, SubdivisionOption } from "./subdivision-types";

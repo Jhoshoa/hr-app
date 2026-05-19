@@ -190,9 +190,17 @@ describe("CreateCompanySignupRequestUseCase", () => {
 
     const useCase = new CreateCompanySignupRequestUseCase(repository, createEventBus());
 
-    await useCase.execute({ ...validInput, country: "BO", phone: "+1 555 0100" });
+    await useCase.execute({ ...validInput, country: "BO", phone: "+1 415 555 0100" });
 
-    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ phone: "+15550100" }));
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ phone: "+14155550100" }));
+  });
+
+  it("rejects invalid national phone numbers even when the calling code is supported", async () => {
+    const useCase = new CreateCompanySignupRequestUseCase(createRepository(), createEventBus());
+
+    await expect(useCase.execute({ ...validInput, country: "BO", phone: "+1 555 0100" })).rejects.toThrow(
+      "Phone must be a valid E.164 number with a supported calling code."
+    );
   });
 
   it("rejects phone numbers with unsupported calling codes", async () => {

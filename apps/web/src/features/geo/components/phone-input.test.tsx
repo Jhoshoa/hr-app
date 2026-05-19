@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PhoneInput } from "./phone-input";
 
 describe("PhoneInput", () => {
-  it("uses the selected country default calling code and emits E.164-like values", () => {
+  it("uses the selected country default calling code and emits E.164-shaped values", () => {
     const onChange = vi.fn();
 
     render(<PhoneInput countryCode="BO" name="phone" onChange={onChange} value="" />);
@@ -50,12 +50,12 @@ describe("PhoneInput", () => {
 
     expect(screen.getByLabelText("Phone country code")).toHaveValue("+1");
 
-    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "5550100" } });
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "4155550100" } });
 
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         target: expect.objectContaining({
-          value: "+15550100"
+          value: "+14155550100"
         })
       })
     );
