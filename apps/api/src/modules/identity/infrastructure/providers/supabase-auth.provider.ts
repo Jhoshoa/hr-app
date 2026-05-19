@@ -32,7 +32,7 @@ interface JsonWebKeySet {
 @Injectable()
 export class SupabaseAuthProvider implements AuthProvider {
   private static readonly jwksCacheTtlMs = 10 * 60 * 1000;
-  private static readonly jwksFetchTimeoutMs = 2_000;
+  private static readonly jwksFetchTimeoutMs = 10_000;
 
   private readonly client: SupabaseClient;
   private readonly realtimeTransport = WebSocket as unknown as WebSocketLikeConstructor;
